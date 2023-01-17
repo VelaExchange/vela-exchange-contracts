@@ -1,0 +1,32 @@
+# dependencies
+/node_modules
+/abis
+# Hardhat artifacts directory
+unknown-*.json
+!fuji-43113.json
+!prod-43114.json
+/artifacts
+/cache
+/contracts/Vault/DefiProtocol.sol
+/contracts/Vault/vestedToken.sol
+# .env files
+.env
+.env.*
+!.env.example
+
+# .log files
+*-deployment.log
+
+# .json files
+*-*tokensWithAddress.json
+*-contracts.json
+*-*hashes*.json
+*-airdrop.json
+*-DexalotToken.json
+*-0x*.json
+!fuji-*.json
+!prod-*.json
+
+# coverage
+coverage
+coverage.json
