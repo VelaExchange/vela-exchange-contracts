@@ -110,7 +110,12 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _posId,
         uint256 _collateralDelta,
         uint256 _sizeDelta
-    ) external nonReentrant {
+    ) external nonReentrant payable {
+        require(
+            msg.value == settingsManager.triggerGasFee(),
+            "invalid triggerGasFee"
+        );
+        payable(settingsManager.positionManager()).transfer(msg.value);
         positionVault.addPosition(
             msg.sender,
             _indexToken,

@@ -144,6 +144,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 true
             );
             position.reserveAmount -= _amount;
+            position.lastIncreasedTime = block.timestamp;
             vault.takeVUSDOut(_account, position.refer, 0, _amount);
             settingsManager.increaseBorrowedUsd(
                 _indexToken,
