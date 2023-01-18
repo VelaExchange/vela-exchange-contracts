@@ -35,7 +35,6 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         address indexed token,
         uint256 amount
     );
-    event RescueTokens(address _token, uint256 _amount);
     event Stake(
         address indexed account,
         address token,
@@ -222,14 +221,6 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             _params,
             _refer
         );
-    }
-
-    function rescueToken(
-        address _token,
-        uint256 _amount
-    ) external nonReentrant onlyOwner {
-        IERC20(_token).safeTransfer(msg.sender, _amount);
-        emit RescueTokens(_token, _amount);
     }
 
     function setVaultSettings(
