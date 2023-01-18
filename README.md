@@ -1,4 +1,4 @@
-For deploying perpetual smart contracts, Try running some of the following tasks:
+For deploying smart contracts, you can utilize the scripts in the scripts folder:
 
 ```shell
 npx hardhat accounts
@@ -6,161 +6,41 @@ npx hardhat compile
 npx hardhat clean
 npx hardhat test
 npx hardhat node
-npx hardhat run --network network_name scripts/perpetuals_chainlink/deploy.js
-npx hardhat run --network network_name scripts/perpetuals_chainlink/deployVaultPriceFeed.js
-npx hardhat run --network network_name scripts/perpetuals_chainlink/deployVaultReader.js
+npx hardhat run --network network_name scripts/arbitrum_goerli/deployFinalVault.js
+npx hardhat run --network network_name scripts/arbitrum_goerli/deployVaultPriceFeed.js
+npx hardhat run --network network_name scripts/arbitrum_goerli/deployVela.js
 npx hardhat help
 ```
 
-# VELA-PERPETUAL
+A complete list of scripts can be found in the scripts folder:
+
+/scripts/arbitrum for Arbitrum Mainnet
+
+/scripts/arbitrum_goerli for Arbitrum Goerli Testnet
+
+# VELA EXCHANGE
+
+A complete breakdown of our exchange functionality and all contract addresses, functionality and more can be found in our [Gitbook](https://vela-exchange.gitbook.io/vela-knowledge-base/)
 
 ## Deployed Contracts
 
-| Name        | Address                                    | Explorer                                                                       |
-| ----------- | ------------------------------------------ | ------------------------------------------------------------------------------ |
-| Vault       | 0xf7d42Cc4759fbF5aB6494A9DB9698941FD73A384 | https://testnet.arbiscan.io/address/0xf7d42Cc4759fbF5aB6494A9DB9698941FD73A384 |
-| Router      | 0x493E0F9b08be730461E3c52eEA74BD221AAB96d9 | https://testnet.arbiscan.io/address/0x493E0F9b08be730461E3c52eEA74BD221AAB96d9 |
-| VaultReader | 0xf07870Eab480f35ff21F3A261654b2915e676408 | https://testnet.arbiscan.io/address/0xf07870Eab480f35ff21F3A261654b2915e676408 |
+All contracts deployed to Arbitrum Mainnet are detailed at in our [Mainnet Contract Addresses](https://vela-exchange.gitbook.io/vela-knowledge-base/developers/contract-addresses/mainnet)
 
-### Initialize
+All contracts deployed to Arbitrum Goerli are detailed at in our [Testnet Contract Addresses](https://vela-exchange.gitbook.io/vela-knowledge-base/developers/contract-addresses/testnet)
 
-OnlyOwner
-Function
+## Contract Folders
 
-```
-vault.initialize(address _router, address _priceFeed, uint256 _liquidationFeeUsd, uint256 _fundingRateFactor, uint256 _stableFundingRateFactor)
-```
+### Access
+The access contracts hold constants for configuration used throughout Vela Exchange as well as the Governable contract which sets up ownership and allows the ability to set admin roles and call admin functions. Detailed explanations and code can be found in the [Access Section](https://vela-exchange.gitbook.io/vela-knowledge-base/developers/contract-functions/access).
 
-Example Input
+### Core
+The core contracts hold - you guessed it - the core functionality of Vela Exchange. Our vault contract gives traders the ability to deposit, withdraw, open and close positions, and more. Liquidity providers can call functions to stake and unstake stable tokens, thereby minting VLP. Various settings contracts control the settings and configurations for the vault, pricing feeds for assets, and contracts allowing for the opening and triggering of orders. To see code examples and more detail please visit the [Core Section](https://vela-exchange.gitbook.io/vela-knowledge-base/developers/contract-functions/core).
 
-```
-('0x493E0F9b08be730461E3c52eEA74BD221AAB96d9', '0xC46800fF33c9104F61D389Fa18D82a5cC10a9002', toUsd(2), 100, 100)
-```
+### Oracle
+Vela Exchange asset pricing is based on our own FastPriceFeed, which we operate internally. Asset prices are pulled from the latest data sources and published on chain in real time. You can view our [Oracle Section](https://vela-exchange.gitbook.io/vela-knowledge-base/developers/contract-functions/oracle/fastpricefeed) for more information.
 
-Example Output
+### Staking
+In addition to staking in our vault to provide liquidity, we provide various staking options for the VELA token, eVELA and more to earn more rewards and get reduced trading fees. You can see the details on our TokenFarm contract in the [Staking Section](https://vela-exchange.gitbook.io/vela-knowledge-base/developers/contract-functions/staking).
 
-```
-
-```
-
-### setFees
-
-OnlyOwner
-Function
-
-```
-vault.setFees(uint256 _taxBabsisPoints, uint256 _stableTaxBasisPoints, uint256 _mintBurnFeeBasisPoints, uint256 _swapFeeBasisPoints, uint256 _stableSwapFeeBasisPoints, uint256 _marginFeeBasisPoints, uint256 _liquidationFeeUsd, uint256 _liquidationFeeUsd, bool _hasDynamicFees)
-```
-
-Example Input
-
-```
-(10, 5, 20, 20, 1, 10, toUsd(2), 24 * 60 * 60, true)
-```
-
-Example Output
-
-```
-
-```
-
-### setTokenConfig
-
-Function
-
-```
-vault.setTokenConfig(address _token, uint256 _tokenDecimals, uint256 _minProfitBps, bool _isStable, bool _isShortable)
-```
-
-Example Input
-
-```
-('0x0d0fDd6a1BF333796a19B3df1433333044Da14Dd', 18, 0, false, true) // ETH
-('0x6Fb0674Bd389110230d6c01edAe1cD76165Be0a6', 6, 0, true, false) // USDT
-```
-
-Example Output
-
-```
-
-```
-
-### setVaultUtils
-
-Function
-
-```
-vault.setVaultUtils(IVaultUtils _vaultUtils)
-```
-
-Example Input
-
-```
-'0xC4374B3c23e4E2f411fD8a9586D0594fad46924f'
-```
-
-Example Output
-
-```
-
-```
-
-### setMiner
-
-Function
-
-```
-dlp.setMiner(address _minter, bool _isActive)
-```
-
-Example Input
-
-```
-(vault.address, true)
-```
-
-Example Output
-
-```
-
-```
-
-### increasePosition
-
-Function
-
-```
-router.increasePosition(address[] memory _path, address _indexToken, uint256 _amountIn, uint256 _sizeDelta, bool _isLong)
-```
-
-Example Input
-
-```
-([usdt.address, eth.address], eth.address, expandDecimals(200, 6), toUsd(1200), true)
-```
-
-Example Output
-
-```
-
-```
-
-### decreasePosition
-
-Function
-
-```
-router.decreasePosition(address _collateralToken, address _indexToken, uint256 _sizeDelta, bool _isLong, address _receiver)
-```
-
-Example Input
-
-```
-([usdt.address, eth.address], eth.address, expandDecimals(200, 6), toUsd(1200), true)
-```
-
-Example Output
-
-```
-
-```
+### Tokens
+The Vela token ecosystem consists of the VELA token as well as our VLP token for liquidity providers, eVELA for vesting VELA tokens over time, and vUSD which is the collateral token for trading. You can see all of our contract info on the various tokens in our [Tokens Section](https://vela-exchange.gitbook.io/vela-knowledge-base/developers/contract-functions/tokens).
