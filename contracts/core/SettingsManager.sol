@@ -5,7 +5,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/ISettingsManager.sol";
-import "./interfaces/IVault.sol";
+import "./interfaces/IPositionVault.sol";
+import "../staking/interfaces/ITokenFarm.sol";
 import {Constants} from "../access/Constants.sol";
 import "../access/Governable.sol";
 import "../tokens/interfaces/IVUSDC.sol";
@@ -13,9 +14,11 @@ import "../tokens/interfaces/IVUSDC.sol";
 contract SettingsManager is ISettingsManager, Governable, Constants {
     using EnumerableSet for EnumerableSet.AddressSet;
     address public immutable vUSDC;
-    IVault public immutable vault;
+    IPositionVault public immutable positionVault;
+    ITokenFarm public immutable tokenFarm;
 
     address public override feeManager;
+    address public override positionManager;
     bool public override referEnabled;
     uint256 public maxBorrowUSDAmountPerUser;
     uint256 public priceMovementPercent = 500; // 0.5%
@@ -30,6 +33,7 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
     uint256 public override liquidationFeeUsd; // 0 usd
     uint256 public override stakingFee = 300; // 0.3%
     uint256 public override referFee = 5000; // 5%
+    uint256 public override triggerGasFee = 0; //100 gwei;
 
     mapping(address => bool) public isCustomFees;
     mapping(address => bool) public override isDeposit;
@@ -86,6 +90,7 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
     event SetMaxBorrowAmountPerUser(uint256 maxBorrowAmount);
     event SetPositionManager(address manager, bool isManager);
     event SetStakingFee(uint256 indexed fee);
+    event SetTriggerGasFee(uint256 indexed fee);
     event SetVaultSettings(
         uint256 indexed cooldownDuration,
         uint256 feeRewardBasisPoints
@@ -107,41 +112,17 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
     event UpdateThreshold(uint256 oldThreshold, uint256 newThredhold);
 
     modifier onlyVault() {
-        require(msg.sender == address(vault), "Only vault has access");
+        require(msg.sender == address(positionVault), "Only vault has access");
         _;
     }
 
-    constructor(address _vault, address _vUSDC) {
-        require(Address.isContract(_vault), "vault address is invalid");
+    constructor(address _positionVault, address _vUSDC, address _tokenFarm) {
+        require(Address.isContract(_positionVault), "vault address is invalid");
         require(Address.isContract(_vUSDC), "vUSD address is invalid");
-        vault = IVault(_vault);
+        require(Address.isContract(_tokenFarm), "tokenFarm address is invalid");
+        positionVault = IPositionVault(_positionVault);
+        tokenFarm = ITokenFarm(_tokenFarm);
         vUSDC = _vUSDC;
-    }
-
-    function setFeeManager(address _feeManager) external onlyGov {
-        feeManager = _feeManager;
-        emit UpdateFeeManager(_feeManager);
-    }
-
-    function setVaultSettings(
-        uint256 _cooldownDuration,
-        uint256 _feeRewardsBasisPoints
-    ) external onlyGov {
-        require(
-            _cooldownDuration <= MAX_COOLDOWN_DURATION,
-            "invalid cooldownDuration"
-        );
-        require(
-            _feeRewardsBasisPoints >= MIN_FEE_REWARD_BASIS_POINTS,
-            "feeRewardsBasisPoints not greater than min"
-        );
-        require(
-            _feeRewardsBasisPoints < MAX_FEE_REWARD_BASIS_POINTS,
-            "feeRewardsBasisPoints not smaller than max"
-        );
-        cooldownDuration = _cooldownDuration;
-        feeRewardBasisPoints = _feeRewardsBasisPoints;
-        emit SetVaultSettings(cooldownDuration, feeRewardBasisPoints);
     }
 
     function delegate(address[] memory _delegates) external {
@@ -188,10 +169,30 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         );
     }
 
-    function undelegate(address[] memory _delegates) external {
-        for (uint256 i = 0; i < _delegates.length; ++i) {
-            EnumerableSet.remove(_delegatesByMaster[msg.sender], _delegates[i]);
-        }
+    function setFeeManager(address _feeManager) external onlyGov {
+        feeManager = _feeManager;
+        emit UpdateFeeManager(_feeManager);
+    }
+
+    function setVaultSettings(
+        uint256 _cooldownDuration,
+        uint256 _feeRewardsBasisPoints
+    ) external onlyGov {
+        require(
+            _cooldownDuration <= MAX_COOLDOWN_DURATION,
+            "invalid cooldownDuration"
+        );
+        require(
+            _feeRewardsBasisPoints >= MIN_FEE_REWARD_BASIS_POINTS,
+            "feeRewardsBasisPoints not greater than min"
+        );
+        require(
+            _feeRewardsBasisPoints < MAX_FEE_REWARD_BASIS_POINTS,
+            "feeRewardsBasisPoints not smaller than max"
+        );
+        cooldownDuration = _cooldownDuration;
+        feeRewardBasisPoints = _feeRewardsBasisPoints;
+        emit SetVaultSettings(cooldownDuration, feeRewardBasisPoints);
     }
 
     function setCloseDeltaTime(uint256 _deltaTime) external onlyGov {
@@ -331,6 +332,7 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         bool _isManager
     ) external onlyGov {
         isManager[_manager] = _isManager;
+        positionManager = _manager;
         emit SetPositionManager(_manager, _isManager);
     }
 
@@ -352,6 +354,12 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         require(_fee <= MAX_STAKING_FEE, "staking fee is bigger than max");
         stakingFee = _fee;
         emit SetStakingFee(_fee);
+    }
+
+    function setTriggerGasFee(uint256 _fee) external onlyGov {
+        require(_fee <= MAX_TRIGGER_GAS_FEE, "gasFee exceed max");
+        triggerGasFee = _fee;
+        emit SetTriggerGasFee(_fee);
     }
 
     function updateCumulativeFundingRate(
@@ -385,6 +393,34 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
             cumulativeFundingRates[_token][_isLong],
             lastFundingTimes[_token][_isLong]
         );
+    }
+
+    function undelegate(address[] memory _delegates) external {
+        for (uint256 i = 0; i < _delegates.length; ++i) {
+            EnumerableSet.remove(_delegatesByMaster[msg.sender], _delegates[i]);
+        }
+    }
+
+    function collectMarginFees(
+        address _account,
+        address _indexToken,
+        bool _isLong,
+        uint256 _sizeDelta,
+        uint256 _size,
+        uint256 _entryFundingRate
+    ) external view override returns (uint256) {
+        uint256 feeUsd = getPositionFee(_indexToken, _isLong, _sizeDelta);
+
+        feeUsd += getFundingFee(_indexToken, _isLong, _size, _entryFundingRate);
+        return
+            (feeUsd * tokenFarm.getTier(STAKING_PID_FOR_CHARGE_FEE, _account)) /
+            BASIS_POINTS_DIVISOR;
+    }
+
+    function getDelegates(
+        address _master
+    ) external view override returns (address[] memory) {
+        return enumerate(_delegatesByMaster[_master]);
     }
 
     function validatePosition(
@@ -432,6 +468,36 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         );
     }
 
+    function enumerate(
+        EnumerableSet.AddressSet storage set
+    ) internal view returns (address[] memory) {
+        uint256 length = EnumerableSet.length(set);
+        address[] memory output = new address[](length);
+        for (uint256 i; i < length; ++i) {
+            output[i] = EnumerableSet.at(set, i);
+        }
+        return output;
+    }
+
+    function getNextFundingRate(
+        address _token,
+        bool _isLong
+    ) internal view returns (uint256) {
+        uint256 intervals = (block.timestamp -
+            lastFundingTimes[_token][_isLong]) / fundingInterval;
+        if (positionVault.poolAmounts(_token, _isLong) == 0) {
+            return 0;
+        }
+        return
+            ((
+                fundingRateFactor[_token][_isLong] > 0
+                    ? fundingRateFactor[_token][_isLong]
+                    : DEFAULT_FUNDING_RATE_FACTOR
+            ) *
+                positionVault.reservedAmounts(_token, _isLong) *
+                intervals) / positionVault.poolAmounts(_token, _isLong);
+    }
+
     function checkDelegation(
         address _master,
         address _delegate
@@ -441,31 +507,12 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
             EnumerableSet.contains(_delegatesByMaster[_master], _delegate);
     }
 
-    function getNextFundingRate(
-        address _token,
-        bool _isLong
-    ) internal view returns (uint256) {
-        uint256 intervals = (block.timestamp -
-            lastFundingTimes[_token][_isLong]) / fundingInterval;
-        if (vault.poolAmounts(_token, _isLong) == 0) {
-            return 0;
-        }
-        return
-            ((
-                fundingRateFactor[_token][_isLong] > 0
-                    ? fundingRateFactor[_token][_isLong]
-                    : DEFAULT_FUNDING_RATE_FACTOR
-            ) *
-                vault.reservedAmounts(_token, _isLong) *
-                intervals) / vault.poolAmounts(_token, _isLong);
-    }
-
     function getFundingFee(
         address _indexToken,
         bool _isLong,
         uint256 _size,
         uint256 _entryFundingRate
-    ) external view override returns (uint256) {
+    ) public view override returns (uint256) {
         if (_size == 0) {
             return 0;
         }
@@ -483,29 +530,12 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         address _indexToken,
         bool _isLong,
         uint256 _sizeDelta
-    ) external view override returns (uint256) {
+    ) public view override returns (uint256) {
         if (_sizeDelta == 0) {
             return 0;
         }
         return
             (_sizeDelta * marginFeeBasisPoints[_indexToken][_isLong]) /
             BASIS_POINTS_DIVISOR;
-    }
-
-    function getDelegates(
-        address _master
-    ) external view override returns (address[] memory) {
-        return enumerate(_delegatesByMaster[_master]);
-    }
-
-    function enumerate(
-        EnumerableSet.AddressSet storage set
-    ) internal view returns (address[] memory) {
-        uint256 length = EnumerableSet.length(set);
-        address[] memory output = new address[](length);
-        for (uint256 i; i < length; ++i) {
-            output[i] = EnumerableSet.at(set, i);
-        }
-        return output;
     }
 }

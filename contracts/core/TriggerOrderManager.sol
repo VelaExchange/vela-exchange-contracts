@@ -2,13 +2,17 @@
 
 pragma solidity 0.8.9;
 
-import "./interfaces/ITriggerOrderManager.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IPriceManager.sol";
-import "./interfaces/IVault.sol";
+import "./interfaces/IPositionVault.sol";
+import "./interfaces/ISettingsManager.sol";
+import "./interfaces/ITriggerOrderManager.sol";
 import {Constants} from "../access/Constants.sol";
+import {Position, TriggerStatus, TriggerOrder} from "./structs.sol";
 
 contract TriggerOrderManager is ITriggerOrderManager, Constants {
-    IVault public immutable vault;
+    IPositionVault public immutable positionVault;
+    ISettingsManager public immutable settingsManager;
     IPriceManager public priceManager;
 
     mapping(bytes32 => TriggerOrder) public triggerOrders;
@@ -36,13 +40,21 @@ contract TriggerOrderManager is ITriggerOrderManager, Constants {
     event UpdateTriggerStatus(bytes32 key, TriggerStatus status);
 
     modifier onlyVault() {
-        require(msg.sender == address(vault), "Only vault has access");
+        require(msg.sender == address(positionVault), "Only vault has access");
         _;
     }
 
-    constructor(address _vault, address _priceManager) {
-        vault = IVault(_vault);
+    constructor(
+        address _positionVault,
+        address _priceManager,
+        address _settingsManager
+    ) {
+        require(Address.isContract(_positionVault), "positionVault address is invalid");
+        require(Address.isContract(_priceManager), "priceManager address is invalid");
+        require(Address.isContract(_settingsManager), "settingsManager address is invalid");
+        positionVault = IPositionVault(_positionVault);
         priceManager = IPriceManager(_priceManager);
+        settingsManager = ISettingsManager(_settingsManager);
     }
 
     function cancelTriggerOrders(
@@ -68,7 +80,7 @@ contract TriggerOrderManager is ITriggerOrderManager, Constants {
     ) external override onlyVault returns (bool, uint256) {
         bytes32 key = _getPositionKey(_account, _token, _isLong, _posId);
         TriggerOrder storage order = triggerOrders[key];
-        (IVault.Position memory position, , ) = vault.getPosition(
+        (Position memory position, , ) = positionVault.getPosition(
             _account,
             _token,
             _isLong,
@@ -139,9 +151,9 @@ contract TriggerOrderManager is ITriggerOrderManager, Constants {
         uint256[] memory _slAmountPercents,
         uint256[] memory _tpTriggeredAmounts,
         uint256[] memory _slTriggeredAmounts
-    ) external override {
+    ) external payable override {
         bytes32 key = _getPositionKey(msg.sender, _indexToken, _isLong, _posId);
-        (IVault.Position memory position, , ) = vault.getPosition(
+        (Position memory position, , ) = positionVault.getPosition(
             msg.sender,
             _indexToken,
             _isLong,
@@ -151,6 +163,11 @@ contract TriggerOrderManager is ITriggerOrderManager, Constants {
             position.size > 0,
             "position size should be greather than zero"
         );
+        require(
+            msg.value == settingsManager.triggerGasFee(),
+            "invalid triggerGasFee"
+        );
+        payable(settingsManager.positionManager()).transfer(msg.value);
         bool validateTriggerData = validateTriggerOrdersData(
             _indexToken,
             _isLong,

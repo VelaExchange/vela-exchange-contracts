@@ -27,6 +27,7 @@ contract Constants {
     uint256 public constant MAX_LIQUIDATION_FEE_USD = 100 * PRICE_PRECISION; // 100 USD
     uint256 public constant MAX_STAKING_FEE = 10000; // 10%
     uint256 public constant MAX_TOKENFARM_COOLDOWN_DURATION = 4 weeks;
+    uint256 public constant MAX_TRIGGER_GAS_FEE = 1e8 gwei;
     uint256 public constant MAX_VESTING_DURATION = 700 days;
     uint256 public constant MIN_FUNDING_RATE_INTERVAL = 1 hours;
     uint256 public constant MIN_LEVERAGE = 10000; // 1x
@@ -52,13 +53,14 @@ contract Constants {
     }
 
     function checkSlippage(
-        bool isLong
-,        uint256 expectedMarketPrice,
+        bool isLong,
+        uint256 expectedMarketPrice,
         uint256 slippageBasisPoints,
         uint256 actualMarketPrice
     ) internal pure {
         if (isLong) {
-            require(actualMarketPrice <=
+            require(
+                actualMarketPrice <=
                     (expectedMarketPrice *
                         (BASIS_POINTS_DIVISOR + slippageBasisPoints)) /
                         BASIS_POINTS_DIVISOR,

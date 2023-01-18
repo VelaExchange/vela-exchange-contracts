@@ -7,21 +7,11 @@ import "../access/Governable.sol";
 
 contract vUSDC is IVUSDC, Governable {
     uint8 public constant decimals = 30;
-    uint8 public constant MAX_ADMIN_COUNT = 2;
 
     string public name;
     string public symbol;
     uint256 public totalSupply;
-    uint256 public adminsCount;
-
     mapping(address => uint256) public balances;
-    mapping(address => bool) public admins;
-
-    modifier onlyAdmin() {
-        require(admins[msg.sender], "VUSD: forbidden");
-        _;
-    }
-
     event Burn(address indexed account, uint256 value);
     event Mint(address indexed beneficiary, uint256 value);
 
@@ -35,23 +25,17 @@ contract vUSDC is IVUSDC, Governable {
         _mint(msg.sender, _initialSupply);
     }
 
-    function addAdmin(address _account) external onlyGov {
-        require(adminsCount < MAX_ADMIN_COUNT, "VUSD: cant exceed max count");
-        admins[_account] = true;
-        adminsCount += 1;
-    }
-
     function burn(
         address _account,
         uint256 _amount
-    ) external override onlyAdmin {
+    ) external override onlyGov {
         _burn(_account, _amount);
     }
 
     function mint(
         address _account,
         uint256 _amount
-    ) external override onlyAdmin {
+    ) external override onlyGov {
         _mint(_account, _amount);
     }
 

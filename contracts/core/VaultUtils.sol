@@ -3,21 +3,17 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "./interfaces/ISettingsManager.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IVaultUtils.sol";
+import "./interfaces/IPositionVault.sol";
 import "./interfaces/IPriceManager.sol";
-import "../staking/interfaces/ITokenFarm.sol";
-import "../access/Governable.sol";
+import "./interfaces/ISettingsManager.sol";
+import "./interfaces/IVaultUtils.sol";
 import {Constants} from "../access/Constants.sol";
-import "../tokens/interfaces/IVUSDC.sol";
+import {Position, OrderInfo, ConfirmInfo, OrderStatus} from "./structs.sol";
 
-contract VaultUtils is IVaultUtils, Governable, Constants {
-    address public immutable vUSDC;
-    IPriceManager public priceManager;
-    ISettingsManager settingsManager;
-    ITokenFarm public immutable tokenFarm;
-    IVault public immutable vault;
+contract VaultUtils is IVaultUtils, Constants {
+    IPositionVault private immutable positionVault;
+    IPriceManager private priceManager;
+    ISettingsManager private settingsManager;
 
     event ClosePosition(
         bytes32 key,
@@ -49,48 +45,21 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         uint256 feeUsd
     );
     event SetDepositFee(uint256 indexed fee);
-    event TakeVUSDIn(
-        address indexed account,
-        address indexed refer,
-        uint256 amount,
-        uint256 fee
-    );
-    event TakeVUSDOut(
-        address indexed account,
-        address indexed refer,
-        uint256 amount,
-        uint256 fee
-    );
-    event TransferBounty(address indexed account, uint256 amount);
+
     modifier onlyVault() {
-        require(msg.sender == address(vault), "Only vault has access");
+        require(msg.sender == address(positionVault), "Only vault has access");
         _;
     }
 
     constructor(
-        address _vault,
-        address _vUSDC,
-        address _tokenFarm,
+        address _positionVault,
         address _priceManager,
         address _settingsManager
     ) {
-        require(Address.isContract(_vault), "vault address is invalid");
-        require(Address.isContract(_vUSDC), "vUSD address is invalid");
-        require(Address.isContract(_tokenFarm), "tokenFarm address is invalid");
-        tokenFarm = ITokenFarm(_tokenFarm);
+        require(Address.isContract(_positionVault), "vault address is invalid");
+        positionVault = IPositionVault(_positionVault);
         priceManager = IPriceManager(_priceManager);
         settingsManager = ISettingsManager(_settingsManager);
-        vault = IVault(_vault);
-        vUSDC = _vUSDC;
-    }
-
-    function distributeFee(
-        address _account,
-        address _refer,
-        uint256 _fee
-    ) external override onlyVault {
-        _mintOrBurnVUSDForVault(true, _fee, _fee, _refer);
-        emit TakeVUSDIn(_account, _refer, 0, _fee);
     }
 
     function emitClosePositionEvent(
@@ -101,26 +70,20 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (IVault.Position memory position, , ) = vault.getPosition(
+        (Position memory position, , ) = positionVault.getPosition(
             _account,
             _indexToken,
             _isLong,
             _posId
         );
-        uint256 feeUsd = settingsManager.getPositionFee(
-            _indexToken,
-            _isLong,
-            position.size
-        );
-        feeUsd += settingsManager.getFundingFee(
+        uint256 migrateFeeUsd = settingsManager.collectMarginFees(
+            _account,
             _indexToken,
             _isLong,
             position.size,
+            position.size,
             position.entryFundingRate
         );
-        uint256 migrateFeeUsd = (feeUsd *
-            tokenFarm.getTier(STAKING_PID_FOR_CHARGE_FEE, _account)) /
-            BASIS_POINTS_DIVISOR;
         emit ClosePosition(key, position.realisedPnl, price, migrateFeeUsd);
     }
 
@@ -134,7 +97,7 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (IVault.Position memory position, , ) = vault.getPosition(
+        (Position memory position, , ) = positionVault.getPosition(
             _account,
             _indexToken,
             _isLong,
@@ -172,7 +135,7 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (IVault.Position memory position, , ) = vault.getPosition(
+        (Position memory position, , ) = positionVault.getPosition(
             _account,
             _indexToken,
             _isLong,
@@ -204,59 +167,21 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (IVault.Position memory position, , ) = vault.getPosition(
+        (Position memory position, , ) = positionVault.getPosition(
             _account,
             _indexToken,
             _isLong,
             _posId
         );
-        uint256 feeUsd = settingsManager.getPositionFee(
-            _indexToken,
-            _isLong,
-            position.size
-        );
-        feeUsd += settingsManager.getFundingFee(
+        uint256 migrateFeeUsd = settingsManager.collectMarginFees(
+            _account,
             _indexToken,
             _isLong,
             position.size,
+            position.size,
             position.entryFundingRate
         );
-        uint256 migrateFeeUsd = (feeUsd *
-            tokenFarm.getTier(STAKING_PID_FOR_CHARGE_FEE, _account)) /
-            BASIS_POINTS_DIVISOR;
         emit LiquidatePosition(key, position.realisedPnl, price, migrateFeeUsd);
-    }
-
-    function takeVUSDIn(
-        address _account,
-        address _refer,
-        uint256 _amount,
-        uint256 _fee
-    ) external override onlyVault {
-        IVUSDC(vUSDC).burn(_account, _amount);
-        _mintOrBurnVUSDForVault(true, _amount, _fee, _refer);
-        emit TakeVUSDIn(_account, _refer, _amount, _fee);
-    }
-
-    function takeVUSDOut(
-        address _account,
-        address _refer,
-        uint256 _fee,
-        uint256 _usdOut
-    ) external override onlyVault {
-        uint256 _usdOutAfterFee = _usdOut - _fee;
-        IVUSDC(vUSDC).mint(_account, _usdOutAfterFee);
-        _mintOrBurnVUSDForVault(false, _usdOutAfterFee, _fee, _refer);
-        emit TakeVUSDOut(_account, _refer, _usdOut, _fee);
-    }
-
-    function transferBounty(
-        address _account,
-        uint256 _amount
-    ) external override onlyVault {
-        IVUSDC(vUSDC).burn(address(vault), _amount);
-        IVUSDC(vUSDC).mint(_account, _amount);
-        emit TransferBounty(_account, _amount);
     }
 
     function validateConfirmDelay(
@@ -266,7 +191,7 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         uint256 _posId,
         bool _raise
     ) external view override returns (bool) {
-        (, , IVault.ConfirmInfo memory confirm) = vault.getPosition(
+        (, , ConfirmInfo memory confirm) = positionVault.getPosition(
             _account,
             _indexToken,
             _isLong,
@@ -294,7 +219,7 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         uint256 _posId,
         bool _raise
     ) external view override returns (bool) {
-        (IVault.Position memory position, , ) = vault.getPosition(
+        (Position memory position, , ) = positionVault.getPosition(
             _account,
             _indexToken,
             _isLong,
@@ -347,7 +272,7 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         uint256 _posId,
         bool _raise
     ) external view override returns (uint256, uint256) {
-        (IVault.Position memory position, , ) = vault.getPosition(
+        (Position memory position, , ) = positionVault.getPosition(
             _account,
             _indexToken,
             _isLong,
@@ -360,20 +285,14 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
                 position.averagePrice,
                 _isLong
             );
-            uint256 marginFees = settingsManager.getPositionFee(
-                _indexToken,
-                _isLong,
-                position.size
-            );
-            marginFees += settingsManager.getFundingFee(
+            uint256 migrateFeeUsd = settingsManager.collectMarginFees(
+                _account,
                 _indexToken,
                 _isLong,
                 position.size,
+                position.size,
                 position.entryFundingRate
             );
-            uint256 migrateFeeUsd = (marginFees *
-                tokenFarm.getTier(STAKING_PID_FOR_CHARGE_FEE, _account)) /
-                BASIS_POINTS_DIVISOR;
             if (!hasProfit && position.collateral < delta) {
                 if (_raise) {
                     revert("Vault: losses exceed collateral");
@@ -411,51 +330,47 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         bool _isLong,
         address _indexToken,
         OrderType _orderType,
-        uint256[] memory _triggerPrices,
+        uint256[] memory _params,
         bool _raise
     ) external view override returns (bool) {
         bool orderTypeFlag;
-        if (_triggerPrices[3] > 0) {
+        if (_params[3] > 0) {
             if (_isLong) {
-                if (_orderType == OrderType.LIMIT && _triggerPrices[0] > 0) {
+                if (_orderType == OrderType.LIMIT && _params[0] > 0) {
                     orderTypeFlag = true;
-                } else if (
-                    _orderType == OrderType.STOP && _triggerPrices[1] > 0
-                ) {
+                } else if (_orderType == OrderType.STOP && _params[1] > 0) {
                     orderTypeFlag = true;
                 } else if (
                     _orderType == OrderType.STOP_LIMIT &&
-                    _triggerPrices[0] > 0 &&
-                    _triggerPrices[1] > 0
+                    _params[0] > 0 &&
+                    _params[1] > 0
                 ) {
                     orderTypeFlag = true;
                 } else if (_orderType == OrderType.MARKET) {
                     checkSlippage(
                         _isLong,
-                        _triggerPrices[0],
-                        _triggerPrices[1],
+                        _params[0],
+                        _params[1],
                         priceManager.getLastPrice(_indexToken)
                     );
                     orderTypeFlag = true;
                 }
             } else {
-                if (_orderType == OrderType.LIMIT && _triggerPrices[0] > 0) {
+                if (_orderType == OrderType.LIMIT && _params[0] > 0) {
                     orderTypeFlag = true;
-                } else if (
-                    _orderType == OrderType.STOP && _triggerPrices[1] > 0
-                ) {
+                } else if (_orderType == OrderType.STOP && _params[1] > 0) {
                     orderTypeFlag = true;
                 } else if (
                     _orderType == OrderType.STOP_LIMIT &&
-                    _triggerPrices[0] > 0 &&
-                    _triggerPrices[1] > 0
+                    _params[0] > 0 &&
+                    _params[1] > 0
                 ) {
                     orderTypeFlag = true;
                 } else if (_orderType == OrderType.MARKET) {
                     checkSlippage(
                         _isLong,
-                        _triggerPrices[0],
-                        _triggerPrices[1],
+                        _params[0],
+                        _params[1],
                         priceManager.getLastPrice(_indexToken)
                     );
                     orderTypeFlag = true;
@@ -473,9 +388,9 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         address _indexToken,
         bool _isLong,
         uint256 _posId,
-        uint256[] memory _triggerPrices
+        uint256[] memory _params
     ) external view override returns (bool) {
-        (IVault.Position memory position, , ) = vault.getPosition(
+        (Position memory position, , ) = positionVault.getPosition(
             _account,
             _indexToken,
             _isLong,
@@ -483,35 +398,28 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         );
         uint256 price = priceManager.getLastPrice(_indexToken);
         require(
-            _triggerPrices[1] > 0 && _triggerPrices[1] <= position.size,
+            _params[1] > 0 && _params[1] <= position.size,
             "trailing size should be smaller than position size"
         );
         if (_isLong) {
             require(
-                _triggerPrices[4] > 0 &&
-                    _triggerPrices[3] > 0 &&
-                    _triggerPrices[3] <= price,
+                _params[4] > 0 && _params[3] > 0 && _params[3] <= price,
                 "invalid trailing data"
             );
         } else {
             require(
-                _triggerPrices[4] > 0 &&
-                    _triggerPrices[3] > 0 &&
-                    _triggerPrices[3] >= price,
+                _params[4] > 0 && _params[3] > 0 && _params[3] >= price,
                 "invalid trailing data"
             );
         }
-        if (_triggerPrices[2] == TRAILING_STOP_TYPE_PERCENT) {
+        if (_params[2] == TRAILING_STOP_TYPE_PERCENT) {
             require(
-                _triggerPrices[4] < BASIS_POINTS_DIVISOR,
+                _params[4] < BASIS_POINTS_DIVISOR,
                 "percent cant exceed 100%"
             );
         } else {
             if (_isLong) {
-                require(
-                    _triggerPrices[4] < price,
-                    "step amount cant exceed price"
-                );
+                require(_params[4] < price, "step amount cant exceed price");
             }
         }
         return true;
@@ -523,7 +431,7 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         bool _isLong,
         uint256 _posId
     ) external view override returns (bool) {
-        (, IVault.OrderInfo memory order, ) = vault.getPosition(
+        (, OrderInfo memory order, ) = positionVault.getPosition(
             _account,
             _indexToken,
             _isLong,
@@ -551,14 +459,14 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         bool flag;
         if (
             _isLong &&
-            order.status == IVault.OrderStatus.PENDING &&
+            order.status == OrderStatus.PENDING &&
             order.positionType == POSITION_TRAILING_STOP &&
             stopPrice <= price
         ) {
             flag = true;
         } else if (
             !_isLong &&
-            order.status == IVault.OrderStatus.PENDING &&
+            order.status == OrderStatus.PENDING &&
             order.positionType == POSITION_TRAILING_STOP &&
             stopPrice >= price
         ) {
@@ -574,7 +482,7 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         bool _isLong,
         uint256 _posId
     ) external view override returns (uint8) {
-        (, IVault.OrderInfo memory order, ) = vault.getPosition(
+        (, OrderInfo memory order, ) = positionVault.getPosition(
             _account,
             _indexToken,
             _isLong,
@@ -582,7 +490,7 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
         );
         uint256 price = priceManager.getLastPrice(_indexToken);
         uint8 statusFlag;
-        if (order.status == IVault.OrderStatus.PENDING) {
+        if (order.status == OrderStatus.PENDING) {
             if (order.positionType == POSITION_LIMIT) {
                 if (_isLong && order.lmtPrice >= price)
                     statusFlag = ORDER_FILLED;
@@ -622,42 +530,6 @@ contract VaultUtils is IVaultUtils, Governable, Constants {
             _size >= _collateral,
             "position size should be greater than collateral"
         );
-    }
-
-    function _mintOrBurnVUSDForVault(
-        bool _mint,
-        uint256 _amount,
-        uint256 _fee,
-        address _refer
-    ) internal {
-        address _feeManager = settingsManager.feeManager();
-        if (_fee != 0 && _feeManager != ZERO_ADDRESS) {
-            uint256 feeReward = (_fee *
-                settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
-            uint256 feeMinusFeeReward = _fee - feeReward;
-            IVUSDC(vUSDC).mint(_feeManager, feeMinusFeeReward);
-            if (_mint) {
-                _amount -= feeMinusFeeReward;
-            } else {
-                _amount += feeMinusFeeReward;
-            }
-            _fee = feeReward;
-        }
-        if (_refer != ZERO_ADDRESS && settingsManager.referEnabled()) {
-            uint256 referFee = (_fee * settingsManager.referFee()) /
-                BASIS_POINTS_DIVISOR;
-            IVUSDC(vUSDC).mint(_refer, referFee);
-            if (_mint) {
-                _amount -= referFee;
-            } else {
-                _amount += referFee;
-            }
-        }
-        if (_mint) {
-            IVUSDC(vUSDC).mint(address(vault), _amount);
-        } else {
-            IVUSDC(vUSDC).burn(address(vault), _amount);
-        }
     }
 
     function _checkMaxThreshold(
