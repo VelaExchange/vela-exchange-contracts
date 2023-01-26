@@ -9,8 +9,7 @@ contract Constants {
     uint8 public constant STAKING_PID_FOR_CHARGE_FEE = 1;
     uint256 public constant BASIS_POINTS_DIVISOR = 100000;
     uint256 public constant DEFAULT_FUNDING_RATE_FACTOR = 100;
-    uint256 public constant DEFAULT_MAX_BORROW_AMOUNT =
-        10000000000 * PRICE_PRECISION;
+    uint256 public constant DEFAULT_MAX_BORROW_AMOUNT = 10000000000 * PRICE_PRECISION;
     uint256 public constant DEFAULT_VLP_PRICE = 100000;
     uint256 public constant FUNDING_RATE_PRECISION = 1000000;
     uint256 public constant LIQUIDATE_NONE_EXCEED = 0;
@@ -48,8 +47,7 @@ contract Constants {
         bool _isLong,
         uint256 _posId
     ) internal pure returns (bytes32) {
-        return
-            keccak256(abi.encodePacked(_account, _indexToken, _isLong, _posId));
+        return keccak256(abi.encodePacked(_account, _indexToken, _isLong, _posId));
     }
 
     function checkSlippage(
@@ -61,16 +59,12 @@ contract Constants {
         if (isLong) {
             require(
                 actualMarketPrice <=
-                    (expectedMarketPrice *
-                        (BASIS_POINTS_DIVISOR + slippageBasisPoints)) /
-                        BASIS_POINTS_DIVISOR,
+                    (expectedMarketPrice * (BASIS_POINTS_DIVISOR + slippageBasisPoints)) / BASIS_POINTS_DIVISOR,
                 "slippage exceeded"
             );
         } else {
             require(
-                (expectedMarketPrice *
-                    (BASIS_POINTS_DIVISOR - slippageBasisPoints)) /
-                    BASIS_POINTS_DIVISOR <=
+                (expectedMarketPrice * (BASIS_POINTS_DIVISOR - slippageBasisPoints)) / BASIS_POINTS_DIVISOR <=
                     actualMarketPrice,
                 "slippage exceeded"
             );

@@ -7,10 +7,11 @@ import "./interfaces/IPriceManager.sol";
 import "./interfaces/IPositionVault.sol";
 import "./interfaces/ISettingsManager.sol";
 import "./interfaces/ITriggerOrderManager.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Constants} from "../access/Constants.sol";
 import {Position, TriggerStatus, TriggerOrder} from "./structs.sol";
 
-contract TriggerOrderManager is ITriggerOrderManager, Constants {
+contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants {
     IPositionVault public immutable positionVault;
     ISettingsManager public immutable settingsManager;
     IPriceManager public priceManager;
@@ -44,11 +45,7 @@ contract TriggerOrderManager is ITriggerOrderManager, Constants {
         _;
     }
 
-    constructor(
-        address _positionVault,
-        address _priceManager,
-        address _settingsManager
-    ) {
+    constructor(address _positionVault, address _priceManager, address _settingsManager) {
         require(Address.isContract(_positionVault), "positionVault address is invalid");
         require(Address.isContract(_priceManager), "priceManager address is invalid");
         require(Address.isContract(_settingsManager), "settingsManager address is invalid");
@@ -57,17 +54,10 @@ contract TriggerOrderManager is ITriggerOrderManager, Constants {
         settingsManager = ISettingsManager(_settingsManager);
     }
 
-    function cancelTriggerOrders(
-        address _token,
-        bool _isLong,
-        uint256 _posId
-    ) external {
+    function cancelTriggerOrders(address _token, bool _isLong, uint256 _posId) external {
         bytes32 key = _getPositionKey(msg.sender, _token, _isLong, _posId);
         TriggerOrder storage order = triggerOrders[key];
-        require(
-            order.status == TriggerStatus.OPEN,
-            "TriggerOrder was cancelled"
-        );
+        require(order.status == TriggerStatus.OPEN, "TriggerOrder was cancelled");
         order.status = TriggerStatus.CANCELLED;
         emit UpdateTriggerStatus(key, order.status);
     }
@@ -80,41 +70,19 @@ contract TriggerOrderManager is ITriggerOrderManager, Constants {
     ) external override onlyVault returns (bool, uint256) {
         bytes32 key = _getPositionKey(_account, _token, _isLong, _posId);
         TriggerOrder storage order = triggerOrders[key];
-        (Position memory position, , ) = positionVault.getPosition(
-            _account,
-            _token,
-            _isLong,
-            _posId
-        );
+        (Position memory position, , ) = positionVault.getPosition(_account, _token, _isLong, _posId);
         require(order.status == TriggerStatus.OPEN, "TriggerOrder not Open");
         uint256 price = priceManager.getLastPrice(_token);
         for (bool tp = true; ; tp = false) {
             uint256[] storage prices = tp ? order.tpPrices : order.slPrices;
-            uint256[] storage triggeredAmounts = tp
-                ? order.tpTriggeredAmounts
-                : order.slTriggeredAmounts;
-            uint256[] storage amountPercents = tp
-                ? order.tpAmountPercents
-                : order.slAmountPercents;
+            uint256[] storage triggeredAmounts = tp ? order.tpTriggeredAmounts : order.slTriggeredAmounts;
+            uint256[] storage amountPercents = tp ? order.tpAmountPercents : order.slAmountPercents;
             uint256 closeAmountPercent;
-            for (
-                uint256 i = 0;
-                i != prices.length && closeAmountPercent < BASIS_POINTS_DIVISOR;
-                ++i
-            ) {
+            for (uint256 i = 0; i != prices.length && closeAmountPercent < BASIS_POINTS_DIVISOR; ++i) {
                 bool pricesAreUpperBounds = tp ? _isLong : !_isLong;
-                if (
-                    triggeredAmounts[i] == 0 &&
-                    (
-                        pricesAreUpperBounds
-                            ? prices[i] <= price
-                            : price <= prices[i]
-                    )
-                ) {
+                if (triggeredAmounts[i] == 0 && (pricesAreUpperBounds ? prices[i] <= price : price <= prices[i])) {
                     closeAmountPercent += amountPercents[i];
-                    triggeredAmounts[i] =
-                        (position.size * amountPercents[i]) /
-                        BASIS_POINTS_DIVISOR;
+                    triggeredAmounts[i] = (position.size * amountPercents[i]) / BASIS_POINTS_DIVISOR;
                 }
             }
             if (closeAmountPercent != 0) {
@@ -151,22 +119,11 @@ contract TriggerOrderManager is ITriggerOrderManager, Constants {
         uint256[] memory _slAmountPercents,
         uint256[] memory _tpTriggeredAmounts,
         uint256[] memory _slTriggeredAmounts
-    ) external payable override {
+    ) external payable nonReentrant {
         bytes32 key = _getPositionKey(msg.sender, _indexToken, _isLong, _posId);
-        (Position memory position, , ) = positionVault.getPosition(
-            msg.sender,
-            _indexToken,
-            _isLong,
-            _posId
-        );
-        require(
-            position.size > 0,
-            "position size should be greather than zero"
-        );
-        require(
-            msg.value == settingsManager.triggerGasFee(),
-            "invalid triggerGasFee"
-        );
+        (Position memory position, , ) = positionVault.getPosition(msg.sender, _indexToken, _isLong, _posId);
+        require(position.size > 0, "position size should be greater than zero");
+        require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         payable(settingsManager.positionManager()).transfer(msg.value);
         bool validateTriggerData = validateTriggerOrdersData(
             _indexToken,
@@ -223,27 +180,12 @@ contract TriggerOrderManager is ITriggerOrderManager, Constants {
         uint256 price = priceManager.getLastPrice(_token);
         for (bool tp = true; ; tp = false) {
             uint256[] storage prices = tp ? order.tpPrices : order.slPrices;
-            uint256[] storage triggeredAmounts = tp
-                ? order.tpTriggeredAmounts
-                : order.slTriggeredAmounts;
-            uint256[] storage amountPercents = tp
-                ? order.tpAmountPercents
-                : order.slAmountPercents;
+            uint256[] storage triggeredAmounts = tp ? order.tpTriggeredAmounts : order.slTriggeredAmounts;
+            uint256[] storage amountPercents = tp ? order.tpAmountPercents : order.slAmountPercents;
             uint256 closeAmountPercent;
-            for (
-                uint256 i = 0;
-                i != prices.length && closeAmountPercent < BASIS_POINTS_DIVISOR;
-                ++i
-            ) {
+            for (uint256 i = 0; i != prices.length && closeAmountPercent < BASIS_POINTS_DIVISOR; ++i) {
                 bool pricesAreUpperBounds = tp ? _isLong : !_isLong;
-                if (
-                    triggeredAmounts[i] == 0 &&
-                    (
-                        pricesAreUpperBounds
-                            ? prices[i] <= price
-                            : price <= prices[i]
-                    )
-                ) {
+                if (triggeredAmounts[i] == 0 && (pricesAreUpperBounds ? prices[i] <= price : price <= prices[i])) {
                     closeAmountPercent += amountPercents[i];
                 }
             }
@@ -268,15 +210,10 @@ contract TriggerOrderManager is ITriggerOrderManager, Constants {
         uint256 price = priceManager.getLastPrice(_indexToken);
         for (bool tp = true; ; tp = false) {
             uint256[] memory prices = tp ? _tpPrices : _slPrices;
-            uint256[] memory triggeredAmounts = tp
-                ? _tpTriggeredAmounts
-                : _slTriggeredAmounts;
+            uint256[] memory triggeredAmounts = tp ? _tpTriggeredAmounts : _slTriggeredAmounts;
             bool pricesAreUpperBounds = tp ? _isLong : !_isLong;
             for (uint256 i = 0; i < prices.length; ++i) {
-                if (
-                    triggeredAmounts[i] == 0 &&
-                    (price < prices[i]) != pricesAreUpperBounds
-                ) {
+                if (triggeredAmounts[i] == 0 && (price < prices[i]) != pricesAreUpperBounds) {
                     return false;
                 }
             }

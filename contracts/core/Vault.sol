@@ -30,47 +30,16 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     mapping(address => uint256) public lastStakedAt;
 
-    event Deposit(
-        address indexed account,
-        address indexed token,
-        uint256 amount
-    );
-    event Stake(
-        address indexed account,
-        address token,
-        uint256 amount,
-        uint256 mintAmount
-    );
-    event Unstake(
-        address indexed account,
-        address token,
-        uint256 vlpAmount,
-        uint256 amountOut
-    );
-    event Withdraw(
-        address indexed account,
-        address indexed token,
-        uint256 amount
-    );
-    event TakeVUSDIn(
-        address indexed account,
-        address indexed refer,
-        uint256 amount,
-        uint256 fee
-    );
-    event TakeVUSDOut(
-        address indexed account,
-        address indexed refer,
-        uint256 amount,
-        uint256 fee
-    );
+    event Deposit(address indexed account, address indexed token, uint256 amount);
+    event Stake(address indexed account, address token, uint256 amount, uint256 mintAmount);
+    event Unstake(address indexed account, address token, uint256 vlpAmount, uint256 amountOut);
+    event Withdraw(address indexed account, address indexed token, uint256 amount);
+    event TakeVUSDIn(address indexed account, address indexed refer, uint256 amount, uint256 fee);
+    event TakeVUSDOut(address indexed account, address indexed refer, uint256 amount, uint256 fee);
     event TransferBounty(address indexed account, uint256 amount);
 
     modifier onlyVault() {
-        require(
-            msg.sender == address(positionVault),
-            "Only vault has access"
-        );
+        require(msg.sender == address(positionVault), "Only vault has access");
         _;
     }
 
@@ -94,14 +63,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         bool isPlus,
         uint256 _amount
     ) external nonReentrant {
-        positionVault.addOrRemoveCollateral(
-            msg.sender,
-            _indexToken,
-            _isLong,
-            _posId,
-            isPlus,
-            _amount
-        );
+        positionVault.addOrRemoveCollateral(msg.sender, _indexToken, _isLong, _posId, isPlus, _amount);
     }
 
     function addPosition(
@@ -110,20 +72,10 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _posId,
         uint256 _collateralDelta,
         uint256 _sizeDelta
-    ) external nonReentrant payable {
-        require(
-            msg.value == settingsManager.triggerGasFee(),
-            "invalid triggerGasFee"
-        );
+    ) external payable nonReentrant {
+        require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         payable(settingsManager.positionManager()).transfer(msg.value);
-        positionVault.addPosition(
-            msg.sender,
-            _indexToken,
-            _isLong,
-            _posId,
-            _collateralDelta,
-            _sizeDelta
-        );
+        positionVault.addPosition(msg.sender, _indexToken, _isLong, _posId, _collateralDelta, _sizeDelta);
     }
 
     function addTrailingStop(
@@ -132,31 +84,13 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _posId,
         uint256[] memory _params
     ) external payable nonReentrant {
-        require(
-            msg.value == settingsManager.triggerGasFee(),
-            "invalid triggerGasFee"
-        );
+        require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         payable(settingsManager.positionManager()).transfer(msg.value);
-        positionVault.addTrailingStop(
-            msg.sender,
-            _indexToken,
-            _isLong,
-            _posId,
-            _params
-        );
+        positionVault.addTrailingStop(msg.sender, _indexToken, _isLong, _posId, _params);
     }
 
-    function cancelPendingOrder(
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    ) external nonReentrant {
-        positionVault.cancelPendingOrder(
-            msg.sender,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+    function cancelPendingOrder(address _indexToken, bool _isLong, uint256 _posId) external nonReentrant {
+        positionVault.cancelPendingOrder(msg.sender, _indexToken, _isLong, _posId);
     }
 
     function decreasePosition(
@@ -165,30 +99,18 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         bool _isLong,
         uint256 _posId
     ) external nonReentrant {
-        positionVault.decreasePosition(
-            msg.sender,
-            _indexToken,
-            _sizeDelta,
-            _isLong,
-            _posId
-        );
+        positionVault.decreasePosition(msg.sender, _indexToken, _sizeDelta, _isLong, _posId);
     }
 
-    function deposit(
-        address _account,
-        address _token,
-        uint256 _amount
-    ) external nonReentrant {
+    function deposit(address _account, address _token, uint256 _amount) external nonReentrant {
         uint256 collateralDeltaUsd = priceManager.tokenToUsd(_token, _amount);
         require(settingsManager.isDeposit(_token), "deposit not allowed");
         require(
-            (settingsManager.checkDelegation(_account, msg.sender)) &&
-                _amount > 0,
-            "zero amount not allowed for deposit"
+            (settingsManager.checkDelegation(_account, msg.sender)) && _amount > 0,
+            "zero amount or not allowed for depositFor"
         );
         _transferIn(_account, _token, _amount);
-        uint256 fee = (collateralDeltaUsd * settingsManager.depositFee()) /
-            BASIS_POINTS_DIVISOR;
+        uint256 fee = (collateralDeltaUsd * settingsManager.depositFee()) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = collateralDeltaUsd - fee;
         _accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
         IVUSDC(vUSDC).mint(_account, afterFeeAmount);
@@ -196,11 +118,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit Deposit(_account, _token, _amount);
     }
 
-    function distributeFee(
-        address _account,
-        address _refer,
-        uint256 _fee
-    ) external override onlyVault {
+    function distributeFee(address _account, address _refer, uint256 _fee) external override onlyVault {
         _distributeFee(_account, _refer, _fee);
     }
 
@@ -212,20 +130,10 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         address _refer
     ) external payable nonReentrant {
         if (_orderType != OrderType.MARKET) {
-            require(
-                msg.value == settingsManager.triggerGasFee(),
-                "invalid triggerGasFee"
-            );
+            require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
             payable(settingsManager.positionManager()).transfer(msg.value);
         }
-        positionVault.newPositionOrder(
-            msg.sender,
-            _indexToken,
-            _isLong,
-            _orderType,
-            _params,
-            _refer
-        );
+        positionVault.newPositionOrder(msg.sender, _indexToken, _isLong, _orderType, _params, _refer);
     }
 
     function setVaultSettings(
@@ -243,21 +151,15 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         isInitialized = true;
     }
 
-    function stake(
-        address _account,
-        address _token,
-        uint256 _amount
-    ) external nonReentrant {
+    function stake(address _account, address _token, uint256 _amount) external nonReentrant {
         require(settingsManager.isStaking(_token), "stake not allowed");
         require(
-            (settingsManager.checkDelegation(_account, msg.sender)) &&
-                _amount > 0,
-            "zero amount not allowed for stake"
+            (settingsManager.checkDelegation(_account, msg.sender)) && _amount > 0,
+            "zero amount or not allowed for stakeFor"
         );
         uint256 usdAmount = priceManager.tokenToUsd(_token, _amount);
         _transferIn(_account, _token, _amount);
-        uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee()) /
-            BASIS_POINTS_DIVISOR;
+        uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee()) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
         uint256 mintAmount;
         if (totalVLP == 0) {
@@ -276,73 +178,43 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit Stake(_account, _token, _amount, mintAmount);
     }
 
-    function takeVUSDIn(
-        address _account,
-        address _refer,
-        uint256 _amount,
-        uint256 _fee
-    ) external override onlyVault {
+    function takeVUSDIn(address _account, address _refer, uint256 _amount, uint256 _fee) external override onlyVault {
         IVUSDC(vUSDC).burn(_account, _amount);
         _mintOrBurnVUSDForVault(true, _amount, _fee, _refer);
         emit TakeVUSDIn(_account, _refer, _amount, _fee);
     }
 
-    function takeVUSDOut(
-        address _account,
-        address _refer,
-        uint256 _fee,
-        uint256 _usdOut
-    ) external override onlyVault {
+    function takeVUSDOut(address _account, address _refer, uint256 _fee, uint256 _usdOut) external override onlyVault {
         uint256 _usdOutAfterFee = _usdOut - _fee;
         IVUSDC(vUSDC).mint(_account, _usdOutAfterFee);
         _mintOrBurnVUSDForVault(false, _usdOutAfterFee, _fee, _refer);
         emit TakeVUSDOut(_account, _refer, _usdOut, _fee);
     }
 
-    function unstake(
-        address _tokenOut,
-        uint256 _vlpAmount,
-        address _receiver
-    ) external nonReentrant {
+    function unstake(address _tokenOut, uint256 _vlpAmount, address _receiver) external nonReentrant {
         require(settingsManager.isStaking(_tokenOut), "unstake not allowed");
+        require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "zero amount not allowed and cant exceed totalVLP");
         require(
-            _vlpAmount > 0 && _vlpAmount <= totalVLP,
-            "zero amount not allowed and cant exceed totalVLP"
-        );
-        require(
-            lastStakedAt[msg.sender] + settingsManager.cooldownDuration() <=
-                block.timestamp,
+            lastStakedAt[msg.sender] + settingsManager.cooldownDuration() <= block.timestamp,
             "cooldown duration not yet passed"
         );
         IMintable(vlp).burn(msg.sender, _vlpAmount);
         uint256 usdAmount = (_vlpAmount * totalUSDC) / totalVLP;
         totalVLP -= _vlpAmount;
-        uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee()) /
-            BASIS_POINTS_DIVISOR;
+        uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee()) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
         totalUSDC -= usdAmount;
-        uint256 amountOut = priceManager.usdToToken(
-            _tokenOut,
-            usdAmountAfterFee
-        );
+        uint256 amountOut = priceManager.usdToToken(_tokenOut, usdAmountAfterFee);
         _accountDeltaAndFeeIntoTotalUSDC(true, 0, usdAmountFee);
         _distributeFee(msg.sender, ZERO_ADDRESS, usdAmountFee);
         _transferOut(_tokenOut, amountOut, _receiver);
         emit Unstake(msg.sender, _tokenOut, _vlpAmount, amountOut);
     }
 
-    function withdraw(
-        address _token,
-        address _account,
-        uint256 _amount
-    ) external nonReentrant {
-        uint256 fee = (_amount * settingsManager.depositFee()) /
-            BASIS_POINTS_DIVISOR;
+    function withdraw(address _token, address _account, uint256 _amount) external nonReentrant {
+        uint256 fee = (_amount * settingsManager.depositFee()) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = _amount - fee;
-        uint256 collateralDelta = priceManager.usdToToken(
-            _token,
-            afterFeeAmount
-        );
+        uint256 collateralDelta = priceManager.usdToToken(_token, afterFeeAmount);
         require(settingsManager.isDeposit(_token), "withdraw not allowed");
         _accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
         IVUSDC(vUSDC).burn(address(msg.sender), _amount);
@@ -351,24 +223,16 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit Withdraw(address(msg.sender), _token, collateralDelta);
     }
 
-    function transferBounty(
-        address _account,
-        uint256 _amount
-    ) external override onlyVault {
+    function transferBounty(address _account, uint256 _amount) external override onlyVault {
         IVUSDC(vUSDC).burn(address(this), _amount);
         IVUSDC(vUSDC).mint(_account, _amount);
         totalUSDC -= _amount;
         emit TransferBounty(_account, _amount);
     }
 
-    function _accountDeltaAndFeeIntoTotalUSDC(
-        bool _hasProfit,
-        uint256 _adjustDelta,
-        uint256 _fee
-    ) internal {
+    function _accountDeltaAndFeeIntoTotalUSDC(bool _hasProfit, uint256 _adjustDelta, uint256 _fee) internal {
         if (_adjustDelta != 0) {
-            uint256 _feeRewardOnDelta = (_adjustDelta *
-                settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
+            uint256 _feeRewardOnDelta = (_adjustDelta * settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
             if (_hasProfit) {
                 totalUSDC += _feeRewardOnDelta;
             } else {
@@ -376,46 +240,26 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
                 totalUSDC -= _feeRewardOnDelta;
             }
         }
-        totalUSDC +=
-            (_fee * settingsManager.feeRewardBasisPoints()) /
-            BASIS_POINTS_DIVISOR;
+        totalUSDC += (_fee * settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
     }
 
-    function _distributeFee(
-        address _account,
-        address _refer,
-        uint256 _fee
-    ) internal {
+    function _distributeFee(address _account, address _refer, uint256 _fee) internal {
         _mintOrBurnVUSDForVault(true, _fee, _fee, _refer);
         emit TakeVUSDIn(_account, _refer, 0, _fee);
     }
 
-    function _transferIn(
-        address _account,
-        address _token,
-        uint256 _amount
-    ) internal {
+    function _transferIn(address _account, address _token, uint256 _amount) internal {
         IERC20(_token).safeTransferFrom(_account, address(this), _amount);
     }
 
-    function _transferOut(
-        address _token,
-        uint256 _amount,
-        address _receiver
-    ) internal {
+    function _transferOut(address _token, uint256 _amount, address _receiver) internal {
         IERC20(_token).safeTransfer(_receiver, _amount);
     }
 
-    function _mintOrBurnVUSDForVault(
-        bool _mint,
-        uint256 _amount,
-        uint256 _fee,
-        address _refer
-    ) internal {
+    function _mintOrBurnVUSDForVault(bool _mint, uint256 _amount, uint256 _fee, address _refer) internal {
         address _feeManager = settingsManager.feeManager();
         if (_fee != 0 && _feeManager != ZERO_ADDRESS) {
-            uint256 feeReward = (_fee *
-                settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
+            uint256 feeReward = (_fee * settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
             uint256 feeMinusFeeReward = _fee - feeReward;
             IVUSDC(vUSDC).mint(_feeManager, feeMinusFeeReward);
             if (_mint) {
@@ -426,8 +270,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             _fee = feeReward;
         }
         if (_refer != ZERO_ADDRESS && settingsManager.referEnabled()) {
-            uint256 referFee = (_fee * settingsManager.referFee()) /
-                BASIS_POINTS_DIVISOR;
+            uint256 referFee = (_fee * settingsManager.referFee()) / BASIS_POINTS_DIVISOR;
             IVUSDC(vUSDC).mint(_refer, referFee);
             if (_mint) {
                 _amount -= referFee;
@@ -446,9 +289,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         if (totalVLP == 0) {
             return DEFAULT_VLP_PRICE;
         } else {
-            return
-                (BASIS_POINTS_DIVISOR * (10 ** VLP_DECIMALS) * totalUSDC) /
-                (totalVLP * PRICE_PRECISION);
+            return (BASIS_POINTS_DIVISOR * (10 ** VLP_DECIMALS) * totalUSDC) / (totalVLP * PRICE_PRECISION);
         }
     }
 }

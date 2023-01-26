@@ -16,11 +16,7 @@ contract VaultPriceFeed is IVaultPriceFeed, Governable {
 
     constructor() {}
 
-    function setTokenConfig(
-        address _token,
-        address _priceFeed,
-        uint256 _priceDecimals
-    ) external override onlyGov {
+    function setTokenConfig(address _token, address _priceFeed, uint256 _priceDecimals) external override onlyGov {
         require(Address.isContract(_token), "Address is wrong");
         require(!isInitialized[_token], "already initialized");
         priceFeeds[_token] = _priceFeed;
@@ -28,14 +24,9 @@ contract VaultPriceFeed is IVaultPriceFeed, Governable {
         isInitialized[_token] = true;
     }
 
-    function getLastPrice(
-        address _token
-    ) public view override returns (uint256) {
+    function getLastPrice(address _token) public view override returns (uint256) {
         address priceFeedAddress = priceFeeds[_token];
-        require(
-            priceFeedAddress != address(0),
-            "VaultPriceFeed: invalid price feed"
-        );
+        require(priceFeedAddress != address(0), "VaultPriceFeed: invalid price feed");
 
         IPriceFeed priceFeed = IPriceFeed(priceFeedAddress);
 

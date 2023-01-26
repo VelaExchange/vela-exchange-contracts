@@ -55,14 +55,7 @@ contract FastPriceFeed is IPriceFeed {
     }
 
     // returns roundId, answer, startedAt, updatedAt, answeredInRound
-    function getRoundData(
-        uint80 _roundId
-    )
-        external
-        view
-        override
-        returns (uint80, uint256, uint256, uint256, uint80)
-    {
+    function getRoundData(uint80 _roundId) external view override returns (uint80, uint256, uint256, uint256, uint80) {
         return (_roundId, answers[_roundId], latestAts[roundId], 0, 0);
     }
 }

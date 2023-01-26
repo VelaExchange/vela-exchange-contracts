@@ -18,77 +18,45 @@ contract BaseToken is IERC20, Governable {
     mapping(address => uint256) public balances;
     mapping(address => mapping(address => uint256)) public allowances;
 
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        uint256 _initialSupply
-    ) {
+    constructor(string memory _name, string memory _symbol, uint256 _initialSupply) {
         name = _name;
         symbol = _symbol;
         _mint(msg.sender, _initialSupply);
     }
 
-    function approve(
-        address _spender,
-        uint256 _amount
-    ) external override returns (bool) {
+    function approve(address _spender, uint256 _amount) external override returns (bool) {
         _approve(msg.sender, _spender, _amount);
         return true;
     }
 
-    function setInfo(
-        string memory _name,
-        string memory _symbol
-    ) external onlyGov {
+    function setInfo(string memory _name, string memory _symbol) external onlyGov {
         name = _name;
         symbol = _symbol;
     }
 
-    function transfer(
-        address _recipient,
-        uint256 _amount
-    ) external override returns (bool) {
+    function transfer(address _recipient, uint256 _amount) external override returns (bool) {
         _transfer(msg.sender, _recipient, _amount);
         return true;
     }
 
-    function transferFrom(
-        address _sender,
-        address _recipient,
-        uint256 _amount
-    ) external override returns (bool) {
-        require(
-            allowances[_sender][msg.sender] >= _amount,
-            "BaseToken: transfer amount exceeds allowance"
-        );
+    function transferFrom(address _sender, address _recipient, uint256 _amount) external override returns (bool) {
+        require(allowances[_sender][msg.sender] >= _amount, "BaseToken: transfer amount exceeds allowance");
         uint256 nextAllowance = allowances[_sender][msg.sender] - _amount;
         _approve(_sender, msg.sender, nextAllowance);
         _transfer(_sender, _recipient, _amount);
         return true;
     }
 
-    function allowance(
-        address _owner,
-        address _spender
-    ) external view override returns (uint256) {
+    function allowance(address _owner, address _spender) external view override returns (uint256) {
         return allowances[_owner][_spender];
     }
 
-    function balanceOf(
-        address _account
-    ) external view override returns (uint256) {
+    function balanceOf(address _account) external view override returns (uint256) {
         return balances[_account];
     }
 
-    function _approve(
-        address _owner,
-        address _spender,
-        uint256 _amount
-    ) private {
-        require(
-            _spender != address(0),
-            "BaseToken: approve to the zero address"
-        );
+    function _approve(address _owner, address _spender, uint256 _amount) private {
+        require(_spender != address(0), "BaseToken: approve to the zero address");
 
         allowances[_owner][_spender] = _amount;
 
@@ -96,15 +64,9 @@ contract BaseToken is IERC20, Governable {
     }
 
     function _burn(address _account, uint256 _amount) internal {
-        require(
-            _account != address(0),
-            "BaseToken: burn from the zero address"
-        );
+        require(_account != address(0), "BaseToken: burn from the zero address");
 
-        require(
-            balances[_account] >= _amount,
-            "BaseToken: burn amount exceeds balance"
-        );
+        require(balances[_account] >= _amount, "BaseToken: burn amount exceeds balance");
         balances[_account] -= _amount;
         totalSupply -= _amount;
 
@@ -120,20 +82,10 @@ contract BaseToken is IERC20, Governable {
         emit Transfer(address(0), _account, _amount);
     }
 
-    function _transfer(
-        address _sender,
-        address _recipient,
-        uint256 _amount
-    ) private {
-        require(
-            _recipient != address(0),
-            "BaseToken: transfer to the zero address"
-        );
+    function _transfer(address _sender, address _recipient, uint256 _amount) private {
+        require(_recipient != address(0), "BaseToken: transfer to the zero address");
 
-        require(
-            balances[_sender] >= _amount,
-            "BaseToken: transfer amount exceeds balance"
-        );
+        require(balances[_sender] >= _amount, "BaseToken: transfer amount exceeds balance");
         balances[_sender] -= _amount;
         balances[_recipient] += _amount;
 

@@ -31,12 +31,7 @@ interface IPositionVault {
         uint256[] memory _params
     ) external;
 
-    function cancelPendingOrder(
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    ) external;
+    function cancelPendingOrder(address _account, address _indexToken, bool _isLong, uint256 _posId) external;
 
     function decreasePosition(
         address _account,
@@ -60,18 +55,9 @@ interface IPositionVault {
         address _indexToken,
         bool _isLong,
         uint256 _posId
-    )
-        external
-        view
-        returns (Position memory, OrderInfo memory, ConfirmInfo memory);
+    ) external view returns (Position memory, OrderInfo memory, ConfirmInfo memory);
 
-    function poolAmounts(
-        address _token,
-        bool _isLong
-    ) external view returns (uint256);
+    function poolAmounts(address _token, bool _isLong) external view returns (uint256);
 
-    function reservedAmounts(
-        address _token,
-        bool _isLong
-    ) external view returns (uint256);
+    function reservedAmounts(address _token, bool _isLong) external view returns (uint256);
 }

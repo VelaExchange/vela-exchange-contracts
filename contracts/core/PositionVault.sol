@@ -28,9 +28,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     bool private isInitialized;
     mapping(address => mapping(bool => uint256)) public override poolAmounts;
-    mapping(address => mapping(bool => uint256))
-        public
-        override reservedAmounts;
+    mapping(address => mapping(bool => uint256)) public override reservedAmounts;
     mapping(bytes32 => Position) public positions;
     mapping(bytes32 => ConfirmInfo) public confirms;
     mapping(bytes32 => OrderInfo) public orders;
@@ -42,12 +40,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 collateral,
         uint256 size
     );
-    event AddPosition(
-        bytes32 indexed key,
-        bool confirmDelayStatus,
-        uint256 collateral,
-        uint256 size
-    );
+    event AddPosition(bytes32 indexed key, bool confirmDelayStatus, uint256 collateral, uint256 size);
     event AddTrailingStop(bytes32 key, uint256[] data);
     event ConfirmDelayTransaction(
         bytes32 indexed key,
@@ -56,26 +49,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 size,
         uint256 feeUsd
     );
-    event DecreasePoolAmount(
-        address indexed token,
-        bool isLong,
-        uint256 amount
-    );
-    event DecreaseReservedAmount(
-        address indexed token,
-        bool isLong,
-        uint256 amount
-    );
-    event IncreasePoolAmount(
-        address indexed token,
-        bool isLong,
-        uint256 amount
-    );
-    event IncreaseReservedAmount(
-        address indexed token,
-        bool isLong,
-        uint256 amount
-    );
+    event DecreasePoolAmount(address indexed token, bool isLong, uint256 amount);
+    event DecreaseReservedAmount(address indexed token, bool isLong, uint256 amount);
+    event IncreasePoolAmount(address indexed token, bool isLong, uint256 amount);
+    event IncreaseReservedAmount(address indexed token, bool isLong, uint256 amount);
     event NewOrder(
         bytes32 key,
         address indexed account,
@@ -86,17 +63,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         OrderStatus orderStatus,
         uint256[] triggerData
     );
-    event UpdateOrder(
-        bytes32 key,
-        uint256 positionType,
-        OrderStatus orderStatus
-    );
+    event UpdateOrder(bytes32 key, uint256 positionType, OrderStatus orderStatus);
     event UpdatePoolAmount(address indexed token, bool isLong, uint256 amount);
-    event UpdateReservedAmount(
-        address indexed token,
-        bool isLong,
-        uint256 amount
-    );
+    event UpdateReservedAmount(address indexed token, bool isLong, uint256 amount);
     event UpdateTrailingStop(bytes32 key, uint256 stpPrice);
     modifier onlyVault() {
         require(msg.sender == address(vault), "Only vault has access");
@@ -117,51 +86,22 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         Position storage position = positions[key];
         if (isPlus) {
             position.collateral += _amount;
-            vaultUtils.validateSizeCollateralAmount(
-                position.size,
-                position.collateral
-            );
+            vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
             position.reserveAmount += _amount;
             vault.takeVUSDIn(_account, position.refer, _amount, 0);
-            settingsManager.decreaseBorrowedUsd(
-                _indexToken,
-                _account,
-                _isLong,
-                _amount
-            );
+            settingsManager.decreaseBorrowedUsd(_indexToken, _account, _isLong, _amount);
             _increasePoolAmount(_indexToken, _isLong, _amount);
         } else {
             position.collateral -= _amount;
-            vaultUtils.validateSizeCollateralAmount(
-                position.size,
-                position.collateral
-            );
-            vaultUtils.validateLiquidation(
-                _account,
-                _indexToken,
-                _isLong,
-                _posId,
-                true
-            );
+            vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
+            vaultUtils.validateLiquidation(_account, _indexToken, _isLong, _posId, true);
             position.reserveAmount -= _amount;
             position.lastIncreasedTime = block.timestamp;
             vault.takeVUSDOut(_account, position.refer, 0, _amount);
-            settingsManager.increaseBorrowedUsd(
-                _indexToken,
-                _account,
-                _isLong,
-                _amount
-            );
+            settingsManager.increaseBorrowedUsd(_indexToken, _account, _isLong, _amount);
             _decreasePoolAmount(_indexToken, _isLong, _amount);
         }
-        emit AddOrRemoveCollateral(
-            key,
-            isPlus,
-            _amount,
-            position.reserveAmount,
-            position.collateral,
-            position.size
-        );
+        emit AddOrRemoveCollateral(key, isPlus, _amount, position.reserveAmount, position.collateral, position.size);
     }
 
     function addPosition(
@@ -178,12 +118,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         confirm.confirmDelayStatus = true;
         confirm.pendingDelayCollateral = _collateralDelta;
         confirm.pendingDelaySize = _sizeDelta;
-        emit AddPosition(
-            key,
-            confirm.confirmDelayStatus,
-            _collateralDelta,
-            _sizeDelta
-        );
+        emit AddPosition(key, confirm.confirmDelayStatus, _collateralDelta, _sizeDelta);
     }
 
     function addTrailingStop(
@@ -195,13 +130,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         OrderInfo storage order = orders[key];
-        vaultUtils.validateTrailingStopInputData(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId,
-            _params
-        );
+        vaultUtils.validateTrailingStopInputData(_account, _indexToken, _isLong, _posId, _params);
         order.pendingCollateral = _params[0];
         order.pendingSize = _params[1];
         order.status = OrderStatus.PENDING;
@@ -242,19 +171,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     ) external nonReentrant {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         Position storage position = positions[key];
-        require(
-            position.owner == msg.sender ||
-                settingsManager.isManager(msg.sender),
-            "not allowed"
-        );
+        require(position.owner == msg.sender || settingsManager.isManager(msg.sender), "not allowed");
         ConfirmInfo storage confirm = confirms[key];
-        vaultUtils.validateConfirmDelay(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId,
-            true
-        );
+        vaultUtils.validateConfirmDelay(_account, _indexToken, _isLong, _posId, true);
         uint256 fee = settingsManager.collectMarginFees(
             _account,
             _indexToken,
@@ -324,40 +243,25 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         settingsManager.updateCumulativeFundingRate(_indexToken, _isLong);
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         Position memory position = positions[key];
-        (uint256 liquidationState, uint256 marginFees) = vaultUtils
-            .validateLiquidation(_account, _indexToken, _isLong, _posId, false);
-        require(
-            liquidationState != LIQUIDATE_NONE_EXCEED,
-            "not exceed or allowed"
+        (uint256 liquidationState, uint256 marginFees) = vaultUtils.validateLiquidation(
+            _account,
+            _indexToken,
+            _isLong,
+            _posId,
+            false
         );
+        require(liquidationState != LIQUIDATE_NONE_EXCEED, "not exceed or allowed");
         if (liquidationState == LIQUIDATE_THRESHOLD_EXCEED) {
             // max leverage exceeded but there is collateral remaining after deducting losses so decreasePosition instead
-            _decreasePosition(
-                _account,
-                _indexToken,
-                position.size,
-                _isLong,
-                _posId
-            );
+            _decreasePosition(_account, _indexToken, position.size, _isLong, _posId);
             return;
         }
         vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, marginFees);
-        uint256 bounty = (marginFees * settingsManager.bountyPercent()) /
-            BASIS_POINTS_DIVISOR;
+        uint256 bounty = (marginFees * settingsManager.bountyPercent()) / BASIS_POINTS_DIVISOR;
         vault.transferBounty(msg.sender, bounty);
-        settingsManager.decreaseBorrowedUsd(
-            _indexToken,
-            _account,
-            _isLong,
-            position.size - position.collateral
-        );
+        settingsManager.decreaseBorrowedUsd(_indexToken, _account, _isLong, position.size - position.collateral);
         _decreasePoolAmount(_indexToken, _isLong, marginFees);
-        vaultUtils.emitLiquidatePositionEvent(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        vaultUtils.emitLiquidatePositionEvent(_account, _indexToken, _isLong, _posId);
         delete positions[key];
         // pay the fee receive using the pool, we assume that in general the liquidated amount should be sufficient to cover
         // the liquidation fees
@@ -371,41 +275,26 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256[] memory _params,
         address _refer
     ) external nonReentrant onlyVault {
-        bytes32 key = _getPositionKey(
-            _account,
-            _indexToken,
-            _isLong,
-            lastPosId
-        );
+        bytes32 key = _getPositionKey(_account, _indexToken, _isLong, lastPosId);
         OrderInfo storage order = orders[key];
-        vaultUtils.validatePosData(
-            _isLong,
-            _indexToken,
-            _orderType,
-            _params,
-            true
-        );
+        Position storage position = positions[key];
+        vaultUtils.validatePosData(_isLong, _indexToken, _orderType, _params, true);
         order.pendingCollateral = _params[2];
         order.pendingSize = _params[3];
+        position.owner = _account;
+        position.refer = _refer;
         if (_orderType == OrderType.MARKET) {
+            require(settingsManager.marketOrderEnabled(), "market order was disabled");
             order.positionType = POSITION_MARKET;
             uint256 fee = settingsManager.collectMarginFees(
                 _account,
                 _indexToken,
                 _isLong,
                 order.pendingSize,
-                positions[key].size,
-                positions[key].entryFundingRate
+                position.size,
+                position.entryFundingRate
             );
-            _increasePosition(
-                _account,
-                _indexToken,
-                _params[2] + fee,
-                order.pendingSize,
-                lastPosId,
-                _isLong,
-                _refer
-            );
+            _increasePosition(_account, _indexToken, _params[2] + fee, order.pendingSize, lastPosId, _isLong, _refer);
             order.pendingCollateral = 0;
             order.pendingSize = 0;
             order.status = OrderStatus.FILLED;
@@ -424,16 +313,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             order.stpPrice = _params[1];
         }
         lastPosId += 1;
-        emit NewOrder(
-            key,
-            _account,
-            _indexToken,
-            _isLong,
-            lastPosId - 1,
-            order.positionType,
-            order.status,
-            _params
-        );
+        emit NewOrder(key, _account, _indexToken, _isLong, lastPosId - 1, order.positionType, order.status, _params);
     }
 
     function triggerPosition(
@@ -446,18 +326,16 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         Position memory position = positions[key];
         OrderInfo storage order = orders[key];
-        uint8 statusFlag = vaultUtils.validateTrigger(
+        uint8 statusFlag = vaultUtils.validateTrigger(_account, _indexToken, _isLong, _posId);
+        (bool hitTrigger, uint256 triggerAmountPercent) = triggerOrderManager.executeTriggerOrders(
             _account,
             _indexToken,
             _isLong,
             _posId
         );
-        (bool hitTrigger, uint256 triggerAmountPercent) = triggerOrderManager
-            .executeTriggerOrders(_account, _indexToken, _isLong, _posId);
         require(
             (statusFlag == ORDER_FILLED || hitTrigger) &&
-                (position.owner == msg.sender ||
-                    settingsManager.isManager(msg.sender)),
+                (position.owner == msg.sender || settingsManager.isManager(msg.sender)),
             "trigger not ready"
         );
         if (hitTrigger) {
@@ -476,8 +354,8 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     _indexToken,
                     _isLong,
                     order.pendingSize,
-                    positions[key].size,
-                    positions[key].entryFundingRate
+                    position.size,
+                    position.entryFundingRate
                 );
                 _increasePosition(
                     _account,
@@ -486,7 +364,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     order.pendingSize,
                     _posId,
                     _isLong,
-                    ZERO_ADDRESS
+                    position.refer
                 );
                 order.pendingCollateral = 0;
                 order.pendingSize = 0;
@@ -497,11 +375,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     _indexToken,
                     _isLong,
                     order.pendingSize,
-                    positions[key].size,
-                    positions[key].entryFundingRate
+                    position.size,
+                    position.entryFundingRate
                 );
-                // checkSlippage(..) should be here, because it's a kind of market order, even though it's not instantly executed.
-                //      the ability to cancel this by the user mitigates risks of unexpected price change, but slippage checks are more firm
                 _increasePosition(
                     _account,
                     _indexToken,
@@ -509,7 +385,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     order.pendingSize,
                     _posId,
                     _isLong,
-                    ZERO_ADDRESS
+                    position.refer
                 );
                 order.pendingCollateral = 0;
                 order.pendingSize = 0;
@@ -517,13 +393,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             } else if (order.positionType == POSITION_STOP_LIMIT) {
                 order.positionType = POSITION_LIMIT;
             } else if (order.positionType == POSITION_TRAILING_STOP) {
-                _decreasePosition(
-                    _account,
-                    _indexToken,
-                    order.pendingSize,
-                    _isLong,
-                    _posId
-                );
+                _decreasePosition(_account, _indexToken, order.pendingSize, _isLong, _posId);
                 order.positionType = POSITION_MARKET;
                 order.pendingCollateral = 0;
                 order.pendingSize = 0;
@@ -543,46 +413,24 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         Position storage position = positions[key];
         OrderInfo storage order = orders[key];
         uint256 price = priceManager.getLastPrice(_indexToken);
-        require(
-            position.owner == msg.sender ||
-                settingsManager.isManager(msg.sender),
-            "updateTStop not allowed"
-        );
-        vaultUtils.validateTrailingStopPrice(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        require(position.owner == msg.sender || settingsManager.isManager(msg.sender), "updateTStop not allowed");
+        vaultUtils.validateTrailingStopPrice(_account, _indexToken, _isLong, _posId, true);
         if (_isLong) {
             order.stpPrice = order.stepType == 0
                 ? price - order.stepAmount
-                : (price * (BASIS_POINTS_DIVISOR - order.stepAmount)) /
-                    BASIS_POINTS_DIVISOR;
+                : (price * (BASIS_POINTS_DIVISOR - order.stepAmount)) / BASIS_POINTS_DIVISOR;
         } else {
             order.stpPrice = order.stepType == 0
                 ? price + order.stepAmount
-                : (price * (BASIS_POINTS_DIVISOR + order.stepAmount)) /
-                    BASIS_POINTS_DIVISOR;
+                : (price * (BASIS_POINTS_DIVISOR + order.stepAmount)) / BASIS_POINTS_DIVISOR;
         }
         emit UpdateTrailingStop(key, order.stpPrice);
     }
 
-    function _decreasePoolAmount(
-        address _indexToken,
-        bool _isLong,
-        uint256 _amount
-    ) internal {
-        require(
-            poolAmounts[_indexToken][_isLong] >= _amount,
-            "Vault: poolAmount exceeded"
-        );
+    function _decreasePoolAmount(address _indexToken, bool _isLong, uint256 _amount) internal {
+        require(poolAmounts[_indexToken][_isLong] >= _amount, "Vault: poolAmount exceeded");
         poolAmounts[_indexToken][_isLong] -= _amount;
-        emit DecreasePoolAmount(
-            _indexToken,
-            _isLong,
-            poolAmounts[_indexToken][_isLong]
-        );
+        emit DecreasePoolAmount(_indexToken, _isLong, poolAmounts[_indexToken][_isLong]);
     }
 
     function _decreasePosition(
@@ -604,48 +452,16 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             (_sizeDelta * (position.size - position.collateral)) / position.size
         );
         _decreaseReservedAmount(_indexToken, _isLong, _sizeDelta);
-        position.reserveAmount -=
-            (position.reserveAmount * _sizeDelta) /
-            position.size;
-        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(
-            _account,
-            _indexToken,
-            _sizeDelta,
-            _isLong,
-            _posId
-        );
+        position.reserveAmount -= (position.reserveAmount * _sizeDelta) / position.size;
+        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(_account, _indexToken, _sizeDelta, _isLong, _posId);
         if (position.size != _sizeDelta) {
-            position.entryFundingRate = settingsManager.cumulativeFundingRates(
-                _indexToken,
-                _isLong
-            );
+            position.entryFundingRate = settingsManager.cumulativeFundingRates(_indexToken, _isLong);
             position.size -= _sizeDelta;
-            vaultUtils.validateSizeCollateralAmount(
-                position.size,
-                position.collateral
-            );
-            vaultUtils.validateLiquidation(
-                _account,
-                _indexToken,
-                _isLong,
-                _posId,
-                true
-            );
-            vaultUtils.emitDecreasePositionEvent(
-                _account,
-                _indexToken,
-                _isLong,
-                _posId,
-                _sizeDelta,
-                usdOutFee
-            );
+            vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
+            vaultUtils.validateLiquidation(_account, _indexToken, _isLong, _posId, true);
+            vaultUtils.emitDecreasePositionEvent(_account, _indexToken, _isLong, _posId, _sizeDelta, usdOutFee);
         } else {
-            vaultUtils.emitClosePositionEvent(
-                _account,
-                _indexToken,
-                _isLong,
-                _posId
-            );
+            vaultUtils.emitClosePositionEvent(_account, _indexToken, _isLong, _posId);
             delete positions[key];
         }
         if (usdOutFee <= usdOut) {
@@ -658,34 +474,15 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         }
     }
 
-    function _decreaseReservedAmount(
-        address _token,
-        bool _isLong,
-        uint256 _amount
-    ) internal {
-        require(
-            reservedAmounts[_token][_isLong] >= _amount,
-            "Vault: reservedAmounts exceeded"
-        );
+    function _decreaseReservedAmount(address _token, bool _isLong, uint256 _amount) internal {
+        require(reservedAmounts[_token][_isLong] >= _amount, "Vault: reservedAmounts exceeded");
         reservedAmounts[_token][_isLong] -= _amount;
-        emit DecreaseReservedAmount(
-            _token,
-            _isLong,
-            reservedAmounts[_token][_isLong]
-        );
+        emit DecreaseReservedAmount(_token, _isLong, reservedAmounts[_token][_isLong]);
     }
 
-    function _increasePoolAmount(
-        address _indexToken,
-        bool _isLong,
-        uint256 _amount
-    ) internal {
+    function _increasePoolAmount(address _indexToken, bool _isLong, uint256 _amount) internal {
         poolAmounts[_indexToken][_isLong] += _amount;
-        emit IncreasePoolAmount(
-            _indexToken,
-            _isLong,
-            poolAmounts[_indexToken][_isLong]
-        );
+        emit IncreasePoolAmount(_indexToken, _isLong, poolAmounts[_indexToken][_isLong]);
     }
 
     function _increasePosition(
@@ -715,8 +512,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 _sizeDelta
             );
         }
-        position.owner = _account;
-        position.refer = _refer;
         uint256 fee = settingsManager.collectMarginFees(
             _account,
             _indexToken,
@@ -728,59 +523,23 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 _amountInAfterFee = _amountIn - fee;
         position.collateral += _amountInAfterFee;
         position.reserveAmount += _amountIn;
-        position.entryFundingRate = settingsManager.cumulativeFundingRates(
-            _indexToken,
-            _isLong
-        );
+        position.entryFundingRate = settingsManager.cumulativeFundingRates(_indexToken, _isLong);
         position.size += _sizeDelta;
         position.lastIncreasedTime = block.timestamp;
         position.lastPrice = price;
         vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
         vault.takeVUSDIn(_account, _refer, _amountIn, fee);
-        settingsManager.validatePosition(
-            _account,
-            _indexToken,
-            _isLong,
-            position.size,
-            position.collateral
-        );
-        vaultUtils.validateLiquidation(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId,
-            true
-        );
-        settingsManager.increaseBorrowedUsd(
-            _indexToken,
-            _account,
-            _isLong,
-            _sizeDelta - _amountInAfterFee
-        );
+        settingsManager.validatePosition(_account, _indexToken, _isLong, position.size, position.collateral);
+        vaultUtils.validateLiquidation(_account, _indexToken, _isLong, _posId, true);
+        settingsManager.increaseBorrowedUsd(_indexToken, _account, _isLong, _sizeDelta - _amountInAfterFee);
         _increaseReservedAmount(_indexToken, _isLong, _sizeDelta);
         _increasePoolAmount(_indexToken, _isLong, _amountInAfterFee);
-        vaultUtils.emitIncreasePositionEvent(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId,
-            _amountIn,
-            _sizeDelta,
-            fee
-        );
+        vaultUtils.emitIncreasePositionEvent(_account, _indexToken, _isLong, _posId, _amountIn, _sizeDelta, fee);
     }
 
-    function _increaseReservedAmount(
-        address _token,
-        bool _isLong,
-        uint256 _amount
-    ) internal {
+    function _increaseReservedAmount(address _token, bool _isLong, uint256 _amount) internal {
         reservedAmounts[_token][_isLong] += _amount;
-        emit IncreaseReservedAmount(
-            _token,
-            _isLong,
-            reservedAmounts[_token][_isLong]
-        );
+        emit IncreaseReservedAmount(_token, _isLong, reservedAmounts[_token][_isLong]);
     }
 
     function _reduceCollateral(
@@ -834,8 +593,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         } else {
             // reduce the position's collateral by _collateralDelta
             // transfer _collateralDelta out
-            uint256 _collateralDelta = (position.collateral * _sizeDelta) /
-                position.size;
+            uint256 _collateralDelta = (position.collateral * _sizeDelta) / position.size;
             usdOut += _collateralDelta;
             position.collateral -= _collateralDelta;
         }
@@ -845,13 +603,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         if (usdOut < fee) {
             position.collateral -= fee;
         }
-        vaultUtils.validateDecreasePosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId,
-            true
-        );
+        vaultUtils.validateDecreasePosition(_account, _indexToken, _isLong, _posId, true);
         return (usdOut, fee);
     }
 
@@ -860,12 +612,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         address _indexToken,
         bool _isLong,
         uint256 _posId
-    )
-        external
-        view
-        override
-        returns (Position memory, OrderInfo memory, ConfirmInfo memory)
-    {
+    ) external view override returns (Position memory, OrderInfo memory, ConfirmInfo memory) {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         Position memory position = positions[key];
         OrderInfo memory order = orders[key];

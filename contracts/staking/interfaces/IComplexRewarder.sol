@@ -4,16 +4,9 @@ pragma solidity ^0.8.7;
 import "./IBoringERC20.sol";
 
 interface IComplexRewarder {
-    function onVelaReward(
-        uint256 pid,
-        address user,
-        uint256 newLpAmount
-    ) external;
+    function onVelaReward(uint256 pid, address user, uint256 newLpAmount) external;
 
-    function pendingTokens(
-        uint256 pid,
-        address user
-    ) external view returns (uint256 pending);
+    function pendingTokens(uint256 pid, address user) external view returns (uint256 pending);
 
     function rewardToken() external view returns (IBoringERC20);
 

@@ -15,12 +15,7 @@ contract VaultUtils is IVaultUtils, Constants {
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
 
-    event ClosePosition(
-        bytes32 key,
-        int256 realisedPnl,
-        uint256 markPrice,
-        uint256 feeUsd
-    );
+    event ClosePosition(bytes32 key, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
     event DecreasePosition(
         bytes32 key,
         address indexed account,
@@ -38,12 +33,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 posId,
         uint256[7] posData
     );
-    event LiquidatePosition(
-        bytes32 key,
-        int256 realisedPnl,
-        uint256 markPrice,
-        uint256 feeUsd
-    );
+    event LiquidatePosition(bytes32 key, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
     event SetDepositFee(uint256 indexed fee);
 
     modifier onlyVault() {
@@ -51,11 +41,7 @@ contract VaultUtils is IVaultUtils, Constants {
         _;
     }
 
-    constructor(
-        address _positionVault,
-        address _priceManager,
-        address _settingsManager
-    ) {
+    constructor(address _positionVault, address _priceManager, address _settingsManager) {
         require(Address.isContract(_positionVault), "vault address is invalid");
         positionVault = IPositionVault(_positionVault);
         priceManager = IPriceManager(_priceManager);
@@ -70,12 +56,7 @@ contract VaultUtils is IVaultUtils, Constants {
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         uint256 migrateFeeUsd = settingsManager.collectMarginFees(
             _account,
             _indexToken,
@@ -97,14 +78,8 @@ contract VaultUtils is IVaultUtils, Constants {
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
-        uint256 _collateralDelta = (position.collateral * _sizeDelta) /
-            position.size;
+        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        uint256 _collateralDelta = (position.collateral * _sizeDelta) / position.size;
         emit DecreasePosition(
             key,
             _account,
@@ -135,12 +110,7 @@ contract VaultUtils is IVaultUtils, Constants {
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         emit IncreasePosition(
             key,
             _account,
@@ -167,12 +137,7 @@ contract VaultUtils is IVaultUtils, Constants {
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         uint256 migrateFeeUsd = settingsManager.collectMarginFees(
             _account,
             _indexToken,
@@ -191,17 +156,11 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _posId,
         bool _raise
     ) external view override returns (bool) {
-        (, , ConfirmInfo memory confirm) = positionVault.getPosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        (, , ConfirmInfo memory confirm) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         bool validateFlag;
         if (confirm.confirmDelayStatus) {
             if (
-                block.timestamp >=
-                (confirm.delayStartTime + settingsManager.delayDeltaTime()) &&
+                block.timestamp >= (confirm.delayStartTime + settingsManager.delayDeltaTime()) &&
                 confirm.pendingDelayCollateral > 0
             ) validateFlag = true;
             else validateFlag = false;
@@ -219,24 +178,13 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _posId,
         bool _raise
     ) external view override returns (bool) {
-        (Position memory position, , ) = positionVault.getPosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         bool validateFlag;
-        (bool hasProfit, ) = priceManager.getDelta(
-            _indexToken,
-            position.size,
-            position.averagePrice,
-            _isLong
-        );
+        (bool hasProfit, ) = priceManager.getDelta(_indexToken, position.size, position.averagePrice, _isLong);
         if (hasProfit) {
             if (
                 position.lastIncreasedTime > 0 &&
-                position.lastIncreasedTime <
-                block.timestamp - settingsManager.closeDeltaTime()
+                position.lastIncreasedTime < block.timestamp - settingsManager.closeDeltaTime()
             ) {
                 validateFlag = true;
             } else {
@@ -244,14 +192,10 @@ contract VaultUtils is IVaultUtils, Constants {
                 if (
                     (_isLong &&
                         price * BASIS_POINTS_DIVISOR >=
-                        (BASIS_POINTS_DIVISOR +
-                            settingsManager.priceMovementPercent()) *
-                            position.lastPrice) ||
+                        (BASIS_POINTS_DIVISOR + settingsManager.priceMovementPercent()) * position.lastPrice) ||
                     (!_isLong &&
                         price * BASIS_POINTS_DIVISOR <=
-                        (BASIS_POINTS_DIVISOR -
-                            settingsManager.priceMovementPercent()) *
-                            position.lastPrice)
+                        (BASIS_POINTS_DIVISOR - settingsManager.priceMovementPercent()) * position.lastPrice)
                 ) {
                     validateFlag = true;
                 }
@@ -272,12 +216,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _posId,
         bool _raise
     ) external view override returns (uint256, uint256) {
-        (Position memory position, , ) = positionVault.getPosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         if (position.averagePrice > 0) {
             (bool hasProfit, uint256 delta) = priceManager.getDelta(
                 _indexToken,
@@ -305,22 +244,12 @@ contract VaultUtils is IVaultUtils, Constants {
                 remainingCollateral = position.collateral - delta;
             }
 
-            if (
-                position.collateral * priceManager.maxLeverage(_indexToken) <
-                position.size * MIN_LEVERAGE
-            ) {
+            if (position.collateral * priceManager.maxLeverage(_indexToken) < position.size * MIN_LEVERAGE) {
                 if (_raise) {
                     revert("Vault: maxLeverage exceeded");
                 }
             }
-            return
-                _checkMaxThreshold(
-                    remainingCollateral,
-                    position.size,
-                    migrateFeeUsd,
-                    _indexToken,
-                    _raise
-                );
+            return _checkMaxThreshold(remainingCollateral, position.size, migrateFeeUsd, _indexToken, _raise);
         } else {
             return (LIQUIDATE_NONE_EXCEED, 0);
         }
@@ -340,19 +269,10 @@ contract VaultUtils is IVaultUtils, Constants {
                     orderTypeFlag = true;
                 } else if (_orderType == OrderType.STOP && _params[1] > 0) {
                     orderTypeFlag = true;
-                } else if (
-                    _orderType == OrderType.STOP_LIMIT &&
-                    _params[0] > 0 &&
-                    _params[1] > 0
-                ) {
+                } else if (_orderType == OrderType.STOP_LIMIT && _params[0] > 0 && _params[1] > 0) {
                     orderTypeFlag = true;
                 } else if (_orderType == OrderType.MARKET) {
-                    checkSlippage(
-                        _isLong,
-                        _params[0],
-                        _params[1],
-                        priceManager.getLastPrice(_indexToken)
-                    );
+                    checkSlippage(_isLong, _params[0], _params[1], priceManager.getLastPrice(_indexToken));
                     orderTypeFlag = true;
                 }
             } else {
@@ -360,19 +280,10 @@ contract VaultUtils is IVaultUtils, Constants {
                     orderTypeFlag = true;
                 } else if (_orderType == OrderType.STOP && _params[1] > 0) {
                     orderTypeFlag = true;
-                } else if (
-                    _orderType == OrderType.STOP_LIMIT &&
-                    _params[0] > 0 &&
-                    _params[1] > 0
-                ) {
+                } else if (_orderType == OrderType.STOP_LIMIT && _params[0] > 0 && _params[1] > 0) {
                     orderTypeFlag = true;
                 } else if (_orderType == OrderType.MARKET) {
-                    checkSlippage(
-                        _isLong,
-                        _params[0],
-                        _params[1],
-                        priceManager.getLastPrice(_indexToken)
-                    );
+                    checkSlippage(_isLong, _params[0], _params[1], priceManager.getLastPrice(_indexToken));
                     orderTypeFlag = true;
                 }
             }
@@ -390,33 +301,16 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _posId,
         uint256[] memory _params
     ) external view override returns (bool) {
-        (Position memory position, , ) = positionVault.getPosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        require(
-            _params[1] > 0 && _params[1] <= position.size,
-            "trailing size should be smaller than position size"
-        );
+        require(_params[1] > 0 && _params[1] <= position.size, "trailing size should be smaller than position size");
         if (_isLong) {
-            require(
-                _params[4] > 0 && _params[3] > 0 && _params[3] <= price,
-                "invalid trailing data"
-            );
+            require(_params[4] > 0 && _params[3] > 0 && _params[3] <= price, "invalid trailing data");
         } else {
-            require(
-                _params[4] > 0 && _params[3] > 0 && _params[3] >= price,
-                "invalid trailing data"
-            );
+            require(_params[4] > 0 && _params[3] > 0 && _params[3] >= price, "invalid trailing data");
         }
         if (_params[2] == TRAILING_STOP_TYPE_PERCENT) {
-            require(
-                _params[4] < BASIS_POINTS_DIVISOR,
-                "percent cant exceed 100%"
-            );
+            require(_params[4] < BASIS_POINTS_DIVISOR, "percent cant exceed 100%");
         } else {
             if (_isLong) {
                 require(_params[4] < price, "step amount cant exceed price");
@@ -429,31 +323,23 @@ contract VaultUtils is IVaultUtils, Constants {
         address _account,
         address _indexToken,
         bool _isLong,
-        uint256 _posId
+        uint256 _posId,
+        bool _raise
     ) external view override returns (bool) {
-        (, OrderInfo memory order, ) = positionVault.getPosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        (, OrderInfo memory order, ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         uint256 stopPrice;
         if (_isLong) {
             if (order.stepType == TRAILING_STOP_TYPE_AMOUNT) {
                 stopPrice = order.stpPrice + order.stepAmount;
             } else {
-                stopPrice =
-                    (order.stpPrice * BASIS_POINTS_DIVISOR) /
-                    (BASIS_POINTS_DIVISOR - order.stepAmount);
+                stopPrice = (order.stpPrice * BASIS_POINTS_DIVISOR) / (BASIS_POINTS_DIVISOR - order.stepAmount);
             }
         } else {
             if (order.stepType == TRAILING_STOP_TYPE_AMOUNT) {
                 stopPrice = order.stpPrice - order.stepAmount;
             } else {
-                stopPrice =
-                    (order.stpPrice * BASIS_POINTS_DIVISOR) /
-                    (BASIS_POINTS_DIVISOR + order.stepAmount);
+                stopPrice = (order.stpPrice * BASIS_POINTS_DIVISOR) / (BASIS_POINTS_DIVISOR + order.stepAmount);
             }
         }
         bool flag;
@@ -472,7 +358,9 @@ contract VaultUtils is IVaultUtils, Constants {
         ) {
             flag = true;
         }
-        require(flag, "price incorrect");
+        if (_raise) {
+            require(flag, "price incorrect");
+        }
         return flag;
     }
 
@@ -482,38 +370,25 @@ contract VaultUtils is IVaultUtils, Constants {
         bool _isLong,
         uint256 _posId
     ) external view override returns (uint8) {
-        (, OrderInfo memory order, ) = positionVault.getPosition(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
+        (, OrderInfo memory order, ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         uint8 statusFlag;
         if (order.status == OrderStatus.PENDING) {
             if (order.positionType == POSITION_LIMIT) {
-                if (_isLong && order.lmtPrice >= price)
-                    statusFlag = ORDER_FILLED;
-                else if (!_isLong && order.lmtPrice <= price)
-                    statusFlag = ORDER_FILLED;
+                if (_isLong && order.lmtPrice >= price) statusFlag = ORDER_FILLED;
+                else if (!_isLong && order.lmtPrice <= price) statusFlag = ORDER_FILLED;
                 else statusFlag = ORDER_NOT_FILLED;
             } else if (order.positionType == POSITION_STOP_MARKET) {
-                if (_isLong && order.stpPrice <= price)
-                    statusFlag = ORDER_FILLED;
-                else if (!_isLong && order.stpPrice >= price)
-                    statusFlag = ORDER_FILLED;
+                if (_isLong && order.stpPrice <= price) statusFlag = ORDER_FILLED;
+                else if (!_isLong && order.stpPrice >= price) statusFlag = ORDER_FILLED;
                 else statusFlag = ORDER_NOT_FILLED;
             } else if (order.positionType == POSITION_STOP_LIMIT) {
-                if (_isLong && order.stpPrice <= price)
-                    statusFlag = ORDER_FILLED;
-                else if (!_isLong && order.stpPrice >= price)
-                    statusFlag = ORDER_FILLED;
+                if (_isLong && order.stpPrice <= price) statusFlag = ORDER_FILLED;
+                else if (!_isLong && order.stpPrice >= price) statusFlag = ORDER_FILLED;
                 else statusFlag = ORDER_NOT_FILLED;
             } else if (order.positionType == POSITION_TRAILING_STOP) {
-                if (_isLong && order.stpPrice >= price)
-                    statusFlag = ORDER_FILLED;
-                else if (!_isLong && order.stpPrice <= price)
-                    statusFlag = ORDER_FILLED;
+                if (_isLong && order.stpPrice >= price) statusFlag = ORDER_FILLED;
+                else if (!_isLong && order.stpPrice <= price) statusFlag = ORDER_FILLED;
                 else statusFlag = ORDER_NOT_FILLED;
             }
         } else {
@@ -522,14 +397,8 @@ contract VaultUtils is IVaultUtils, Constants {
         return statusFlag;
     }
 
-    function validateSizeCollateralAmount(
-        uint256 _size,
-        uint256 _collateral
-    ) external pure override {
-        require(
-            _size >= _collateral,
-            "position size should be greater than collateral"
-        );
+    function validateSizeCollateralAmount(uint256 _size, uint256 _collateral) external pure override {
+        require(_size >= _collateral, "position size should be greater than collateral");
     }
 
     function _checkMaxThreshold(
@@ -556,18 +425,12 @@ contract VaultUtils is IVaultUtils, Constants {
 
         if (
             _collateral - (_marginFees + settingsManager.liquidationFeeUsd()) <
-            (_size *
-                (BASIS_POINTS_DIVISOR -
-                    settingsManager.liquidateThreshold(_indexToken))) /
-                BASIS_POINTS_DIVISOR
+            (_size * (BASIS_POINTS_DIVISOR - settingsManager.liquidateThreshold(_indexToken))) / BASIS_POINTS_DIVISOR
         ) {
             if (_raise) {
                 revert("Vault: maxThreshold exceeded");
             }
-            return (
-                LIQUIDATE_THRESHOLD_EXCEED,
-                _marginFees + settingsManager.liquidationFeeUsd()
-            );
+            return (LIQUIDATE_THRESHOLD_EXCEED, _marginFees + settingsManager.liquidationFeeUsd());
         }
         return (LIQUIDATE_NONE_EXCEED, _marginFees);
     }

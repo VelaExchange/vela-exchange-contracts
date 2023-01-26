@@ -15,51 +15,33 @@ contract vUSDC is IVUSDC, Governable {
     event Burn(address indexed account, uint256 value);
     event Mint(address indexed beneficiary, uint256 value);
 
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        uint256 _initialSupply
-    ) {
+    constructor(string memory _name, string memory _symbol, uint256 _initialSupply) {
         name = _name;
         symbol = _symbol;
         _mint(msg.sender, _initialSupply);
     }
 
-    function burn(
-        address _account,
-        uint256 _amount
-    ) external override onlyGov {
+    function burn(address _account, uint256 _amount) external override onlyGov {
         _burn(_account, _amount);
     }
 
-    function mint(
-        address _account,
-        uint256 _amount
-    ) external override onlyGov {
+    function mint(address _account, uint256 _amount) external override onlyGov {
         _mint(_account, _amount);
     }
 
-    function setInfo(
-        string memory _name,
-        string memory _symbol
-    ) external onlyGov {
+    function setInfo(string memory _name, string memory _symbol) external onlyGov {
         name = _name;
         symbol = _symbol;
     }
 
-    function balanceOf(
-        address _account
-    ) external view override returns (uint256) {
+    function balanceOf(address _account) external view override returns (uint256) {
         return balances[_account];
     }
 
     function _burn(address _account, uint256 _amount) internal {
         require(_account != address(0), "VUSD: burn from the zero address");
 
-        require(
-            balances[_account] >= _amount,
-            "VUSD: burn amount exceeds balance"
-        );
+        require(balances[_account] >= _amount, "VUSD: burn amount exceeds balance");
         balances[_account] -= _amount;
         totalSupply -= _amount;
         emit Burn(_account, _amount);

@@ -5,12 +5,7 @@ pragma solidity 0.8.9;
 import {OrderInfo, OrderType} from "../structs.sol";
 
 interface IVaultUtils {
-    function emitClosePositionEvent(
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    ) external;
+    function emitClosePositionEvent(address _account, address _indexToken, bool _isLong, uint256 _posId) external;
 
     function emitDecreasePositionEvent(
         address _account,
@@ -31,12 +26,7 @@ interface IVaultUtils {
         uint256 _fee
     ) external;
 
-    function emitLiquidatePositionEvent(
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    ) external;
+    function emitLiquidatePositionEvent(address _account, address _indexToken, bool _isLong, uint256 _posId) external;
 
     function validateConfirmDelay(
         address _account,
@@ -70,10 +60,7 @@ interface IVaultUtils {
         bool _raise
     ) external view returns (bool);
 
-    function validateSizeCollateralAmount(
-        uint256 _size,
-        uint256 _collateral
-    ) external view;
+    function validateSizeCollateralAmount(uint256 _size, uint256 _collateral) external view;
 
     function validateTrailingStopInputData(
         address _account,
@@ -87,7 +74,8 @@ interface IVaultUtils {
         address _account,
         address _indexToken,
         bool _isLong,
-        uint256 _posId
+        uint256 _posId,
+        bool _raise
     ) external view returns (bool);
 
     function validateTrigger(

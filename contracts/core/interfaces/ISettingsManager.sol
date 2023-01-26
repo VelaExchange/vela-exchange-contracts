@@ -3,44 +3,23 @@
 pragma solidity 0.8.9;
 
 interface ISettingsManager {
-    function decreaseBorrowedUsd(
-        address _token,
-        address _sender,
-        bool _isLong,
-        uint256 _amount
-    ) external;
+    function decreaseBorrowedUsd(address _token, address _sender, bool _isLong, uint256 _amount) external;
 
-    function increaseBorrowedUsd(
-        address _token,
-        address _sender,
-        bool _isLong,
-        uint256 _amount
-    ) external;
+    function increaseBorrowedUsd(address _token, address _sender, bool _isLong, uint256 _amount) external;
 
-    function setCustomFeeForUser(
-        address _account,
-        uint256 _feePoints,
-        bool _isEnabled
-    ) external;
+    function setCustomFeeForUser(address _account, uint256 _feePoints, bool _isEnabled) external;
 
     function updateCumulativeFundingRate(address _token, bool _isLong) external;
 
-    function borrowedUsdPerAsset(
-        address _token
-    ) external view returns (uint256);
+    function borrowedUsdPerAsset(address _token) external view returns (uint256);
 
     function borrowedUsdPerSide(bool _isLong) external view returns (uint256);
 
-    function borrowedUsdPerUser(
-        address _sender
-    ) external view returns (uint256);
+    function borrowedUsdPerUser(address _sender) external view returns (uint256);
 
     function bountyPercent() external view returns (uint256);
 
-    function checkDelegation(
-        address _master,
-        address _delegate
-    ) external view returns (bool);
+    function checkDelegation(address _master, address _delegate) external view returns (bool);
 
     function closeDeltaTime() external view returns (uint256);
 
@@ -55,10 +34,7 @@ interface ISettingsManager {
 
     function cooldownDuration() external view returns (uint256);
 
-    function cumulativeFundingRates(
-        address _token,
-        bool _isLong
-    ) external view returns (uint256);
+    function cumulativeFundingRates(address _token, bool _isLong) external view returns (uint256);
 
     function delayDeltaTime() external view returns (uint256);
 
@@ -70,10 +46,7 @@ interface ISettingsManager {
 
     function fundingInterval() external view returns (uint256);
 
-    function fundingRateFactor(
-        address _token,
-        bool _isLong
-    ) external view returns (uint256);
+    function fundingRateFactor(address _token, bool _isLong) external view returns (uint256);
 
     function getFundingFee(
         address _indexToken,
@@ -82,15 +55,9 @@ interface ISettingsManager {
         uint256 _entryFundingRate
     ) external view returns (uint256);
 
-    function getPositionFee(
-        address _indexToken,
-        bool _isLong,
-        uint256 _sizeDelta
-    ) external view returns (uint256);
+    function getPositionFee(address _indexToken, bool _isLong, uint256 _sizeDelta) external view returns (uint256);
 
-    function getDelegates(
-        address _master
-    ) external view returns (address[] memory);
+    function getDelegates(address _master) external view returns (address[] memory);
 
     function isDeposit(address _token) external view returns (bool);
 
@@ -98,19 +65,15 @@ interface ISettingsManager {
 
     function isStaking(address _token) external view returns (bool);
 
-    function lastFundingTimes(
-        address _token,
-        bool _isLong
-    ) external view returns (uint256);
+    function lastFundingTimes(address _token, bool _isLong) external view returns (uint256);
 
     function liquidationFeeUsd() external view returns (uint256);
 
     function liquidateThreshold(address) external view returns (uint256);
 
-    function marginFeeBasisPoints(
-        address _token,
-        bool _isLong
-    ) external view returns (uint256);
+    function marginFeeBasisPoints(address _token, bool _isLong) external view returns (uint256);
+
+    function marketOrderEnabled() external view returns (bool);
 
     function positionManager() external view returns (address);
 
