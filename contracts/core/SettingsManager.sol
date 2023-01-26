@@ -59,6 +59,7 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
     event ChangedReferEnabled(bool referEnabled);
     event ChangedReferFee(uint256 referFee);
     event EnableMarketOrder(bool _enabled);
+    event SetBountyPercent(uint256 indexed bountyPercent);
     event SetCustomFeeForUser(uint256 indexed feePoints, bool isEnabled);
     event SetDepositFee(uint256 indexed fee);
     event SetEnableDeposit(address indexed token, bool isEnabled);
@@ -107,14 +108,16 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         bool _isLong,
         uint256 _amount
     ) external override onlyVault {
+        
         if (borrowedUsdPerUser[_sender] < _amount) {
             borrowedUsdPerUser[_sender] = 0;
-        } else {
+        }
+        else {
             borrowedUsdPerUser[_sender] -= _amount;
         }
         if (borrowedUsdPerAsset[_token] < _amount) {
             borrowedUsdPerAsset[_token] -= 0;
-        } else {
+      } else {
             borrowedUsdPerAsset[_token] -= _amount;
         }
         if (borrowedUsdPerSide[_isLong] < _amount) {
@@ -140,6 +143,11 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         borrowedUsdPerAsset[_token] += _amount;
         borrowedUsdPerSide[_isLong] += _amount;
         emit UpdateTotalBorrowedAmount(_token, _isLong, _amount);
+    }
+
+    function setBountyPercent(uint256 _bountyPercent) external onlyGov {
+        bountyPercent = _bountyPercent;
+        emit SetBountyPercent(_bountyPercent);
     }
 
     function setFeeManager(address _feeManager) external onlyGov {
