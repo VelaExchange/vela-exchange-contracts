@@ -7,7 +7,7 @@ const { solidity } = require("ethereum-waffle")
 const { ethers, upgrades } = require("hardhat");
 
 const { deployContract } = require("../../scripts/shared/helpers.js")
-const { toUsd, expandDecimals, getBlockTime } = require("../../scripts/shared/utilities.js")
+const { toUsd, expandDecimals, getBlockTime, zeroAddress } = require("../../scripts/shared/utilities.js")
 const { toChainlinkPrice } = require("../../scripts/shared/chainlink.js")
 
 use(solidity)
@@ -21,6 +21,7 @@ describe("TriggerOrderManager", function () {
     let vlp;
     let vela;
     let eVela;
+    let PositionVault;
     let priceManager;
     let settingsManager;
     let triggerOrderManager;
@@ -88,37 +89,64 @@ describe("TriggerOrderManager", function () {
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
            vlp.address,
-           vusd.address,
-           tokenFarm.address
+           vusd.address
         ]);
+        PositionVault = await deployContract("PositionVault", [])        
         priceManager = await deployContract("PriceManager", [
           vaultPriceFeed.address
         ])
         settingsManager = await deployContract("SettingsManager",
           [
-            Vault.address,
-            vusd.address
+            PositionVault.address,
+            vusd.address,
+            tokenFarm.address
           ]
         )
+        await expect(deployContract("TriggerOrderManager",
+          [
+            zeroAddress,
+            priceManager.address,
+            settingsManager.address
+          ]
+        )).to.be.revertedWith("positionVault address is invalid")
+        await expect(deployContract("TriggerOrderManager",
+          [
+            PositionVault.address,
+            zeroAddress,
+            settingsManager.address
+          ]
+        )).to.be.revertedWith("priceManager address is invalid")
+        await expect(deployContract("TriggerOrderManager",
+          [
+            PositionVault.address,
+            priceManager.address,
+            zeroAddress
+          ]
+        )).to.be.revertedWith("settingsManager address is invalid")
         triggerOrderManager = await deployContract("TriggerOrderManager",
           [
-            Vault.address,
-            priceManager.address
+            PositionVault.address,
+            priceManager.address,
+            settingsManager.address
           ]
         )
         VaultUtils = await deployContract("VaultUtils", [
-          Vault.address,
-          vusd.address,
-          tokenFarm.address,
+          PositionVault.address,
           priceManager.address,
           settingsManager.address
-       ]);
+        ]);
         //====================== Vault Initialize ==============
         await Vault.setVaultSettings(
-         priceManager.address,
-         settingsManager.address,
-         triggerOrderManager.address,
-         VaultUtils.address,
+          priceManager.address,
+          settingsManager.address,
+          PositionVault.address
+        )
+        await PositionVault.initialize(
+          priceManager.address,
+          settingsManager.address,
+          triggerOrderManager.address,
+          Vault.address,
+          VaultUtils.address
         );
         //================= PriceFeed Prices Initialization ==================
         await btcPriceFeed.setLatestAnswer(toChainlinkPrice(60000))
@@ -243,9 +271,8 @@ describe("TriggerOrderManager", function () {
      await usdc.connect(wallet).approve(Vault.address, expandDecimals('10000000', 18)); // approve USDC
     })
 
-    it ("add Vault and VaultUtils as admin", async () => {
-     await vusd.addAdmin(Vault.address); // addAdmin vault
-     await vusd.addAdmin(VaultUtils.address); // addAdmin vaultUtils
+    it ("add Vault as admin", async () => {
+     await vusd.setGov(Vault.address); // addAdmin vault
     })
 
     it ("deploy ComplexRewardPerSec and add pool info to tokenFarm", async () => {
@@ -495,18 +522,6 @@ describe("TriggerOrderManager", function () {
      await ethers.provider.send('evm_increaseTime', [passTime]);
      await ethers.provider.send('evm_mine');
    })
-   it ("getPosition Info", async () => {
-    const account = wallet.address
-    const indexToken = btc.address
-    const isLong = true
-    const posId = 0
-     const positionData = await Vault.getPosition(
-      account,
-      indexToken,
-      isLong,
-      posId
-     )
-   })
 
    it ("setLatestAnswer for BTC", async () => {
     const lastBtcPrice = await priceManager.getLastPrice(btc.address)
@@ -541,6 +556,22 @@ describe("TriggerOrderManager", function () {
       const slTriggeredAmounts = [
         0
       ]
+      const newTriggerGasFee = expandDecimals('1', 16)
+      await expect(settingsManager.setTriggerGasFee(expandDecimals('1', 18)))
+        .to.be.revertedWith("gasFee exceed max")
+      await settingsManager.setTriggerGasFee(newTriggerGasFee)
+      await expect(triggerOrderManager.updateTriggerOrders(
+        indexToken, 
+        isLong, 
+        posId, 
+        tpPrices, 
+        slPrices, 
+        tpAmountPercents, 
+        slAmountPercents,
+        tpTriggeredAmounts,
+        slTriggeredAmounts,
+        {from: wallet.address, value: 0}
+      )).to.be.revertedWith("invalid triggerGasFee")
       await triggerOrderManager.updateTriggerOrders(
         indexToken, 
         isLong, 
@@ -550,8 +581,9 @@ describe("TriggerOrderManager", function () {
         tpAmountPercents, 
         slAmountPercents,
         tpTriggeredAmounts,
-        slTriggeredAmounts
-        )
+        slTriggeredAmounts,
+        {from: wallet.address, value: newTriggerGasFee})
+      await settingsManager.setTriggerGasFee(0)
    })
 
    it ("getTriggerOrderInfo", async () => {
@@ -579,7 +611,7 @@ describe("TriggerOrderManager", function () {
     const indexToken = btc.address;
     const isLong = true
     const posId = 0
-    await Vault.triggerPosition(
+    await PositionVault.triggerPosition(
       account, 
       indexToken, 
       isLong, 
@@ -607,7 +639,7 @@ describe("TriggerOrderManager", function () {
     const indexToken = btc.address;
     const isLong = true
     const posId = 0
-    await Vault.triggerPosition(
+    await PositionVault.triggerPosition(
       account, 
       indexToken, 
       isLong, 
@@ -635,7 +667,7 @@ describe("TriggerOrderManager", function () {
     const indexToken = btc.address;
     const isLong = true
     const posId = 0
-    await Vault.triggerPosition(
+    await PositionVault.triggerPosition(
       account, 
       indexToken, 
       isLong, 
@@ -687,19 +719,6 @@ describe("TriggerOrderManager", function () {
      await ethers.provider.send('evm_mine');
    })
 
-   it ("getPosition Info", async () => {
-    const account = wallet.address
-    const indexToken = btc.address
-    const isLong = true
-    const posId = 1
-     const positionData = await Vault.getPosition(
-      account,
-      indexToken,
-      isLong,
-      posId
-     )
-   })
-
    it ("updateTriggerOrders", async () => {
       const indexToken = btc.address;
       const isLong = true
@@ -737,7 +756,8 @@ describe("TriggerOrderManager", function () {
         tpAmountPercents, 
         slAmountPercents,
         tpTriggeredAmounts,
-        slTriggeredAmounts
+        slTriggeredAmounts,
+        {from: wallet.address, value: 0}
         )
    })
 
@@ -762,7 +782,7 @@ describe("TriggerOrderManager", function () {
     const indexToken = btc.address;
     const isLong = true
     const posId = 1
-    await Vault.triggerPosition(
+    await PositionVault.triggerPosition(
       account, 
       indexToken, 
       isLong, 
@@ -816,19 +836,6 @@ describe("TriggerOrderManager", function () {
      await ethers.provider.send('evm_mine');
    })
 
-   it ("getPosition Info", async () => {
-    const account = wallet.address
-    const indexToken = btc.address
-    const isLong = true
-    const posId = 2
-     const positionData = await Vault.getPosition(
-      account,
-      indexToken,
-      isLong,
-      posId
-     )
-   })
-
    it ("updateTriggerOrders", async () => {
       const indexToken = btc.address;
       const isLong = true
@@ -866,7 +873,8 @@ describe("TriggerOrderManager", function () {
         tpAmountPercents, 
         slAmountPercents,
         tpTriggeredAmounts,
-        slTriggeredAmounts
+        slTriggeredAmounts,
+        {from: wallet.address, value: 0}
         )
    })
 
@@ -901,7 +909,7 @@ describe("TriggerOrderManager", function () {
       const indexToken = btc.address;
       const isLong = true
       const posId = 1
-      await expect(Vault.triggerPosition(
+      await expect(PositionVault.triggerPosition(
         account, 
         indexToken, 
         isLong, 
@@ -970,7 +978,8 @@ describe("TriggerOrderManager", function () {
       tpAmountPercents,
       slAmountPercents,
       tpTriggeredAmounts,
-      slTriggeredAmounts
+      slTriggeredAmounts,
+      {from: wallet.address, value: 0}
     )).to.be.revertedWith("triggerOrder data are incorrect")
    })
 
@@ -1013,7 +1022,8 @@ describe("TriggerOrderManager", function () {
       tpAmountPercents,
       slAmountPercents,
       tpTriggeredAmounts,
-      slTriggeredAmounts
+      slTriggeredAmounts,
+      {from: wallet.address, value: 0}
     )).to.be.revertedWith("position size should be greather than zero")
    })
 
@@ -1056,7 +1066,8 @@ describe("TriggerOrderManager", function () {
       tpAmountPercents,
       slAmountPercents,
       tpTriggeredAmounts,
-      slTriggeredAmounts
+      slTriggeredAmounts,
+      {from: wallet.address, value: 0}
     )
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(
       account,
@@ -1071,7 +1082,7 @@ describe("TriggerOrderManager", function () {
     const token = btc.address
     const isLong = true
     const posId = 2
-    await expect(Vault.triggerPosition(
+    await expect(PositionVault.triggerPosition(
       account,
       token,
       isLong,
@@ -1096,7 +1107,7 @@ describe("TriggerOrderManager", function () {
     const token = btc.address
     const isLong = true
     const posId = 2
-    await Vault.triggerPosition(
+    await PositionVault.triggerPosition(
       account,
       token,
       isLong,
@@ -1133,7 +1144,7 @@ describe("TriggerOrderManager", function () {
        referAddress
      )
 
-     const lastPosId = await Vault.lastPosId()
+     const lastPosId = await PositionVault.lastPosId()
    })
 
    it ("updateTriggerOrdersData with wrong orders or invalid for Short", async () => {
@@ -1175,7 +1186,8 @@ describe("TriggerOrderManager", function () {
       tpAmountPercents,
       slAmountPercents,
       tpTriggeredAmounts,
-      slTriggeredAmounts
+      slTriggeredAmounts,
+      {from: wallet.address, value: 0}
     )).to.be.revertedWith("triggerOrder data are incorrect")
    })
    
@@ -1218,7 +1230,8 @@ describe("TriggerOrderManager", function () {
       tpAmountPercents,
       slAmountPercents,
       tpTriggeredAmounts,
-      slTriggeredAmounts
+      slTriggeredAmounts,
+      {from: wallet.address, value: 0}
     )).to.be.revertedWith("position size should be greather than zero")
    })
 
@@ -1261,7 +1274,8 @@ describe("TriggerOrderManager", function () {
       tpAmountPercents,
       slAmountPercents,
       tpTriggeredAmounts,
-      slTriggeredAmounts
+      slTriggeredAmounts,
+      {from: wallet.address, value: 0}
     )
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(
       account,
@@ -1276,7 +1290,7 @@ describe("TriggerOrderManager", function () {
     const indexToken = btc.address
     const isLong = false
     const pId = 3
-    await expect(Vault.triggerPosition(
+    await expect(PositionVault.triggerPosition(
       account,
       indexToken,
       isLong,
@@ -1305,7 +1319,7 @@ describe("TriggerOrderManager", function () {
     const passTime = 60 * 60 * 2
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
-    await Vault.triggerPosition(
+    await PositionVault.triggerPosition(
       account,
       indexToken,
       isLong,

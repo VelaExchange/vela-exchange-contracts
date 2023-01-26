@@ -5,7 +5,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/ISettingsManager.sol";
-import "./interfaces/IVault.sol";
+import "./interfaces/IPositionVault.sol";
+import "../staking/interfaces/ITokenFarm.sol";
 import {Constants} from "../access/Constants.sol";
 import "../access/Governable.sol";
 import "../tokens/interfaces/IVUSDC.sol";
@@ -13,9 +14,12 @@ import "../tokens/interfaces/IVUSDC.sol";
 contract SettingsManager is ISettingsManager, Governable, Constants {
     using EnumerableSet for EnumerableSet.AddressSet;
     address public immutable vUSDC;
-    IVault public immutable vault;
+    IPositionVault public immutable positionVault;
+    ITokenFarm public immutable tokenFarm;
 
     address public override feeManager;
+    bool public override marketOrderEnabled = true;
+    address public override positionManager;
     bool public override referEnabled;
     uint256 public maxBorrowUSDAmountPerUser;
     uint256 public priceMovementPercent = 500; // 0.5%
@@ -30,25 +34,17 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
     uint256 public override liquidationFeeUsd; // 0 usd
     uint256 public override stakingFee = 300; // 0.3%
     uint256 public override referFee = 5000; // 5%
+    uint256 public override triggerGasFee = 0; //100 gwei;
 
     mapping(address => bool) public isCustomFees;
     mapping(address => bool) public override isDeposit;
     mapping(address => bool) public override isManager;
     mapping(address => bool) public override isStaking;
 
-    mapping(address => mapping(bool => uint256))
-        public
-        override cumulativeFundingRates;
-    mapping(address => mapping(bool => uint256))
-        public
-        override fundingRateFactor;
-    mapping(address => mapping(bool => uint256))
-        public
-        override marginFeeBasisPoints; // = 100; // 0.1%
-    mapping(address => mapping(bool => uint256))
-        public
-        override lastFundingTimes;
-    mapping(address => mapping(bool => uint256)) public totalBorrowedUsd;
+    mapping(address => mapping(bool => uint256)) public override cumulativeFundingRates;
+    mapping(address => mapping(bool => uint256)) public override fundingRateFactor;
+    mapping(address => mapping(bool => uint256)) public override marginFeeBasisPoints; // = 100; // 0.1%
+    mapping(address => mapping(bool => uint256)) public override lastFundingTimes;
 
     mapping(bool => uint256) public maxBorrowUSDAmountPerSide;
 
@@ -62,86 +58,42 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
 
     event ChangedReferEnabled(bool referEnabled);
     event ChangedReferFee(uint256 referFee);
+    event EnableMarketOrder(bool _enabled);
+    event SetBountyPercent(uint256 indexed bountyPercent);
     event SetCustomFeeForUser(uint256 indexed feePoints, bool isEnabled);
     event SetDepositFee(uint256 indexed fee);
     event SetEnableDeposit(address indexed token, bool isEnabled);
     event SetEnableStaking(address indexed token, bool isEnabled);
     event SetFundingInterval(uint256 indexed fundingInterval);
-    event SetFundingRateFactor(
-        address indexed token,
-        bool isLong,
-        uint256 fundingRateFactor
-    );
+    event SetFundingRateFactor(address indexed token, bool isLong, uint256 fundingRateFactor);
     event SetLiquidationFeeUsd(uint256 indexed _liquidationFeeUsd);
-    event SetMarginFeeBasisPoints(
-        address indexed token,
-        bool isLong,
-        uint256 marginFeeBasisPoints
-    );
-    event SetMaxBorrowAmountPerAsset(
-        address indexed token,
-        uint256 maxBorrowAmount
-    );
+    event SetMarginFeeBasisPoints(address indexed token, bool isLong, uint256 marginFeeBasisPoints);
+    event SetMaxBorrowAmountPerAsset(address indexed token, uint256 maxBorrowAmount);
     event SetMaxBorrowAmountPerSide(bool isLong, uint256 maxBorrowAmount);
     event SetMaxBorrowAmountPerUser(uint256 maxBorrowAmount);
     event SetPositionManager(address manager, bool isManager);
     event SetStakingFee(uint256 indexed fee);
-    event SetVaultSettings(
-        uint256 indexed cooldownDuration,
-        uint256 feeRewardBasisPoints
-    );
-    event UpdateFundingRate(
-        address indexed token,
-        bool isLong,
-        uint256 fundingRate,
-        uint256 lastFundingTime
-    );
-    event UpdateTotalBorrowedAmount(
-        address indexed token,
-        bool isLong,
-        uint256 amount
-    );
+    event SetTriggerGasFee(uint256 indexed fee);
+    event SetVaultSettings(uint256 indexed cooldownDuration, uint256 feeRewardBasisPoints);
+    event UpdateFundingRate(address indexed token, bool isLong, uint256 fundingRate, uint256 lastFundingTime);
+    event UpdateTotalBorrowedAmount(address indexed token, bool isLong, uint256 amount);
     event UpdateCloseDeltaTime(uint256 deltaTime);
     event UpdateDelayDeltaTime(uint256 deltaTime);
     event UpdateFeeManager(address indexed feeManager);
     event UpdateThreshold(uint256 oldThreshold, uint256 newThredhold);
 
     modifier onlyVault() {
-        require(msg.sender == address(vault), "Only vault has access");
+        require(msg.sender == address(positionVault), "Only vault has access");
         _;
     }
 
-    constructor(address _vault, address _vUSDC) {
-        require(Address.isContract(_vault), "vault address is invalid");
+    constructor(address _positionVault, address _vUSDC, address _tokenFarm) {
+        require(Address.isContract(_positionVault), "vault address is invalid");
         require(Address.isContract(_vUSDC), "vUSD address is invalid");
-        vault = IVault(_vault);
+        require(Address.isContract(_tokenFarm), "tokenFarm address is invalid");
+        positionVault = IPositionVault(_positionVault);
+        tokenFarm = ITokenFarm(_tokenFarm);
         vUSDC = _vUSDC;
-    }
-
-    function setFeeManager(address _feeManager) external onlyGov {
-        feeManager = _feeManager;
-        emit UpdateFeeManager(_feeManager);
-    }
-
-    function setVaultSettings(
-        uint256 _cooldownDuration,
-        uint256 _feeRewardsBasisPoints
-    ) external onlyGov {
-        require(
-            _cooldownDuration <= MAX_COOLDOWN_DURATION,
-            "invalid cooldownDuration"
-        );
-        require(
-            _feeRewardsBasisPoints >= MIN_FEE_REWARD_BASIS_POINTS,
-            "feeRewardsBasisPoints not greater than min"
-        );
-        require(
-            _feeRewardsBasisPoints < MAX_FEE_REWARD_BASIS_POINTS,
-            "feeRewardsBasisPoints not smaller than max"
-        );
-        cooldownDuration = _cooldownDuration;
-        feeRewardBasisPoints = _feeRewardsBasisPoints;
-        emit SetVaultSettings(cooldownDuration, feeRewardBasisPoints);
     }
 
     function delegate(address[] memory _delegates) external {
@@ -156,19 +108,29 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         bool _isLong,
         uint256 _amount
     ) external override onlyVault {
-        require(
-            borrowedUsdPerUser[_sender] >= _amount,
-            "borrowed amount exceed the bottom"
-        );
-        borrowedUsdPerUser[_sender] -= _amount;
-        borrowedUsdPerAsset[_token] -= _amount;
-        borrowedUsdPerSide[_isLong] -= _amount;
-        totalBorrowedUsd[_token][_isLong] -= _amount;
-        emit UpdateTotalBorrowedAmount(
-            _token,
-            _isLong,
-            totalBorrowedUsd[_token][_isLong]
-        );
+        
+        if (borrowedUsdPerUser[_sender] < _amount) {
+            borrowedUsdPerUser[_sender] = 0;
+        }
+        else {
+            borrowedUsdPerUser[_sender] -= _amount;
+        }
+        if (borrowedUsdPerAsset[_token] < _amount) {
+            borrowedUsdPerAsset[_token] -= 0;
+      } else {
+            borrowedUsdPerAsset[_token] -= _amount;
+        }
+        if (borrowedUsdPerSide[_isLong] < _amount) {
+            borrowedUsdPerSide[_isLong] -= 0;
+        } else {
+            borrowedUsdPerSide[_isLong] -= _amount;
+        }
+        emit UpdateTotalBorrowedAmount(_token, _isLong, _amount);
+    }
+
+    function enableMarketOrder(bool _enable) external onlyGov {
+        marketOrderEnabled = _enable;
+        emit EnableMarketOrder(_enable);
     }
 
     function increaseBorrowedUsd(
@@ -180,34 +142,35 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         borrowedUsdPerUser[_sender] += _amount;
         borrowedUsdPerAsset[_token] += _amount;
         borrowedUsdPerSide[_isLong] += _amount;
-        totalBorrowedUsd[_token][_isLong] += _amount;
-        emit UpdateTotalBorrowedAmount(
-            _token,
-            _isLong,
-            totalBorrowedUsd[_token][_isLong]
-        );
+        emit UpdateTotalBorrowedAmount(_token, _isLong, _amount);
     }
 
-    function undelegate(address[] memory _delegates) external {
-        for (uint256 i = 0; i < _delegates.length; ++i) {
-            EnumerableSet.remove(_delegatesByMaster[msg.sender], _delegates[i]);
-        }
+    function setBountyPercent(uint256 _bountyPercent) external onlyGov {
+        bountyPercent = _bountyPercent;
+        emit SetBountyPercent(_bountyPercent);
+    }
+
+    function setFeeManager(address _feeManager) external onlyGov {
+        feeManager = _feeManager;
+        emit UpdateFeeManager(_feeManager);
+    }
+
+    function setVaultSettings(uint256 _cooldownDuration, uint256 _feeRewardsBasisPoints) external onlyGov {
+        require(_cooldownDuration <= MAX_COOLDOWN_DURATION, "invalid cooldownDuration");
+        require(_feeRewardsBasisPoints >= MIN_FEE_REWARD_BASIS_POINTS, "feeRewardsBasisPoints not greater than min");
+        require(_feeRewardsBasisPoints < MAX_FEE_REWARD_BASIS_POINTS, "feeRewardsBasisPoints not smaller than max");
+        cooldownDuration = _cooldownDuration;
+        feeRewardBasisPoints = _feeRewardsBasisPoints;
+        emit SetVaultSettings(cooldownDuration, feeRewardBasisPoints);
     }
 
     function setCloseDeltaTime(uint256 _deltaTime) external onlyGov {
-        require(
-            _deltaTime <= MAX_DELTA_TIME,
-            "closeDeltaTime is bigger than max"
-        );
+        require(_deltaTime <= MAX_DELTA_TIME, "closeDeltaTime is bigger than max");
         closeDeltaTime = _deltaTime;
         emit UpdateCloseDeltaTime(_deltaTime);
     }
 
-    function setCustomFeeForUser(
-        address _account,
-        uint256 _feePoints,
-        bool _isEnabled
-    ) external override onlyGov {
+    function setCustomFeeForUser(address _account, uint256 _feePoints, bool _isEnabled) external override onlyGov {
         isCustomFees[_account] = _isEnabled;
         require(_feePoints <= MAX_CUSTOM_FEE_POINTS, "custom fee exceeds MAX");
         customFeePoints[_account] = _feePoints;
@@ -215,10 +178,7 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
     }
 
     function setDelayDeltaTime(uint256 _deltaTime) external onlyGov {
-        require(
-            _deltaTime <= MAX_DELTA_TIME,
-            "delayDeltaTime is bigger than max"
-        );
+        require(_deltaTime <= MAX_DELTA_TIME, "delayDeltaTime is bigger than max");
         delayDeltaTime = _deltaTime;
         emit UpdateDelayDeltaTime(_deltaTime);
     }
@@ -229,94 +189,53 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         emit SetDepositFee(_fee);
     }
 
-    function setEnableDeposit(
-        address _token,
-        bool _isEnabled
-    ) external onlyGov {
+    function setEnableDeposit(address _token, bool _isEnabled) external onlyGov {
         isDeposit[_token] = _isEnabled;
         emit SetEnableDeposit(_token, _isEnabled);
     }
 
-    function setEnableStaking(
-        address _token,
-        bool _isEnabled
-    ) external onlyGov {
+    function setEnableStaking(address _token, bool _isEnabled) external onlyGov {
         isStaking[_token] = _isEnabled;
         emit SetEnableStaking(_token, _isEnabled);
     }
 
     function setFundingInterval(uint256 _fundingInterval) external onlyGov {
-        require(
-            _fundingInterval >= MIN_FUNDING_RATE_INTERVAL,
-            "fundingInterval should be greater than MIN"
-        );
-        require(
-            _fundingInterval <= MAX_FUNDING_RATE_INTERVAL,
-            "fundingInterval should be smaller than MAX"
-        );
+        require(_fundingInterval >= MIN_FUNDING_RATE_INTERVAL, "fundingInterval should be greater than MIN");
+        require(_fundingInterval <= MAX_FUNDING_RATE_INTERVAL, "fundingInterval should be smaller than MAX");
         fundingInterval = _fundingInterval;
         emit SetFundingInterval(fundingInterval);
     }
 
-    function setFundingRateFactor(
-        address _token,
-        bool _isLong,
-        uint256 _fundingRateFactor
-    ) external onlyGov {
-        require(
-            _fundingRateFactor <= MAX_FUNDING_RATE_FACTOR,
-            "fundingRateFactor should be smaller than MAX"
-        );
+    function setFundingRateFactor(address _token, bool _isLong, uint256 _fundingRateFactor) external onlyGov {
+        require(_fundingRateFactor <= MAX_FUNDING_RATE_FACTOR, "fundingRateFactor should be smaller than MAX");
         fundingRateFactor[_token][_isLong] = _fundingRateFactor;
         emit SetFundingRateFactor(_token, _isLong, _fundingRateFactor);
     }
 
-    function setLiquidateThreshold(
-        uint256 _newThreshold,
-        address _token
-    ) external onlyGov {
+    function setLiquidateThreshold(uint256 _newThreshold, address _token) external onlyGov {
         emit UpdateThreshold(liquidateThreshold[_token], _newThreshold);
-        require(
-            _newThreshold < BASIS_POINTS_DIVISOR,
-            "threshold should be smaller than MAX"
-        );
+        require(_newThreshold < BASIS_POINTS_DIVISOR, "threshold should be smaller than MAX");
         liquidateThreshold[_token] = _newThreshold;
     }
 
     function setLiquidationFeeUsd(uint256 _liquidationFeeUsd) external onlyGov {
-        require(
-            _liquidationFeeUsd <= MAX_LIQUIDATION_FEE_USD,
-            "liquidationFeeUsd should be smaller than MAX"
-        );
+        require(_liquidationFeeUsd <= MAX_LIQUIDATION_FEE_USD, "liquidationFeeUsd should be smaller than MAX");
         liquidationFeeUsd = _liquidationFeeUsd;
         emit SetLiquidationFeeUsd(_liquidationFeeUsd);
     }
 
-    function setMarginFeeBasisPoints(
-        address _token,
-        bool _isLong,
-        uint256 _marginFeeBasisPoints
-    ) external onlyGov {
-        require(
-            _marginFeeBasisPoints <= MAX_FEE_BASIS_POINTS,
-            "marginFeeBasisPoints should be smaller than MAX"
-        );
+    function setMarginFeeBasisPoints(address _token, bool _isLong, uint256 _marginFeeBasisPoints) external onlyGov {
+        require(_marginFeeBasisPoints <= MAX_FEE_BASIS_POINTS, "marginFeeBasisPoints should be smaller than MAX");
         marginFeeBasisPoints[_token][_isLong] = _marginFeeBasisPoints;
         emit SetMarginFeeBasisPoints(_token, _isLong, _marginFeeBasisPoints);
     }
 
-    function setMaxBorrowAmountPerAsset(
-        address _token,
-        uint256 _maxAmount
-    ) external onlyGov {
+    function setMaxBorrowAmountPerAsset(address _token, uint256 _maxAmount) external onlyGov {
         maxBorrowUSDAmountPerAsset[_token] = _maxAmount;
         emit SetMaxBorrowAmountPerAsset(_token, _maxAmount);
     }
 
-    function setMaxBorrowAmountPerSide(
-        bool _isLong,
-        uint256 _maxAmount
-    ) external onlyGov {
+    function setMaxBorrowAmountPerSide(bool _isLong, uint256 _maxAmount) external onlyGov {
         maxBorrowUSDAmountPerSide[_isLong] = _maxAmount;
         emit SetMaxBorrowAmountPerSide(_isLong, _maxAmount);
     }
@@ -326,11 +245,9 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         emit SetMaxBorrowAmountPerUser(_maxAmount);
     }
 
-    function setPositionManager(
-        address _manager,
-        bool _isManager
-    ) external onlyGov {
+    function setPositionManager(address _manager, bool _isManager) external onlyGov {
         isManager[_manager] = _isManager;
+        positionManager = _manager;
         emit SetPositionManager(_manager, _isManager);
     }
 
@@ -340,10 +257,7 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
     }
 
     function setReferFee(uint256 _fee) external onlyGov {
-        require(
-            _fee <= BASIS_POINTS_DIVISOR,
-            "fee should be smaller than feeDivider"
-        );
+        require(_fee <= BASIS_POINTS_DIVISOR, "fee should be smaller than feeDivider");
         referFee = _fee;
         emit ChangedReferFee(_fee);
     }
@@ -354,37 +268,54 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         emit SetStakingFee(_fee);
     }
 
-    function updateCumulativeFundingRate(
-        address _token,
-        bool _isLong
-    ) external override onlyVault {
+    function setTriggerGasFee(uint256 _fee) external onlyGov {
+        require(_fee <= MAX_TRIGGER_GAS_FEE, "gasFee exceed max");
+        triggerGasFee = _fee;
+        emit SetTriggerGasFee(_fee);
+    }
+
+    function updateCumulativeFundingRate(address _token, bool _isLong) external override onlyVault {
         if (lastFundingTimes[_token][_isLong] == 0) {
-            lastFundingTimes[_token][_isLong] =
-                uint256(block.timestamp / fundingInterval) *
-                fundingInterval;
+            lastFundingTimes[_token][_isLong] = uint256(block.timestamp / fundingInterval) * fundingInterval;
             return;
         }
 
-        if (
-            lastFundingTimes[_token][_isLong] + fundingInterval >
-            block.timestamp
-        ) {
+        if (lastFundingTimes[_token][_isLong] + fundingInterval > block.timestamp) {
             return;
         }
 
-        cumulativeFundingRates[_token][_isLong] += getNextFundingRate(
-            _token,
-            _isLong
-        );
-        lastFundingTimes[_token][_isLong] =
-            uint256(block.timestamp / fundingInterval) *
-            fundingInterval;
+        cumulativeFundingRates[_token][_isLong] += getNextFundingRate(_token, _isLong);
+        lastFundingTimes[_token][_isLong] = uint256(block.timestamp / fundingInterval) * fundingInterval;
         emit UpdateFundingRate(
             _token,
             _isLong,
             cumulativeFundingRates[_token][_isLong],
             lastFundingTimes[_token][_isLong]
         );
+    }
+
+    function undelegate(address[] memory _delegates) external {
+        for (uint256 i = 0; i < _delegates.length; ++i) {
+            EnumerableSet.remove(_delegatesByMaster[msg.sender], _delegates[i]);
+        }
+    }
+
+    function collectMarginFees(
+        address _account,
+        address _indexToken,
+        bool _isLong,
+        uint256 _sizeDelta,
+        uint256 _size,
+        uint256 _entryFundingRate
+    ) external view override returns (uint256) {
+        uint256 feeUsd = getPositionFee(_indexToken, _isLong, _sizeDelta);
+
+        feeUsd += getFundingFee(_indexToken, _isLong, _size, _entryFundingRate);
+        return (feeUsd * tokenFarm.getTier(STAKING_PID_FOR_CHARGE_FEE, _account)) / BASIS_POINTS_DIVISOR;
+    }
+
+    function getDelegates(address _master) external view override returns (address[] memory) {
+        return enumerate(_delegatesByMaster[_master]);
     }
 
     function validatePosition(
@@ -398,10 +329,7 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
             require(_collateral == 0, "collateral is not zero");
             return;
         }
-        require(
-            _size >= _collateral,
-            "position size should be greater than collateral"
-        );
+        require(_size >= _collateral, "position size should be greater than collateral");
         uint256 borrowedAmount = _size - _collateral;
         require(
             borrowedUsdPerSide[_isLong] + borrowedAmount <=
@@ -423,31 +351,23 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         );
         require(
             borrowedUsdPerUser[_account] + borrowedAmount <=
-                (
-                    maxBorrowUSDAmountPerUser > 0
-                        ? maxBorrowUSDAmountPerUser
-                        : DEFAULT_MAX_BORROW_AMOUNT
-                ),
+                (maxBorrowUSDAmountPerUser > 0 ? maxBorrowUSDAmountPerUser : DEFAULT_MAX_BORROW_AMOUNT),
             "exceed max borrow amount per user"
         );
     }
 
-    function checkDelegation(
-        address _master,
-        address _delegate
-    ) public view override returns (bool) {
-        return
-            _master == _delegate ||
-            EnumerableSet.contains(_delegatesByMaster[_master], _delegate);
+    function enumerate(EnumerableSet.AddressSet storage set) internal view returns (address[] memory) {
+        uint256 length = EnumerableSet.length(set);
+        address[] memory output = new address[](length);
+        for (uint256 i; i < length; ++i) {
+            output[i] = EnumerableSet.at(set, i);
+        }
+        return output;
     }
 
-    function getNextFundingRate(
-        address _token,
-        bool _isLong
-    ) internal view returns (uint256) {
-        uint256 intervals = (block.timestamp -
-            lastFundingTimes[_token][_isLong]) / fundingInterval;
-        if (vault.poolAmounts(_token, _isLong) == 0) {
+    function getNextFundingRate(address _token, bool _isLong) internal view returns (uint256) {
+        uint256 intervals = (block.timestamp - lastFundingTimes[_token][_isLong]) / fundingInterval;
+        if (positionVault.poolAmounts(_token, _isLong) == 0) {
             return 0;
         }
         return
@@ -456,8 +376,12 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
                     ? fundingRateFactor[_token][_isLong]
                     : DEFAULT_FUNDING_RATE_FACTOR
             ) *
-                vault.reservedAmounts(_token, _isLong) *
-                intervals) / vault.poolAmounts(_token, _isLong);
+                positionVault.reservedAmounts(_token, _isLong) *
+                intervals) / positionVault.poolAmounts(_token, _isLong);
+    }
+
+    function checkDelegation(address _master, address _delegate) public view override returns (bool) {
+        return _master == _delegate || EnumerableSet.contains(_delegatesByMaster[_master], _delegate);
     }
 
     function getFundingFee(
@@ -465,13 +389,12 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         bool _isLong,
         uint256 _size,
         uint256 _entryFundingRate
-    ) external view override returns (uint256) {
+    ) public view override returns (uint256) {
         if (_size == 0) {
             return 0;
         }
 
-        uint256 fundingRate = cumulativeFundingRates[_indexToken][_isLong] -
-            _entryFundingRate;
+        uint256 fundingRate = cumulativeFundingRates[_indexToken][_isLong] - _entryFundingRate;
         if (fundingRate == 0) {
             return 0;
         }
@@ -483,29 +406,10 @@ contract SettingsManager is ISettingsManager, Governable, Constants {
         address _indexToken,
         bool _isLong,
         uint256 _sizeDelta
-    ) external view override returns (uint256) {
+    ) public view override returns (uint256) {
         if (_sizeDelta == 0) {
             return 0;
         }
-        return
-            (_sizeDelta * marginFeeBasisPoints[_indexToken][_isLong]) /
-            BASIS_POINTS_DIVISOR;
-    }
-
-    function getDelegates(
-        address _master
-    ) external view override returns (address[] memory) {
-        return enumerate(_delegatesByMaster[_master]);
-    }
-
-    function enumerate(
-        EnumerableSet.AddressSet storage set
-    ) internal view returns (address[] memory) {
-        uint256 length = EnumerableSet.length(set);
-        address[] memory output = new address[](length);
-        for (uint256 i; i < length; ++i) {
-            output[i] = EnumerableSet.at(set, i);
-        }
-        return output;
+        return (_sizeDelta * marginFeeBasisPoints[_indexToken][_isLong]) / BASIS_POINTS_DIVISOR;
     }
 }

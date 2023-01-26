@@ -19,18 +19,11 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         priceFeed = _priceFeed;
     }
 
-    function setTokenConfig(
-        address _token,
-        uint256 _tokenDecimals,
-        uint256 _maxLeverage
-    ) external onlyOwner {
+    function setTokenConfig(address _token, uint256 _tokenDecimals, uint256 _maxLeverage) external onlyOwner {
         require(Address.isContract(_token), "Address is wrong");
         require(!isInitialized[_token], "already initialized");
         tokenDecimals[_token] = _tokenDecimals;
-        require(
-            _maxLeverage > MIN_LEVERAGE,
-            "Max Leverage should be greater than Min Leverage"
-        );
+        require(_maxLeverage > MIN_LEVERAGE, "Max Leverage should be greater than Min Leverage");
         maxLeverage[_token] = _maxLeverage;
         getLastPrice(_token);
         isInitialized[_token] = true;
@@ -44,12 +37,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         uint256 _nextPrice,
         uint256 _sizeDelta
     ) external view override returns (uint256) {
-        (bool hasProfit, uint256 delta) = getDelta(
-            _indexToken,
-            _size,
-            _averagePrice,
-            _isLong
-        );
+        (bool hasProfit, uint256 delta) = getDelta(_indexToken, _size, _averagePrice, _isLong);
         uint256 nextSize = _size + _sizeDelta;
         uint256 divisor;
         if (_isLong) {
@@ -60,10 +48,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         return (_nextPrice * nextSize) / divisor;
     }
 
-    function tokenToUsd(
-        address _token,
-        uint256 _tokenAmount
-    ) external view override returns (uint256) {
+    function tokenToUsd(address _token, uint256 _tokenAmount) external view override returns (uint256) {
         if (_tokenAmount == 0) {
             return 0;
         }
@@ -72,10 +57,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         return (_tokenAmount * price) / (10 ** decimals);
     }
 
-    function usdToToken(
-        address _token,
-        uint256 _usdAmount
-    ) external view override returns (uint256) {
+    function usdToToken(address _token, uint256 _usdAmount) external view override returns (uint256) {
         uint256 _price = getLastPrice(_token);
         if (_usdAmount == 0) {
             return 0;
@@ -92,9 +74,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
     ) public view override returns (bool, uint256) {
         require(_averagePrice > 0, "average price should be greater than zero");
         uint256 price = getLastPrice(_indexToken);
-        uint256 priceDelta = _averagePrice >= price
-            ? _averagePrice - price
-            : price - _averagePrice;
+        uint256 priceDelta = _averagePrice >= price ? _averagePrice - price : price - _averagePrice;
         uint256 delta = (_size * priceDelta) / _averagePrice;
 
         bool hasProfit;
@@ -107,9 +87,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         return (hasProfit, delta);
     }
 
-    function getLastPrice(
-        address _token
-    ) public view override returns (uint256) {
+    function getLastPrice(address _token) public view override returns (uint256) {
         return IVaultPriceFeed(priceFeed).getLastPrice(_token);
     }
 }

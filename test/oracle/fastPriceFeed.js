@@ -7,7 +7,7 @@ const { solidity } = require("ethereum-waffle")
 const { ethers, upgrades } = require("hardhat");
 
 const { deployContract } = require("../../scripts/shared/helpers.js")
-const { toUsd, expandDecimals, getBlockTime } = require("../../scripts/shared/utilities.js")
+const { toUsd, expandDecimals, getBlockTime, zeroAddress } = require("../../scripts/shared/utilities.js")
 const { toChainlinkPrice } = require("../../scripts/shared/chainlink.js")
 
 use(solidity)
@@ -16,6 +16,7 @@ describe("FastPriceFeed", function () {
     const provider = waffle.provider
     const [wallet, user0, user1, user2, user3] = provider.getWallets()
     let btcPriceFeed
+    let latestAt
 
     before(async function () {
         btcPriceFeed = await deployContract("FastPriceFeed", [])
@@ -40,6 +41,7 @@ describe("FastPriceFeed", function () {
             .to.be.revertedWith("PriceFeed: forbidden")
         await btcPriceFeed.connect(user1).setLatestAnswer(toChainlinkPrice(60000))
         const answer = await btcPriceFeed.latestAnswer()
+        latestAt = await getBlockTime(provider);
         expect(parseFloat(ethers.utils.formatUnits(answer, 8))).eq(60000)
     })
 
@@ -47,14 +49,16 @@ describe("FastPriceFeed", function () {
         const roundId = 1
         const roundData = await btcPriceFeed.getRoundData(roundId)
         const answer = roundData[1]
-        const latestAt = roundData[2]
+        const roundLatestAt = roundData[2]
+        expect(answer).eq(toChainlinkPrice(60000))
+        expect(roundLatestAt).eq(latestAt)
     })
 
     it ("aggregator", async () => {
-        const aggregator = await btcPriceFeed.aggregator()
+        expect(await btcPriceFeed.aggregator()).eq(zeroAddress)
     })
     
     it("latestRound", async () => {
-        const roundData = await btcPriceFeed.latestRound()
+        expect(await btcPriceFeed.latestRound()).eq(1)
     })
 });

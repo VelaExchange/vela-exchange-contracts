@@ -2,21 +2,10 @@
 
 pragma solidity 0.8.9;
 
-enum OrderType {
-    MARKET,
-    LIMIT,
-    STOP,
-    STOP_LIMIT,
-    TRAILING_STOP
-}
+import {OrderInfo, OrderType} from "../structs.sol";
 
 interface IVaultUtils {
-    function emitClosePositionEvent(
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    ) external;
+    function emitClosePositionEvent(address _account, address _indexToken, bool _isLong, uint256 _posId) external;
 
     function emitDecreasePositionEvent(
         address _account,
@@ -37,34 +26,7 @@ interface IVaultUtils {
         uint256 _fee
     ) external;
 
-    function emitLiquidatePositionEvent(
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    ) external;
-
-    function distributeFee(
-        address _account,
-        address _refer,
-        uint256 _fee
-    ) external;
-
-    function takeVUSDIn(
-        address _account,
-        address _refer,
-        uint256 _amount,
-        uint256 _fee
-    ) external;
-
-    function takeVUSDOut(
-        address _account,
-        address _refer,
-        uint256 _fee,
-        uint256 _usdOut
-    ) external;
-
-    function transferBounty(address _account, uint256 _amount) external;
+    function emitLiquidatePositionEvent(address _account, address _indexToken, bool _isLong, uint256 _posId) external;
 
     function validateConfirmDelay(
         address _account,
@@ -94,28 +56,26 @@ interface IVaultUtils {
         bool _isLong,
         address _indexToken,
         OrderType _orderType,
-        uint256[] memory _triggerPrices,
+        uint256[] memory _params,
         bool _raise
     ) external view returns (bool);
 
-    function validateSizeCollateralAmount(
-        uint256 _size,
-        uint256 _collateral
-    ) external view;
+    function validateSizeCollateralAmount(uint256 _size, uint256 _collateral) external view;
 
     function validateTrailingStopInputData(
         address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId,
-        uint256[] memory _triggerPrices
+        uint256[] memory _params
     ) external view returns (bool);
 
     function validateTrailingStopPrice(
         address _account,
         address _indexToken,
         bool _isLong,
-        uint256 _posId
+        uint256 _posId,
+        bool _raise
     ) external view returns (bool);
 
     function validateTrigger(

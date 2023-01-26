@@ -60,44 +60,20 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         bool _enableCooldown
     );
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
-    event EmergencyWithdraw(
-        address indexed user,
-        uint256 indexed pid,
-        uint256 amount
-    );
-    event EmissionRateUpdated(
-        address indexed caller,
-        uint256 previousValue,
-        uint256 newValue
-    );
-    event RewardLockedUp(
-        address indexed user,
-        uint256 indexed pid,
-        uint256 amountLockedUp
-    );
+    event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
+    event EmissionRateUpdated(address indexed caller, uint256 previousValue, uint256 newValue);
+    event RewardLockedUp(address indexed user, uint256 indexed pid, uint256 amountLockedUp);
     event Set(uint256 indexed pid, IComplexRewarder[] indexed rewarders);
     event UpdateCooldownDuration(uint256 cooldownDuration);
     event UpdateVestingPeriod(uint256 vestingPeriod);
     event UpdateRewardTierInfo(uint256[] levels, uint256[] percents);
     event VestingClaim(address receiver, uint256 amount);
     event VestingDeposit(address account, uint256 amount);
-    event VestingTransfer(
-        address indexed from,
-        address indexed to,
-        uint256 value
-    );
-    event VestingWithdraw(
-        address account,
-        uint256 claimedAmount,
-        uint256 balance
-    );
+    event VestingTransfer(address indexed from, address indexed to, uint256 value);
+    event VestingWithdraw(address account, uint256 claimedAmount, uint256 balance);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
-    constructor(
-        uint256 _vestingDuration,
-        IBoringERC20 _esToken,
-        IBoringERC20 _claimableToken
-    ) {
+    constructor(uint256 _vestingDuration, IBoringERC20 _esToken, IBoringERC20 _claimableToken) {
         //StartBlock always many years later from contract const ruct, will be set later in StartFarming function
         claimableToken = _claimableToken;
         esToken = _esToken;
@@ -112,29 +88,14 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         bool _enableCooldown
     ) external onlyOwner {
         require(_rewarders.length <= 10, "add: too many rewarders");
-        require(
-            Address.isContract(address(_lpToken)),
-            "add: LP token must be a valid contract"
-        );
+        require(Address.isContract(address(_lpToken)), "add: LP token must be a valid contract");
 
-        for (
-            uint256 rewarderId = 0;
-            rewarderId < _rewarders.length;
-            ++rewarderId
-        ) {
-            require(
-                Address.isContract(address(_rewarders[rewarderId])),
-                "add: rewarder must be contract"
-            );
+        for (uint256 rewarderId = 0; rewarderId < _rewarders.length; ++rewarderId) {
+            require(Address.isContract(address(_rewarders[rewarderId])), "add: rewarder must be contract");
         }
 
         poolInfo.push(
-            PoolInfo({
-                lpToken: _lpToken,
-                totalLp: 0,
-                rewarders: _rewarders,
-                enableCooldown: _enableCooldown
-            })
+            PoolInfo({lpToken: _lpToken, totalLp: 0, rewarders: _rewarders, enableCooldown: _enableCooldown})
         );
 
         emit Add(poolInfo.length - 1, _lpToken, _rewarders, _enableCooldown);
@@ -164,8 +125,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         uint256 _amount = user.amount;
         if (_amount > 0) {
             require(
-                !pool.enableCooldown ||
-                    user.startTimestamp + cooldownDuration <= block.timestamp,
+                !pool.enableCooldown || user.startTimestamp + cooldownDuration <= block.timestamp,
                 "didn't pass cooldownDuration"
             );
             pool.lpToken.safeTransfer(msg.sender, _amount);
@@ -176,21 +136,11 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     }
 
     // Update the given pool's Vela allocation point and deposit fee. Can only be called by the owner.
-    function set(
-        uint256 _pid,
-        IComplexRewarder[] calldata _rewarders
-    ) external onlyOwner validatePoolByPid(_pid) {
+    function set(uint256 _pid, IComplexRewarder[] calldata _rewarders) external onlyOwner validatePoolByPid(_pid) {
         require(_rewarders.length <= 10, "set: too many rewarders");
 
-        for (
-            uint256 rewarderId = 0;
-            rewarderId < _rewarders.length;
-            ++rewarderId
-        ) {
-            require(
-                Address.isContract(address(_rewarders[rewarderId])),
-                "set: rewarder must be contract"
-            );
+        for (uint256 rewarderId = 0; rewarderId < _rewarders.length; ++rewarderId) {
+            require(Address.isContract(address(_rewarders[rewarderId])), "set: rewarder must be contract");
         }
 
         poolInfo[_pid].rewarders = _rewarders;
@@ -198,26 +148,15 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit Set(_pid, _rewarders);
     }
 
-    function updateCooldownDuration(
-        uint256 _newCooldownDuration
-    ) external onlyOwner {
-        require(
-            _newCooldownDuration <= MAX_TOKENFARM_COOLDOWN_DURATION,
-            "cooldown duration exceeds max"
-        );
+    function updateCooldownDuration(uint256 _newCooldownDuration) external onlyOwner {
+        require(_newCooldownDuration <= MAX_TOKENFARM_COOLDOWN_DURATION, "cooldown duration exceeds max");
         cooldownDuration = _newCooldownDuration;
         emit UpdateCooldownDuration(_newCooldownDuration);
     }
 
-    function updateRewardTierInfo(
-        uint256[] memory _levels,
-        uint256[] memory _percents
-    ) external onlyOwner {
+    function updateRewardTierInfo(uint256[] memory _levels, uint256[] memory _percents) external onlyOwner {
         uint256 totalLength = tierLevels.length;
-        require(
-            _levels.length == _percents.length,
-            "the length should the same"
-        );
+        require(_levels.length == _percents.length, "the length should the same");
         for (uint256 i = 0; i < totalLength; i++) {
             tierLevels.pop();
             tierPercents.pop();
@@ -229,22 +168,14 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit UpdateRewardTierInfo(_levels, _percents);
     }
 
-    function updateVestingDuration(
-        uint256 _vestingDuration
-    ) external onlyOwner {
-        require(
-            _vestingDuration <= MAX_VESTING_DURATION,
-            "vesting duration exceeds max"
-        );
+    function updateVestingDuration(uint256 _vestingDuration) external onlyOwner {
+        require(_vestingDuration <= MAX_VESTING_DURATION, "vesting duration exceeds max");
         vestingDuration = _vestingDuration;
         emit UpdateVestingPeriod(_vestingDuration);
     }
 
     //withdraw tokens
-    function withdraw(
-        uint256 _pid,
-        uint256 _amount
-    ) external nonReentrant validatePoolByPid(_pid) {
+    function withdraw(uint256 _pid, uint256 _amount) external nonReentrant validatePoolByPid(_pid) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
 
@@ -253,24 +184,15 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
 
         if (_amount > 0) {
             require(
-                !pool.enableCooldown ||
-                    user.startTimestamp + cooldownDuration < block.timestamp,
+                !pool.enableCooldown || user.startTimestamp + cooldownDuration < block.timestamp,
                 "didn't pass cooldownDuration"
             );
             user.amount -= _amount;
             pool.lpToken.safeTransfer(msg.sender, _amount);
         }
 
-        for (
-            uint256 rewarderId = 0;
-            rewarderId < pool.rewarders.length;
-            ++rewarderId
-        ) {
-            pool.rewarders[rewarderId].onVelaReward(
-                _pid,
-                msg.sender,
-                user.amount
-            );
+        for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
+            pool.rewarders[rewarderId].onVelaReward(_pid, msg.sender, user.amount);
         }
 
         if (_amount > 0) {
@@ -286,10 +208,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         uint256 totalClaimed = _claim(account, _receiver);
 
         uint256 totalLocked = lockedVestingAmounts[account];
-        require(
-            totalLocked + totalClaimed > 0,
-            "Vester: vested amount is zero"
-        );
+        require(totalLocked + totalClaimed > 0, "Vester: vested amount is zero");
 
         esToken.safeTransfer(_receiver, totalLocked);
         _decreaseLockedVestingAmount(account, totalLocked);
@@ -301,10 +220,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit VestingWithdraw(account, totalClaimed, totalLocked);
     }
 
-    function _claim(
-        address _account,
-        address _receiver
-    ) internal returns (uint256) {
+    function _claim(address _account, address _receiver) internal returns (uint256) {
         _updateVesting(_account);
         uint256 amount = claimable(_account);
         claimedAmounts[_account] = claimedAmounts[_account] + amount;
@@ -313,10 +229,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         return amount;
     }
 
-    function _decreaseLockedVestingAmount(
-        address _account,
-        uint256 _amount
-    ) internal {
+    function _decreaseLockedVestingAmount(address _account, uint256 _amount) internal {
         lockedVestingAmounts[_account] -= _amount;
         totalLockedVestingAmount -= _amount;
 
@@ -324,10 +237,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     }
 
     // Deposit tokens for Vela allocation.
-    function _deposit(
-        uint256 _pid,
-        uint256 _amount
-    ) internal validatePoolByPid(_pid) {
+    function _deposit(uint256 _pid, uint256 _amount) internal validatePoolByPid(_pid) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
 
@@ -341,16 +251,8 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
             user.startTimestamp = block.timestamp;
         }
 
-        for (
-            uint256 rewarderId = 0;
-            rewarderId < pool.rewarders.length;
-            ++rewarderId
-        ) {
-            pool.rewarders[rewarderId].onVelaReward(
-                _pid,
-                msg.sender,
-                user.amount
-            );
+        for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
+            pool.rewarders[rewarderId].onVelaReward(_pid, msg.sender, user.amount);
         }
 
         if (_amount > 0) {
@@ -374,10 +276,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit VestingDeposit(_account, _amount);
     }
 
-    function _increaseLockedVestingAmount(
-        address _account,
-        uint256 _amount
-    ) internal {
+    function _increaseLockedVestingAmount(address _account, uint256 _amount) internal {
         require(_account != ZERO_ADDRESS, "Vester: mint to the zero address");
 
         totalLockedVestingAmount += _amount;
@@ -400,10 +299,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         IMintable(address(esToken)).burn(address(this), unlockedThisTime);
     }
 
-    function getTier(
-        uint256 _pid,
-        address _account
-    ) external view override returns (uint256) {
+    function getTier(uint256 _pid, address _account) external view override returns (uint256) {
         UserInfo storage user = userInfo[_pid][_account];
         if (tierLevels.length == 0 || user.amount < tierLevels[0]) {
             return BASIS_POINTS_DIVISOR;
@@ -419,8 +315,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     }
 
     function getTotalVested(address _account) external view returns (uint256) {
-        return (lockedVestingAmounts[_account] +
-            unlockedVestingAmounts[_account]);
+        return (lockedVestingAmounts[_account] + unlockedVestingAmounts[_account]);
     }
 
     // View function to see pending rewards on frontend.
@@ -444,26 +339,13 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         amounts = new uint256[](pool.rewarders.length);
         decimals = new uint256[](pool.rewarders.length);
 
-        for (
-            uint256 rewarderId = 0;
-            rewarderId < pool.rewarders.length;
-            ++rewarderId
-        ) {
-            addresses[rewarderId] = address(
-                pool.rewarders[rewarderId].rewardToken()
-            );
+        for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
+            addresses[rewarderId] = address(pool.rewarders[rewarderId].rewardToken());
 
-            symbols[rewarderId] = IBoringERC20(
-                pool.rewarders[rewarderId].rewardToken()
-            ).safeSymbol();
+            symbols[rewarderId] = IBoringERC20(pool.rewarders[rewarderId].rewardToken()).safeSymbol();
 
-            decimals[rewarderId] = IBoringERC20(
-                pool.rewarders[rewarderId].rewardToken()
-            ).safeDecimals();
-            amounts[rewarderId] = pool.rewarders[rewarderId].pendingTokens(
-                _pid,
-                _user
-            );
+            decimals[rewarderId] = IBoringERC20(pool.rewarders[rewarderId].rewardToken()).safeDecimals();
+            amounts[rewarderId] = pool.rewarders[rewarderId].pendingTokens(_pid, _user);
         }
     }
 
@@ -472,21 +354,10 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     }
 
     // View function to see rewarders for a pool
-    function poolRewarders(
-        uint256 _pid
-    )
-        external
-        view
-        validatePoolByPid(_pid)
-        returns (address[] memory rewarders)
-    {
+    function poolRewarders(uint256 _pid) external view validatePoolByPid(_pid) returns (address[] memory rewarders) {
         PoolInfo storage pool = poolInfo[_pid];
         rewarders = new address[](pool.rewarders.length);
-        for (
-            uint256 rewarderId = 0;
-            rewarderId < pool.rewarders.length;
-            ++rewarderId
-        ) {
+        for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
             rewarders[rewarderId] = address(pool.rewarders[rewarderId]);
         }
     }
@@ -512,26 +383,14 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         decimals = new uint256[](pool.rewarders.length);
         rewardsPerSec = new uint256[](pool.rewarders.length);
 
-        for (
-            uint256 rewarderId = 0;
-            rewarderId < pool.rewarders.length;
-            ++rewarderId
-        ) {
-            addresses[rewarderId] = address(
-                pool.rewarders[rewarderId].rewardToken()
-            );
+        for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
+            addresses[rewarderId] = address(pool.rewarders[rewarderId].rewardToken());
 
-            symbols[rewarderId] = IBoringERC20(
-                pool.rewarders[rewarderId].rewardToken()
-            ).safeSymbol();
+            symbols[rewarderId] = IBoringERC20(pool.rewarders[rewarderId].rewardToken()).safeSymbol();
 
-            decimals[rewarderId] = IBoringERC20(
-                pool.rewarders[rewarderId].rewardToken()
-            ).safeDecimals();
+            decimals[rewarderId] = IBoringERC20(pool.rewarders[rewarderId].rewardToken()).safeDecimals();
 
-            rewardsPerSec[rewarderId] = pool
-                .rewarders[rewarderId]
-                .poolRewardsPerSec(_pid);
+            rewardsPerSec[rewarderId] = pool.rewarders[rewarderId].poolRewardsPerSec(_pid);
         }
     }
 
@@ -540,8 +399,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     }
 
     function claimable(address _account) public view returns (uint256) {
-        uint256 amount = unlockedVestingAmounts[_account] -
-            claimedAmounts[_account];
+        uint256 amount = unlockedVestingAmounts[_account] - claimedAmounts[_account];
         uint256 nextClaimable = _getNextClaimableAmount(_account);
         return (amount + nextClaimable);
     }
@@ -552,9 +410,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         return (balance + cumulativeClaimAmount);
     }
 
-    function _getNextClaimableAmount(
-        address _account
-    ) private view returns (uint256) {
+    function _getNextClaimableAmount(address _account) private view returns (uint256) {
         uint256 lockedAmount = lockedVestingAmounts[_account];
         if (lockedAmount == 0) {
             return 0;

@@ -24,15 +24,9 @@ contract Vela is ERC20, ERC20Permit, Pausable, AccessControl {
 
     event MetaTxnsDisabled(address indexed caller);
     event MetaTxnsEnabled(address indexed caller);
-    event TokensRescued(
-        address indexed sender,
-        address indexed token,
-        uint256 value
-    );
+    event TokensRescued(address indexed sender, address indexed token, uint256 value);
 
-    constructor(
-        address trustedForwarder
-    ) ERC20("Vela", "VELA") ERC20Permit("Vela") {
+    constructor(address trustedForwarder) ERC20("Vela", "VELA") ERC20Permit("Vela") {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(PAUSER_ROLE, _msgSender());
         _setupRole(MINTER_ROLE, _msgSender());
@@ -58,10 +52,7 @@ contract Vela is ERC20, ERC20Permit, Pausable, AccessControl {
     }
 
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
-        require(
-            totalSupply() + amount <= _maxSupply,
-            "ERC20: cannot mint more tokens, cap exceeded"
-        );
+        require(totalSupply() + amount <= _maxSupply, "ERC20: cannot mint more tokens, cap exceeded");
         _mint(to, amount);
     }
 
@@ -69,10 +60,7 @@ contract Vela is ERC20, ERC20Permit, Pausable, AccessControl {
         _pause();
     }
 
-    function rescueTokens(
-        IERC20 token,
-        uint256 value
-    ) external onlyRole(RESCUER_ROLE) {
+    function rescueTokens(IERC20 token, uint256 value) external onlyRole(RESCUER_ROLE) {
         token.transfer(_msgSender(), value);
         emit TokensRescued(_msgSender(), address(token), value);
     }
@@ -88,17 +76,11 @@ contract Vela is ERC20, ERC20Permit, Pausable, AccessControl {
         return _maxSupply;
     }
 
-    function isTrustedForwarder(
-        address forwarder
-    ) public view virtual returns (bool) {
+    function isTrustedForwarder(address forwarder) public view virtual returns (bool) {
         return forwarder == _trustedForwarder;
     }
 
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override whenNotPaused {
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override whenNotPaused {
         super._beforeTokenTransfer(from, to, amount);
     }
 

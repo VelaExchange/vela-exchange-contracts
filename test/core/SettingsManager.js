@@ -21,6 +21,7 @@ describe("SettingsManager", function () {
     let vlp;
     let vela;
     let eVela;
+    let PositionVault;
     let priceManager;
     let settingsManager;
     let triggerOrderManager;
@@ -95,16 +96,17 @@ describe("SettingsManager", function () {
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
            vlp.address,
-           vusd.address,
-           tokenFarm.address
+           vusd.address
         ]);
+        PositionVault = await deployContract("PositionVault", [])        
         priceManager = await deployContract("PriceManager", [
           vaultPriceFeed.address
         ])
         settingsManager = await deployContract("SettingsManager",
           [
-            Vault.address,
-            vusd.address
+            PositionVault.address,
+            vusd.address,
+            tokenFarm.address
           ]
         )
     });

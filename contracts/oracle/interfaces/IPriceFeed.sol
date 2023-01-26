@@ -7,9 +7,7 @@ interface IPriceFeed {
 
     function description() external view returns (string memory);
 
-    function getRoundData(
-        uint80 roundId
-    ) external view returns (uint80, uint256, uint256, uint256, uint80);
+    function getRoundData(uint80 roundId) external view returns (uint80, uint256, uint256, uint256, uint80);
 
     function latestAnswer() external view returns (uint256);
 

@@ -36,33 +36,25 @@ describe("vUSD", function () {
         expect(await vUSD.gov()).eq(user1.address)
     })
 
-    it ("addAdmin", async () => {
-        await expect(vUSD.connect(wallet).addAdmin(user2.address))
-            .to.be.revertedWith('Governable: forbidden')
-        await vUSD.connect(user1).addAdmin(user2.address)
-        await vUSD.connect(user1).addAdmin(user2.address)
-        await expect(vUSD.connect(user1).addAdmin(user2.address)).to.be.revertedWith("VUSD: cant exceed max count")
-    })
-
     it ("mint", async () => {
         const amount = expandDecimals('1000', 30)
         await expect(vUSD.connect(user3).mint(user3.address, amount))
-        .to.be.revertedWith('VUSD: forbidden')
-        await expect(vUSD.connect(user2).mint(zeroAddress, amount))
+        .to.be.revertedWith('Governable: forbidden')
+        await expect(vUSD.connect(user1).mint(zeroAddress, amount))
             .to.be.revertedWith('VUSD: mint to the zero address')
-        await vUSD.connect(user2).mint(user3.address, amount)
+        await vUSD.connect(user1).mint(user3.address, amount)
         expect(await vUSD.balanceOf(user3.address)).eq(amount)
     })
 
     it ("burn", async () => {
         const amount = expandDecimals('1000', 30)
         await expect(vUSD.connect(user3).burn(user3.address, amount))
-            .to.be.revertedWith('VUSD: forbidden')
-        await vUSD.connect(user2).burn(user3.address, amount)
+            .to.be.revertedWith('Governable: forbidden')
+        await vUSD.connect(user1).burn(user3.address, amount)
         expect(await vUSD.balanceOf(user3.address)).eq(expandDecimals('0', 1))
-        await expect(vUSD.connect(user2).burn(zeroAddress, amount))
+        await expect(vUSD.connect(user1).burn(zeroAddress, amount))
             .to.be.revertedWith('VUSD: burn from the zero address')
-        await expect(vUSD.connect(user2).burn(user3.address, amount))
+        await expect(vUSD.connect(user1).burn(user3.address, amount))
             .to.be.revertedWith('VUSD: burn amount exceeds balance')
     })
 

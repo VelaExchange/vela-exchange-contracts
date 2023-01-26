@@ -42,50 +42,26 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     mapping(uint256 => RewardInfo[]) public poolRewardInfo;
 
     event AddPool(uint256 indexed pid);
-    event AddRewardInfo(
-        uint256 indexed pid,
-        uint256 indexed phase,
-        uint256 endTimestamp,
-        uint256 rewardPerSec
-    );
+    event AddRewardInfo(uint256 indexed pid, uint256 indexed phase, uint256 endTimestamp, uint256 rewardPerSec);
     event OnReward(address indexed user, uint256 amount);
     event RewardRateUpdated(uint256 oldRate, uint256 newRate);
-    event UpdatePool(
-        uint256 indexed pid,
-        uint256 lastRewardTimestamp,
-        uint256 lpSupply,
-        uint256 accTokenPerShare
-    );
+    event UpdatePool(uint256 indexed pid, uint256 lastRewardTimestamp, uint256 lpSupply, uint256 accTokenPerShare);
 
     modifier onlyDistributor() {
-        require(
-            msg.sender == address(distributor),
-            "onlyDistributor: only Distributor can call this function"
-        );
+        require(msg.sender == address(distributor), "onlyDistributor: only Distributor can call this function");
         _;
     }
 
     constructor(IBoringERC20 _rewardToken, IFarmDistributor _distributor) {
-        require(
-            Address.isContract(address(_rewardToken)),
-            "constructor: reward token must be a valid contract"
-        );
-        require(
-            Address.isContract(address(_distributor)),
-            "constructor: FarmDistributor must be a valid contract"
-        );
+        require(Address.isContract(address(_rewardToken)), "constructor: reward token must be a valid contract");
+        require(Address.isContract(address(_distributor)), "constructor: FarmDistributor must be a valid contract");
         rewardToken = _rewardToken;
         distributor = _distributor;
 
         uint256 decimalsRewardToken = _rewardToken.safeDecimals();
-        require(
-            decimalsRewardToken < 30,
-            "constructor: reward token decimals must be inferior to 30"
-        );
+        require(decimalsRewardToken < 30, "constructor: reward token decimals must be inferior to 30");
 
-        ACC_TOKEN_PRECISION = uint256(
-            10 ** (uint256(30) - (decimalsRewardToken))
-        );
+        ACC_TOKEN_PRECISION = uint256(10 ** (uint256(30) - (decimalsRewardToken)));
     }
 
     /// @notice Add a new pool. Can only be called by the owner.
@@ -105,26 +81,16 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     }
 
     /// @notice if the new reward info is added, the reward & its end timestamp will be extended by the newly pushed reward info.
-    function addRewardInfo(
-        uint256 _pid,
-        uint256 _endTimestamp,
-        uint256 _rewardPerSec
-    ) external payable onlyOwner {
+    function addRewardInfo(uint256 _pid, uint256 _endTimestamp, uint256 _rewardPerSec) external payable onlyOwner {
         RewardInfo[] storage rewardInfo = poolRewardInfo[_pid];
         PoolInfo storage pool = poolInfo[_pid];
+        require(rewardInfo.length < rewardInfoLimit, "add reward info: reward info length exceeds the limit");
         require(
-            rewardInfo.length < rewardInfoLimit,
-            "add reward info: reward info length exceeds the limit"
-        );
-        require(
-            rewardInfo.length == 0 ||
-                rewardInfo[rewardInfo.length - 1].endTimestamp >=
-                block.timestamp,
+            rewardInfo.length == 0 || rewardInfo[rewardInfo.length - 1].endTimestamp >= block.timestamp,
             "add reward info: reward period ended"
         );
         require(
-            rewardInfo.length == 0 ||
-                rewardInfo[rewardInfo.length - 1].endTimestamp < _endTimestamp,
+            rewardInfo.length == 0 || rewardInfo[rewardInfo.length - 1].endTimestamp < _endTimestamp,
             "add reward info: bad new endTimestamp"
         );
 
@@ -139,19 +105,10 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
         pool.totalRewards += totalRewards;
 
         rewardInfo.push(
-            RewardInfo({
-                startTimestamp: startTimestamp,
-                endTimestamp: _endTimestamp,
-                rewardPerSec: _rewardPerSec
-            })
+            RewardInfo({startTimestamp: startTimestamp, endTimestamp: _endTimestamp, rewardPerSec: _rewardPerSec})
         );
 
-        emit AddRewardInfo(
-            _pid,
-            rewardInfo.length - 1,
-            _endTimestamp,
-            _rewardPerSec
-        );
+        emit AddRewardInfo(_pid, rewardInfo.length - 1, _endTimestamp, _rewardPerSec);
     }
 
     /// @notice Withdraw reward. EMERGENCY ONLY.
@@ -175,10 +132,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     }
 
     /// @notice Withdraw reward. EMERGENCY ONLY.
-    function emergencyWithdraw(
-        uint256 _amount,
-        address _beneficiary
-    ) external onlyOwner nonReentrant {
+    function emergencyWithdraw(uint256 _amount, address _beneficiary) external onlyOwner nonReentrant {
         rewardToken.safeTransfer(_beneficiary, _amount);
     }
 
@@ -190,11 +144,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     /// @notice Function called by FarmDistributor whenever staker claims VELA harvest. Allows staker to also receive a 2nd reward token.
     /// @param _user Address of user
     /// @param _amount Number of LP tokens the user has
-    function onVelaReward(
-        uint256 _pid,
-        address _user,
-        uint256 _amount
-    ) external override onlyDistributor nonReentrant {
+    function onVelaReward(uint256 _pid, address _user, uint256 _amount) external override onlyDistributor nonReentrant {
         PoolInfo memory pool = _updatePool(_pid);
         UserInfo storage user = userInfo[_pid][_user];
 
@@ -204,8 +154,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
         rewardBalance = rewardToken.balanceOf(address(this));
 
         if (user.amount > 0) {
-            pending = (((user.amount * pool.accTokenPerShare) /
-                ACC_TOKEN_PRECISION) - user.rewardDebt);
+            pending = (((user.amount * pool.accTokenPerShare) / ACC_TOKEN_PRECISION) - user.rewardDebt);
 
             if (pending > 0) {
                 if (pending > rewardBalance) {
@@ -218,9 +167,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
 
         user.amount = _amount;
 
-        user.rewardDebt =
-            (user.amount * pool.accTokenPerShare) /
-            ACC_TOKEN_PRECISION;
+        user.rewardDebt = (user.amount * pool.accTokenPerShare) / ACC_TOKEN_PRECISION;
 
         emit OnReward(_user, pending);
     }
@@ -228,9 +175,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     /// @notice Update reward variables of the given pool.
     /// @param _pid The index of the pool. See `poolInfo`.
     /// @return pool Returns the pool that was updated.
-    function updatePool(
-        uint256 _pid
-    ) external nonReentrant returns (PoolInfo memory pool) {
+    function updatePool(uint256 _pid) external nonReentrant returns (PoolInfo memory pool) {
         return _updatePool(_pid);
     }
 
@@ -261,12 +206,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
             // in order to keep the multiplier = 0
             if (block.timestamp > _endTimestampOf(pid, block.timestamp)) {
                 pool.lastRewardTimestamp = block.timestamp;
-                emit UpdatePool(
-                    pid,
-                    pool.lastRewardTimestamp,
-                    lpSupply,
-                    pool.accTokenPerShare
-                );
+                emit UpdatePool(pid, pool.lastRewardTimestamp, lpSupply, pool.accTokenPerShare);
             }
 
             return pool;
@@ -277,11 +217,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
             // @dev get multiplier based on current timestamp and rewardInfo's end timestamp
             // multiplier will be a range of either (current timestamp - pool.timestamp)
             // or (reward info's endtimestamp - pool.timestamp) or 0
-            uint256 timeElapsed = getTimeElapsed(
-                pool.lastRewardTimestamp,
-                block.timestamp,
-                rewardInfo[i].endTimestamp
-            );
+            uint256 timeElapsed = getTimeElapsed(pool.lastRewardTimestamp, block.timestamp, rewardInfo[i].endTimestamp);
             if (timeElapsed == 0) continue;
 
             // @dev if currentTimestamp exceed end timestamp, use end timestamp as the last reward timestamp
@@ -294,18 +230,12 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
 
             uint256 tokenReward = (timeElapsed * rewardInfo[i].rewardPerSec);
 
-            pool.accTokenPerShare += ((tokenReward * ACC_TOKEN_PRECISION) /
-                lpSupply);
+            pool.accTokenPerShare += ((tokenReward * ACC_TOKEN_PRECISION) / lpSupply);
         }
 
         poolInfo[pid] = pool;
 
-        emit UpdatePool(
-            pid,
-            pool.lastRewardTimestamp,
-            lpSupply,
-            pool.accTokenPerShare
-        );
+        emit UpdatePool(pid, pool.lastRewardTimestamp, lpSupply, pool.accTokenPerShare);
 
         return pool;
     }
@@ -316,31 +246,17 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     }
 
     /// @notice View function to see pending Reward on frontend.
-    function pendingTokens(
-        uint256 _pid,
-        address _user
-    ) external view override returns (uint256) {
-        return
-            _pendingTokens(
-                _pid,
-                userInfo[_pid][_user].amount,
-                userInfo[_pid][_user].rewardDebt
-            );
+    function pendingTokens(uint256 _pid, address _user) external view override returns (uint256) {
+        return _pendingTokens(_pid, userInfo[_pid][_user].amount, userInfo[_pid][_user].rewardDebt);
     }
 
     /// @notice View function to see pool rewards per sec
-    function poolRewardsPerSec(
-        uint256 _pid
-    ) external view override returns (uint256) {
+    function poolRewardsPerSec(uint256 _pid) external view override returns (uint256) {
         return _rewardPerSecOf(_pid, block.timestamp);
     }
 
     /// @notice Return reward multiplier over the given _from to _to timestamp.
-    function getTimeElapsed(
-        uint256 _from,
-        uint256 _to,
-        uint256 _endTimestamp
-    ) public pure returns (uint256) {
+    function getTimeElapsed(uint256 _from, uint256 _to, uint256 _endTimestamp) public pure returns (uint256) {
         if ((_from >= _endTimestamp) || (_from > _to)) {
             return 0;
         }
@@ -350,18 +266,14 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
         return _endTimestamp - _from;
     }
 
-    function _endTimestampOf(
-        uint256 _pid,
-        uint256 _timestamp
-    ) internal view returns (uint256) {
+    function _endTimestampOf(uint256 _pid, uint256 _timestamp) internal view returns (uint256) {
         RewardInfo[] memory rewardInfo = poolRewardInfo[_pid];
         uint256 len = rewardInfo.length;
         if (len == 0) {
             return 0;
         }
         for (uint256 i = 0; i < len; ++i) {
-            if (_timestamp <= rewardInfo[i].endTimestamp)
-                return rewardInfo[i].endTimestamp;
+            if (_timestamp <= rewardInfo[i].endTimestamp) return rewardInfo[i].endTimestamp;
         }
 
         /// @dev when couldn't find any reward info, it means that _timestamp exceed endTimestamp
@@ -384,31 +296,20 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
             uint256 cursor = pool.lastRewardTimestamp;
 
             for (uint256 i = 0; i < rewardInfo.length; ++i) {
-                uint256 timeElapsed = getTimeElapsed(
-                    cursor,
-                    block.timestamp,
-                    rewardInfo[i].endTimestamp
-                );
+                uint256 timeElapsed = getTimeElapsed(cursor, block.timestamp, rewardInfo[i].endTimestamp);
                 if (timeElapsed == 0) continue;
                 cursor = rewardInfo[i].endTimestamp;
 
-                uint256 tokenReward = (timeElapsed *
-                    rewardInfo[i].rewardPerSec);
+                uint256 tokenReward = (timeElapsed * rewardInfo[i].rewardPerSec);
 
-                accTokenPerShare +=
-                    (tokenReward * ACC_TOKEN_PRECISION) /
-                    lpSupply;
+                accTokenPerShare += (tokenReward * ACC_TOKEN_PRECISION) / lpSupply;
             }
         }
 
-        pending = (((_amount * accTokenPerShare) / ACC_TOKEN_PRECISION) -
-            _rewardDebt);
+        pending = (((_amount * accTokenPerShare) / ACC_TOKEN_PRECISION) - _rewardDebt);
     }
 
-    function _rewardPerSecOf(
-        uint256 _pid,
-        uint256 _blockTimestamp
-    ) internal view returns (uint256) {
+    function _rewardPerSecOf(uint256 _pid, uint256 _blockTimestamp) internal view returns (uint256) {
         RewardInfo[] memory rewardInfo = poolRewardInfo[_pid];
         PoolInfo storage pool = poolInfo[_pid];
         uint256 len = rewardInfo.length;
@@ -419,8 +320,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
             return 0;
         }
         for (uint256 i = 0; i < len; ++i) {
-            if (_blockTimestamp <= rewardInfo[i].endTimestamp)
-                return rewardInfo[i].rewardPerSec;
+            if (_blockTimestamp <= rewardInfo[i].endTimestamp) return rewardInfo[i].rewardPerSec;
         }
         /// @dev when couldn't find any reward info, it means that timestamp exceed endblock
         /// so return 0
