@@ -44,7 +44,6 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     mapping(address => uint256) public claimedAmounts;
     mapping(address => uint256) public unlockedVestingAmounts;
     mapping(address => uint256) public lastVestingUpdateTimes;
-    mapping(address => uint256) public stakedAmounts;
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
     mapping(address => uint256) public lockedVestingAmounts;
 
@@ -157,6 +156,8 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     function updateRewardTierInfo(uint256[] memory _levels, uint256[] memory _percents) external onlyOwner {
         uint256 totalLength = tierLevels.length;
         require(_levels.length == _percents.length, "the length should the same");
+        require(_validateLevels(_levels), "levels not sorted");
+        require(_validatePercents(_percents), "percents exceed 100%");
         for (uint256 i = 0; i < totalLength; i++) {
             tierLevels.pop();
             tierPercents.pop();
@@ -429,5 +430,26 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         }
 
         return lockedAmount;
+    }
+    function _validateLevels(uint256[] memory _levels) internal pure returns (bool) {
+        unchecked {
+            for (uint16 i = 1; i != _levels.length; ++i) {
+                if (_levels[i-1] >= _levels[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    function _validatePercents(uint256[] memory _percents) internal pure returns (bool) {
+        unchecked {
+            for (uint16 i = 0; i != _percents.length; ++i) {
+                if (_percents[i] > BASIS_POINTS_DIVISOR) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 }

@@ -272,7 +272,7 @@ describe("TriggerOrderManager", function () {
     })
 
     it ("add Vault as admin", async () => {
-     await vusd.setGov(Vault.address); // addAdmin vault
+     await vusd.transferOwnership(Vault.address); // addAdmin vault
     })
 
     it ("deploy ComplexRewardPerSec and add pool info to tokenFarm", async () => {
@@ -1024,7 +1024,7 @@ describe("TriggerOrderManager", function () {
       tpTriggeredAmounts,
       slTriggeredAmounts,
       {from: wallet.address, value: 0}
-    )).to.be.revertedWith("position size should be greather than zero")
+    )).to.be.revertedWith("position size should be greater than zero")
    })
 
    it ("updateTriggerOrdersData for Long", async () => {
@@ -1232,7 +1232,7 @@ describe("TriggerOrderManager", function () {
       tpTriggeredAmounts,
       slTriggeredAmounts,
       {from: wallet.address, value: 0}
-    )).to.be.revertedWith("position size should be greather than zero")
+    )).to.be.revertedWith("position size should be greater than zero")
    })
 
    it ("updateTriggerOrdersData for Short", async () => {

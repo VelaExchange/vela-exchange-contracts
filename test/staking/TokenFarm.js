@@ -450,6 +450,24 @@ describe("TokenFarm", function () {
                 (100 - 2) * 1000,
                 (100 - 3) * 1000
             ])).to.be.revertedWith("the length should the same");
+        await expect(tokenFarm.updateRewardTierInfo(
+            [
+                expandDecimals('1500', 18),
+                expandDecimals('1000', 18)
+            ], 
+            [
+                (100 - 2) * 1000,
+                (100 - 3) * 1000
+            ])).to.be.revertedWith("levels not sorted");
+        await expect(tokenFarm.updateRewardTierInfo(
+            [
+                expandDecimals('1000', 18),
+                expandDecimals('1500', 18)
+            ], 
+            [
+                (120) * 1000,
+                (100 - 3) * 1000
+            ])).to.be.revertedWith("percents exceed 100%");
         await tokenFarm.updateRewardTierInfo(levels, percents);
         const tierLevelOne = await tokenFarm.tierLevels(0)
         const tierPercentOne = await tokenFarm.tierPercents(0)

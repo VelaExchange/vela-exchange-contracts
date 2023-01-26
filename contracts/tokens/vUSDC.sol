@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IVUSDC.sol";
-import "../access/Governable.sol";
 
-contract vUSDC is IVUSDC, Governable {
+contract vUSDC is IVUSDC, Ownable {
     uint8 public constant decimals = 30;
 
     string public name;
@@ -21,15 +21,15 @@ contract vUSDC is IVUSDC, Governable {
         _mint(msg.sender, _initialSupply);
     }
 
-    function burn(address _account, uint256 _amount) external override onlyGov {
+    function burn(address _account, uint256 _amount) external override onlyOwner {
         _burn(_account, _amount);
     }
 
-    function mint(address _account, uint256 _amount) external override onlyGov {
+    function mint(address _account, uint256 _amount) external override onlyOwner {
         _mint(_account, _amount);
     }
 
-    function setInfo(string memory _name, string memory _symbol) external onlyGov {
+    function setInfo(string memory _name, string memory _symbol) external onlyOwner {
         name = _name;
         symbol = _symbol;
     }

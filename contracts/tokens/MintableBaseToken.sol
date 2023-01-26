@@ -30,7 +30,7 @@ contract MintableBaseToken is BaseToken, IMintable {
         _mint(_account, _amount);
     }
 
-    function setMinter(address _minter, bool _isActive) external override onlyGov {
+    function setMinter(address _minter, bool _isActive) external override onlyOwner {
         require(mintersCount < MAX_MINTER_COUNT, "cant exceed max count");
         isMinter[_minter] = _isActive;
         mintersCount += 1;

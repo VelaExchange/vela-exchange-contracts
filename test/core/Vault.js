@@ -313,7 +313,7 @@ describe("Vault", function () {
     });
 
     it ("add Vault as admin", async () => {
-       await vusd.setGov(Vault.address); // addAdmin vault
+       await vusd.transferOwnership(Vault.address); // addAdmin vault
      })
 
     it ("Vault Initialize by settingsManager", async () => {
@@ -519,7 +519,7 @@ describe("Vault", function () {
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount);
     await usdc.connect(wallet).approve(Vault.address,  amount); // approve USDC
     await expect(Vault.connect(user1).deposit(wallet.address, usdc.address, amount))
-    .to.be.revertedWith("zero amount not allowed for deposit"); // deposit USDC
+    .to.be.revertedWith("zero amount or not allowed for depositFor"); // deposit USDC
     await settingsManager.connect(wallet).delegate([user1.address, user0.address])
     expect(await settingsManager.checkDelegation(wallet.address, user1.address))
       .eq(true)
@@ -559,7 +559,7 @@ describe("Vault", function () {
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount);
     await usdc.connect(wallet).approve(Vault.address,  amount); // approve USDC
     await expect(Vault.connect(user1).stake(wallet.address, usdc.address, amount))
-      .to.be.revertedWith("zero amount not allowed for stake"); // stake USDC
+      .to.be.revertedWith("zero amount or not allowed for stakeFor"); // stake USDC
     await settingsManager.connect(wallet).delegate([user1.address, user0.address])
     expect(await settingsManager.checkDelegation(wallet.address, user1.address))
       .eq(true)
@@ -1833,7 +1833,7 @@ describe("Vault", function () {
       expandDecimals('1000', 30),
       isLong,
       posId
-    )).to.be.revertedWith("borrowed amount exceed the bottom")
+    )).to.be.revertedWith("Vault: reservedAmounts exceeded")
     await expect(Vault.decreasePosition(
       indexToken,
       sizeDelta,

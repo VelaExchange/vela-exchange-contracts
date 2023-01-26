@@ -317,19 +317,9 @@ describe("SettingsManager", function () {
       await settingsManager.setReferEnabled(referEnabled)
     })
 
-    it ("setCustomFeeForUser", async () => {
-      const _account = wallet.address
-      const _feePoints = 100
-      const _isEnabled = true
-      const maxFeePoints = 51000
-      await expect(settingsManager.setCustomFeeForUser(_account, maxFeePoints, _isEnabled))
-        .to.be.revertedWith("custom fee exceeds MAX")
-      await settingsManager.setCustomFeeForUser(_account, _feePoints, _isEnabled)
-    })
-
     it ("setFeeManager", async () => {
       await expect(settingsManager.connect(user2).setFeeManager(user0.address))
-        .to.be.revertedWith("Governable: forbidden")
+        .to.be.revertedWith("Ownable: caller is not the owner")
       await settingsManager.setFeeManager(user0.address)
     })
 

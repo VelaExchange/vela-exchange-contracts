@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../access/Governable.sol";
 
-contract BaseToken is IERC20, Governable {
+contract BaseToken is IERC20, Ownable {
     using SafeERC20 for IERC20;
 
     string public name;
@@ -14,7 +14,6 @@ contract BaseToken is IERC20, Governable {
     uint8 public constant decimals = 18;
     uint256 public override totalSupply;
 
-    mapping(address => bool) public admins;
     mapping(address => uint256) public balances;
     mapping(address => mapping(address => uint256)) public allowances;
 
@@ -29,7 +28,7 @@ contract BaseToken is IERC20, Governable {
         return true;
     }
 
-    function setInfo(string memory _name, string memory _symbol) external onlyGov {
+    function setInfo(string memory _name, string memory _symbol) external onlyOwner {
         name = _name;
         symbol = _symbol;
     }

@@ -7,8 +7,6 @@ interface ISettingsManager {
 
     function increaseBorrowedUsd(address _token, address _sender, bool _isLong, uint256 _amount) external;
 
-    function setCustomFeeForUser(address _account, uint256 _feePoints, bool _isEnabled) external;
-
     function updateCumulativeFundingRate(address _token, bool _isLong) external;
 
     function borrowedUsdPerAsset(address _token) external view returns (uint256);

@@ -3,11 +3,10 @@
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IVaultPriceFeed.sol";
 import "../oracle/interfaces/IPriceFeed.sol";
-import "../access/Governable.sol";
 
 pragma solidity 0.8.9;
 
-contract VaultPriceFeed is IVaultPriceFeed, Governable {
+contract VaultPriceFeed is IVaultPriceFeed {
     mapping(address => bool) private isInitialized;
     uint256 public constant PRICE_PRECISION = 10 ** 30;
 
@@ -16,7 +15,7 @@ contract VaultPriceFeed is IVaultPriceFeed, Governable {
 
     constructor() {}
 
-    function setTokenConfig(address _token, address _priceFeed, uint256 _priceDecimals) external override onlyGov {
+    function setTokenConfig(address _token, address _priceFeed, uint256 _priceDecimals) external override {
         require(Address.isContract(_token), "Address is wrong");
         require(!isInitialized[_token], "already initialized");
         priceFeeds[_token] = _priceFeed;
