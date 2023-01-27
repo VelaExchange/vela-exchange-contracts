@@ -21,7 +21,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     bool public override marketOrderEnabled = true;
     address public override positionManager;
     bool public override referEnabled;
-    uint256 public maxBorrowUSDAmountPerUser;
+    uint256 public maxOpenInterestPerUser;
     uint256 public priceMovementPercent = 500; // 0.5%
 
     uint256 public override bountyPercent = 20000; // 20%
@@ -45,13 +45,13 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => mapping(bool => uint256)) public override marginFeeBasisPoints; // = 100; // 0.1%
     mapping(address => mapping(bool => uint256)) public override lastFundingTimes;
 
-    mapping(bool => uint256) public maxBorrowUSDAmountPerSide;
+    mapping(bool => uint256) public maxOpenInterestPerSide;
 
     mapping(address => uint256) public liquidateThreshold;
-    mapping(address => uint256) public maxBorrowUSDAmountPerAsset;
-    mapping(address => uint256) public override borrowedUsdPerAsset;
-    mapping(address => uint256) public override borrowedUsdPerUser;
-    mapping(bool => uint256) public override borrowedUsdPerSide;
+    mapping(address => uint256) public maxOpenInterestPerAsset;
+    mapping(address => uint256) public override openInterestPerAsset;
+    mapping(address => uint256) public override openInterestPerUser;
+    mapping(bool => uint256) public override openInterestPerSide;
     mapping(address => EnumerableSet.AddressSet) private _delegatesByMaster;
 
     event ChangedReferEnabled(bool referEnabled);
@@ -65,15 +65,15 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetFundingRateFactor(address indexed token, bool isLong, uint256 fundingRateFactor);
     event SetLiquidationFeeUsd(uint256 indexed _liquidationFeeUsd);
     event SetMarginFeeBasisPoints(address indexed token, bool isLong, uint256 marginFeeBasisPoints);
-    event SetMaxBorrowAmountPerAsset(address indexed token, uint256 maxBorrowAmount);
-    event SetMaxBorrowAmountPerSide(bool isLong, uint256 maxBorrowAmount);
-    event SetMaxBorrowAmountPerUser(uint256 maxBorrowAmount);
+    event SetMaxOpenInterestPerAsset(address indexed token, uint256 maxOIAmount);
+    event SetMaxOpenInterestPerSide(bool isLong, uint256 maxOIAmount);
+    event SetMaxOpenInterestPerUser(uint256 maxOIAmount);
     event SetPositionManager(address manager, bool isManager);
     event SetStakingFee(uint256 indexed fee);
     event SetTriggerGasFee(uint256 indexed fee);
     event SetVaultSettings(uint256 indexed cooldownDuration, uint256 feeRewardBasisPoints);
     event UpdateFundingRate(address indexed token, bool isLong, uint256 fundingRate, uint256 lastFundingTime);
-    event UpdateTotalBorrowedAmount(address indexed token, bool isLong, uint256 amount);
+    event UpdateTotalOpenInterest(address indexed token, bool isLong, uint256 amount);
     event UpdateCloseDeltaTime(uint256 deltaTime);
     event UpdateDelayDeltaTime(uint256 deltaTime);
     event UpdateFeeManager(address indexed feeManager);
@@ -99,30 +99,30 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         }
     }
 
-    function decreaseBorrowedUsd(
+    function decreaseOpenInterest(
         address _token,
         address _sender,
         bool _isLong,
         uint256 _amount
     ) external override onlyVault {
         
-        if (borrowedUsdPerUser[_sender] < _amount) {
-            borrowedUsdPerUser[_sender] = 0;
+        if (openInterestPerUser[_sender] < _amount) {
+            openInterestPerUser[_sender] = 0;
         }
         else {
-            borrowedUsdPerUser[_sender] -= _amount;
+            openInterestPerUser[_sender] -= _amount;
         }
-        if (borrowedUsdPerAsset[_token] < _amount) {
-            borrowedUsdPerAsset[_token] -= 0;
+        if (openInterestPerAsset[_token] < _amount) {
+            openInterestPerAsset[_token] -= 0;
       } else {
-            borrowedUsdPerAsset[_token] -= _amount;
+            openInterestPerAsset[_token] -= _amount;
         }
-        if (borrowedUsdPerSide[_isLong] < _amount) {
-            borrowedUsdPerSide[_isLong] -= 0;
+        if (openInterestPerSide[_isLong] < _amount) {
+            openInterestPerSide[_isLong] -= 0;
         } else {
-            borrowedUsdPerSide[_isLong] -= _amount;
+            openInterestPerSide[_isLong] -= _amount;
         }
-        emit UpdateTotalBorrowedAmount(_token, _isLong, _amount);
+        emit UpdateTotalOpenInterest(_token, _isLong, _amount);
     }
 
     function enableMarketOrder(bool _enable) external onlyOwner {
@@ -130,16 +130,16 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit EnableMarketOrder(_enable);
     }
 
-    function increaseBorrowedUsd(
+    function increaseOpenInterest(
         address _token,
         address _sender,
         bool _isLong,
         uint256 _amount
     ) external override onlyVault {
-        borrowedUsdPerUser[_sender] += _amount;
-        borrowedUsdPerAsset[_token] += _amount;
-        borrowedUsdPerSide[_isLong] += _amount;
-        emit UpdateTotalBorrowedAmount(_token, _isLong, _amount);
+        openInterestPerUser[_sender] += _amount;
+        openInterestPerAsset[_token] += _amount;
+        openInterestPerSide[_isLong] += _amount;
+        emit UpdateTotalOpenInterest(_token, _isLong, _amount);
     }
 
     function setBountyPercent(uint256 _bountyPercent) external onlyOwner {
@@ -220,19 +220,19 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetMarginFeeBasisPoints(_token, _isLong, _marginFeeBasisPoints);
     }
 
-    function setMaxBorrowAmountPerAsset(address _token, uint256 _maxAmount) external onlyOwner {
-        maxBorrowUSDAmountPerAsset[_token] = _maxAmount;
-        emit SetMaxBorrowAmountPerAsset(_token, _maxAmount);
+    function setMaxOpenInterestPerAsset(address _token, uint256 _maxAmount) external onlyOwner {
+        maxOpenInterestPerAsset[_token] = _maxAmount;
+        emit SetMaxOpenInterestPerAsset(_token, _maxAmount);
     }
 
-    function setMaxBorrowAmountPerSide(bool _isLong, uint256 _maxAmount) external onlyOwner {
-        maxBorrowUSDAmountPerSide[_isLong] = _maxAmount;
-        emit SetMaxBorrowAmountPerSide(_isLong, _maxAmount);
+    function setMaxOpenInterestPerSide(bool _isLong, uint256 _maxAmount) external onlyOwner {
+        maxOpenInterestPerSide[_isLong] = _maxAmount;
+        emit SetMaxOpenInterestPerSide(_isLong, _maxAmount);
     }
 
-    function setMaxBorrowAmountPerUser(uint256 _maxAmount) external onlyOwner {
-        maxBorrowUSDAmountPerUser = _maxAmount;
-        emit SetMaxBorrowAmountPerUser(_maxAmount);
+    function setMaxOpenInterestPerUser(uint256 _maxAmount) external onlyOwner {
+        maxOpenInterestPerUser = _maxAmount;
+        emit SetMaxOpenInterestPerUser(_maxAmount);
     }
 
     function setPositionManager(address _manager, bool _isManager) external onlyOwner {
@@ -320,29 +320,28 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
             return;
         }
         require(_size >= _collateral, "position size should be greater than collateral");
-        uint256 borrowedAmount = _size - _collateral;
         require(
-            borrowedUsdPerSide[_isLong] + borrowedAmount <=
+            openInterestPerSide[_isLong] + _size <=
                 (
-                    maxBorrowUSDAmountPerSide[_isLong] > 0
-                        ? maxBorrowUSDAmountPerSide[_isLong]
-                        : DEFAULT_MAX_BORROW_AMOUNT
+                    maxOpenInterestPerSide[_isLong] > 0
+                        ? maxOpenInterestPerSide[_isLong]
+                        : DEFAULT_MAX_OPEN_INTEREST
                 ),
-            "exceed max borrow amount per side"
+            "exceed max open interest per side"
         );
         require(
-            borrowedUsdPerAsset[_indexToken] + borrowedAmount <=
+            openInterestPerAsset[_indexToken] + _size <=
                 (
-                    maxBorrowUSDAmountPerAsset[_indexToken] > 0
-                        ? maxBorrowUSDAmountPerAsset[_indexToken]
-                        : DEFAULT_MAX_BORROW_AMOUNT
+                    maxOpenInterestPerAsset[_indexToken] > 0
+                        ? maxOpenInterestPerAsset[_indexToken]
+                        : DEFAULT_MAX_OPEN_INTEREST
                 ),
-            "exceed max borrow amount per asset"
+            "exceed max open interest per asset"
         );
         require(
-            borrowedUsdPerUser[_account] + borrowedAmount <=
-                (maxBorrowUSDAmountPerUser > 0 ? maxBorrowUSDAmountPerUser : DEFAULT_MAX_BORROW_AMOUNT),
-            "exceed max borrow amount per user"
+            openInterestPerUser[_account] + _size <=
+                (maxOpenInterestPerUser > 0 ? maxOpenInterestPerUser : DEFAULT_MAX_OPEN_INTEREST),
+            "exceed max open interest per user"
         );
     }
 
