@@ -20,27 +20,27 @@ describe("BaseToken", function () {
         btc = await await deployContract("BaseToken", ["Bitcoin", "BTC", expandDecimals('10000000', 18)])
     });
 
-    it("setGov", async () => {
-        await expect(btc.connect(user0).setGov(user1.address))
-          .to.be.revertedWith("Governable: forbidde")
+    it("transferOwnership", async () => {
+        await expect(btc.connect(user0).transferOwnership(user1.address))
+          .to.be.revertedWith("Ownable: caller is not the owner")
     
-        expect(await btc.gov()).eq(wallet.address)
+        expect(await btc.owner()).eq(wallet.address)
     
-        await expect(btc.connect(wallet).setGov(zeroAddress))
-          .to.be.revertedWith("Governable: zero address is invalid")
+        await expect(btc.connect(wallet).transferOwnership(zeroAddress))
+          .to.be.revertedWith("Ownable: new owner is the zero address")
   
-        await btc.setGov(user0.address)
-        expect(await btc.gov()).eq(user0.address)
+        await btc.transferOwnership(user0.address)
+        expect(await btc.owner()).eq(user0.address)
     
-        await btc.connect(user0).setGov(user1.address)
-        expect(await btc.gov()).eq(user1.address)
+        await btc.connect(user0).transferOwnership(user1.address)
+        expect(await btc.owner()).eq(user1.address)
     })
 
     it("setInfo", async () => {
         const name = "Bitcoin 2"
         const symbol = "BTC2"
         await expect(btc.connect(user3).setInfo(name, symbol))
-        .to.be.revertedWith('Governable: forbidden')
+        .to.be.revertedWith('Ownable: caller is not the owner')
         await btc.connect(user1).setInfo(name, symbol)
         expect(await btc.name()).eq(name)
         expect(await btc.symbol()).eq(symbol)

@@ -89,7 +89,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
             position.reserveAmount += _amount;
             vault.takeVUSDIn(_account, position.refer, _amount, 0);
-            settingsManager.decreaseBorrowedUsd(_indexToken, _account, _isLong, _amount);
             _increasePoolAmount(_indexToken, _isLong, _amount);
         } else {
             position.collateral -= _amount;
@@ -98,7 +97,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.reserveAmount -= _amount;
             position.lastIncreasedTime = block.timestamp;
             vault.takeVUSDOut(_account, position.refer, 0, _amount);
-            settingsManager.increaseBorrowedUsd(_indexToken, _account, _isLong, _amount);
             _decreasePoolAmount(_indexToken, _isLong, _amount);
         }
         emit AddOrRemoveCollateral(key, isPlus, _amount, position.reserveAmount, position.collateral, position.size);
@@ -259,7 +257,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, marginFees);
         uint256 bounty = (marginFees * settingsManager.bountyPercent()) / BASIS_POINTS_DIVISOR;
         vault.transferBounty(msg.sender, bounty);
-        settingsManager.decreaseBorrowedUsd(_indexToken, _account, _isLong, position.size - position.collateral);
+        settingsManager.decreaseOpenInterest(_indexToken, _account, _isLong, position.size);
         _decreasePoolAmount(_indexToken, _isLong, marginFees);
         vaultUtils.emitLiquidatePositionEvent(_account, _indexToken, _isLong, _posId);
         delete positions[key];
@@ -445,11 +443,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         Position storage position = positions[key];
         address _refer = position.refer;
         require(position.size > 0, "position size is zero");
-        settingsManager.decreaseBorrowedUsd(
+        settingsManager.decreaseOpenInterest(
             _indexToken,
             _account,
             _isLong,
-            (_sizeDelta * (position.size - position.collateral)) / position.size
+            _sizeDelta
         );
         _decreaseReservedAmount(_indexToken, _isLong, _sizeDelta);
         position.reserveAmount -= (position.reserveAmount * _sizeDelta) / position.size;
@@ -531,7 +529,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         vault.takeVUSDIn(_account, _refer, _amountIn, fee);
         settingsManager.validatePosition(_account, _indexToken, _isLong, position.size, position.collateral);
         vaultUtils.validateLiquidation(_account, _indexToken, _isLong, _posId, true);
-        settingsManager.increaseBorrowedUsd(_indexToken, _account, _isLong, _sizeDelta - _amountInAfterFee);
+        settingsManager.increaseOpenInterest(_indexToken, _account, _isLong, _sizeDelta);
         _increaseReservedAmount(_indexToken, _isLong, _sizeDelta);
         _increasePoolAmount(_indexToken, _isLong, _amountInAfterFee);
         vaultUtils.emitIncreasePositionEvent(_account, _indexToken, _isLong, _posId, _amountIn, _sizeDelta, fee);

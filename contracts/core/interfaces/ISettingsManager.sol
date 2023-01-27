@@ -3,19 +3,17 @@
 pragma solidity 0.8.9;
 
 interface ISettingsManager {
-    function decreaseBorrowedUsd(address _token, address _sender, bool _isLong, uint256 _amount) external;
+    function decreaseOpenInterest(address _token, address _sender, bool _isLong, uint256 _amount) external;
 
-    function increaseBorrowedUsd(address _token, address _sender, bool _isLong, uint256 _amount) external;
-
-    function setCustomFeeForUser(address _account, uint256 _feePoints, bool _isEnabled) external;
+    function increaseOpenInterest(address _token, address _sender, bool _isLong, uint256 _amount) external;
 
     function updateCumulativeFundingRate(address _token, bool _isLong) external;
 
-    function borrowedUsdPerAsset(address _token) external view returns (uint256);
+    function openInterestPerAsset(address _token) external view returns (uint256);
 
-    function borrowedUsdPerSide(bool _isLong) external view returns (uint256);
+    function openInterestPerSide(bool _isLong) external view returns (uint256);
 
-    function borrowedUsdPerUser(address _sender) external view returns (uint256);
+    function openInterestPerUser(address _sender) external view returns (uint256);
 
     function bountyPercent() external view returns (uint256);
 

@@ -144,7 +144,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     /// @notice Function called by FarmDistributor whenever staker claims VELA harvest. Allows staker to also receive a 2nd reward token.
     /// @param _user Address of user
     /// @param _amount Number of LP tokens the user has
-    function onVelaReward(uint256 _pid, address _user, uint256 _amount) external override onlyDistributor nonReentrant {
+    function onVelaReward(uint256 _pid, address _user, uint256 _amount) external override onlyDistributor {
         PoolInfo memory pool = _updatePool(_pid);
         UserInfo storage user = userInfo[_pid][_user];
 

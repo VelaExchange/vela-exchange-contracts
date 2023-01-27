@@ -9,13 +9,12 @@ contract Constants {
     uint8 public constant STAKING_PID_FOR_CHARGE_FEE = 1;
     uint256 public constant BASIS_POINTS_DIVISOR = 100000;
     uint256 public constant DEFAULT_FUNDING_RATE_FACTOR = 100;
-    uint256 public constant DEFAULT_MAX_BORROW_AMOUNT = 10000000000 * PRICE_PRECISION;
+    uint256 public constant DEFAULT_MAX_OPEN_INTEREST = 10000000000 * PRICE_PRECISION;
     uint256 public constant DEFAULT_VLP_PRICE = 100000;
     uint256 public constant FUNDING_RATE_PRECISION = 1000000;
     uint256 public constant LIQUIDATE_NONE_EXCEED = 0;
     uint256 public constant LIQUIDATE_FEE_EXCEED = 1;
     uint256 public constant LIQUIDATE_THRESHOLD_EXCEED = 2;
-    uint256 public constant MAX_CUSTOM_FEE_POINTS = 50000; // 50%
     uint256 public constant MAX_DEPOSIT_FEE = 10000; // 10%
     uint256 public constant MAX_DELTA_TIME = 24 hours;
     uint256 public constant MAX_COOLDOWN_DURATION = 48 hours;

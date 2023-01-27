@@ -272,7 +272,7 @@ describe("TriggerOrderManager", function () {
     })
 
     it ("add Vault as admin", async () => {
-     await vusd.setGov(Vault.address); // addAdmin vault
+     await vusd.transferOwnership(Vault.address); // addAdmin vault
     })
 
     it ("deploy ComplexRewardPerSec and add pool info to tokenFarm", async () => {
@@ -377,83 +377,83 @@ describe("TriggerOrderManager", function () {
 
     it("set LiquidateThreshod for VaultUtils", async () => {
      const BTCLiquidateThreshold = 99000;
-     const BTCMaxBorrowAmount = expandDecimals('10000000000', 30)
+     const BTCMaxOpenInterest = expandDecimals('10000000000', 30)
      const BTCLongFundingRateFactor = 100;
      const BTCShortFundingRateFactor = 100;
      const BTCLongMarginFeeBasisPoints = 80;
      const BTCShortMarginFeeBasisPoints = 80;
      const ETHLiquidateThreshold = 99000;
-     const ETHMaxBorrowAmount = expandDecimals('10000000000', 30)
+     const ETHMaxOpenInterest = expandDecimals('10000000000', 30)
      const ETHLongFundingRateFactor = 100;
      const ETHShortFundingRateFactor = 100;
      const ETHLongMarginFeeBasisPoints = 80;
      const ETHShortMarginFeeBasisPoints = 80;
      const GBPLiquidateThreshold = 99700;
-     const GBPMaxBorrowAmount = expandDecimals('10000000000', 30)
+     const GBPMaxOpenInterest = expandDecimals('10000000000', 30)
      const GBPLongFundingRateFactor = 100;
      const GBPShortFundingRateFactor = 100;
      const GBPLongMarginFeeBasisPoints = 8;
      const GBPShortMarginFeeBasisPoints = 8;
      const EURLiquidateThreshold = 99700;
-     const EURMaxBorrowAmount = expandDecimals('10000000000', 30)
+     const EURMaxOpenInterest = expandDecimals('10000000000', 30)
      const EURLongFundingRateFactor = 100;
      const EURShortFundingRateFactor = 100;
      const EURLongMarginFeeBasisPoints = 8;
      const EURShortMarginFeeBasisPoints = 8;
      const JPYLiquidateThreshold = 99700;
-     const JPYMaxBorrowAmount = expandDecimals('10000000000', 30)
+     const JPYMaxOpenInterest = expandDecimals('10000000000', 30)
      const JPYLongFundingRateFactor = 100;
      const JPYShortFundingRateFactor = 100;
      const JPYLongMarginFeeBasisPoints = 8;
      const JPYShortMarginFeeBasisPoints = 8;
      const DOGELiquidateThreshold = 99000;
-     const DOGEMaxBorrowAmount = expandDecimals('10000000000', 30)
+     const DOGEMaxOpenInterest = expandDecimals('10000000000', 30)
      const DOGELongFundingRateFactor = 100;
      const DOGEShortFundingRateFactor = 100;
      const DOGELongMarginFeeBasisPoints = 80;
      const DOGEShortMarginFeeBasisPoints = 80;
-     const LONGMaxBorrowAmount = expandDecimals('1000000000000', 30)
-     const SHORTMaxBorrowAmount = expandDecimals('1000000000000', 30)
-     const USERMaxBorrowAmount = expandDecimals('10000000000', 30)
+     const LONGMaxOpenInterest = expandDecimals('1000000000000', 30)
+     const SHORTMaxOpenInterest = expandDecimals('1000000000000', 30)
+     const USERMaxOpenInterest = expandDecimals('10000000000', 30)
      await settingsManager.setLiquidateThreshold(BTCLiquidateThreshold, btc.address);
-     await settingsManager.setMaxBorrowAmountPerAsset(btc.address, BTCMaxBorrowAmount);
+     await settingsManager.setMaxOpenInterestPerAsset(btc.address, BTCMaxOpenInterest);
      await settingsManager.setFundingRateFactor(btc.address, true, BTCLongFundingRateFactor);
      await settingsManager.setFundingRateFactor(btc.address, false, BTCShortFundingRateFactor);
      await settingsManager.setMarginFeeBasisPoints(btc.address, true, BTCLongMarginFeeBasisPoints);
      await settingsManager.setMarginFeeBasisPoints(btc.address, false, BTCShortMarginFeeBasisPoints);
      await settingsManager.setLiquidateThreshold(ETHLiquidateThreshold, eth.address);
-     await settingsManager.setMaxBorrowAmountPerAsset(eth.address, ETHMaxBorrowAmount);
+     await settingsManager.setMaxOpenInterestPerAsset(eth.address, ETHMaxOpenInterest);
      await settingsManager.setFundingRateFactor(eth.address, true, ETHLongFundingRateFactor);
      await settingsManager.setFundingRateFactor(eth.address, false, ETHShortFundingRateFactor);
      await settingsManager.setMarginFeeBasisPoints(eth.address, true, ETHLongMarginFeeBasisPoints);
      await settingsManager.setMarginFeeBasisPoints(eth.address, false, ETHShortMarginFeeBasisPoints);
      await settingsManager.setLiquidateThreshold(DOGELiquidateThreshold, doge.address);
-     await settingsManager.setMaxBorrowAmountPerAsset(doge.address, DOGEMaxBorrowAmount);
+     await settingsManager.setMaxOpenInterestPerAsset(doge.address, DOGEMaxOpenInterest);
      await settingsManager.setFundingRateFactor(doge.address, true, DOGELongFundingRateFactor);
      await settingsManager.setFundingRateFactor(doge.address, false, DOGEShortFundingRateFactor);
      await settingsManager.setMarginFeeBasisPoints(doge.address, true, DOGELongMarginFeeBasisPoints);
      await settingsManager.setMarginFeeBasisPoints(doge.address, false, DOGEShortMarginFeeBasisPoints);
      await settingsManager.setLiquidateThreshold(GBPLiquidateThreshold, gbp.address);
-     await settingsManager.setMaxBorrowAmountPerAsset(gbp.address, GBPMaxBorrowAmount);
+     await settingsManager.setMaxOpenInterestPerAsset(gbp.address, GBPMaxOpenInterest);
      await settingsManager.setFundingRateFactor(gbp.address, true, GBPLongFundingRateFactor);
      await settingsManager.setFundingRateFactor(gbp.address, false, GBPShortFundingRateFactor);
      await settingsManager.setMarginFeeBasisPoints(gbp.address, true, GBPLongMarginFeeBasisPoints);
      await settingsManager.setMarginFeeBasisPoints(gbp.address, false, GBPShortMarginFeeBasisPoints);
      await settingsManager.setLiquidateThreshold(EURLiquidateThreshold, eur.address);
-     await settingsManager.setMaxBorrowAmountPerAsset(eur.address, EURMaxBorrowAmount);
+     await settingsManager.setMaxOpenInterestPerAsset(eur.address, EURMaxOpenInterest);
      await settingsManager.setFundingRateFactor(eur.address, true, EURLongFundingRateFactor);
      await settingsManager.setFundingRateFactor(eur.address, false, EURShortFundingRateFactor);
      await settingsManager.setMarginFeeBasisPoints(eur.address, true, EURLongMarginFeeBasisPoints);
      await settingsManager.setMarginFeeBasisPoints(eur.address, false, EURShortMarginFeeBasisPoints);
      await settingsManager.setLiquidateThreshold(JPYLiquidateThreshold, jpy.address);
-     await settingsManager.setMaxBorrowAmountPerAsset(jpy.address, JPYMaxBorrowAmount);
+     await settingsManager.setMaxOpenInterestPerAsset(jpy.address, JPYMaxOpenInterest);
      await settingsManager.setFundingRateFactor(jpy.address, true, JPYLongFundingRateFactor);
      await settingsManager.setFundingRateFactor(jpy.address, false, JPYShortFundingRateFactor);
      await settingsManager.setMarginFeeBasisPoints(jpy.address, true, JPYLongMarginFeeBasisPoints);
      await settingsManager.setMarginFeeBasisPoints(jpy.address, false, JPYShortMarginFeeBasisPoints);
-     await settingsManager.setMaxBorrowAmountPerSide(true, LONGMaxBorrowAmount);
-     await settingsManager.setMaxBorrowAmountPerSide(false, SHORTMaxBorrowAmount);
-     await settingsManager.setMaxBorrowAmountPerUser(USERMaxBorrowAmount);
+     await settingsManager.setMaxOpenInterestPerSide(true, LONGMaxOpenInterest);
+     await settingsManager.setMaxOpenInterestPerSide(false, SHORTMaxOpenInterest);
+     await settingsManager.setMaxOpenInterestPerUser(USERMaxOpenInterest);
      await settingsManager.setEnableDeposit(usdt.address, true)
      await settingsManager.setEnableStaking(usdt.address, true)
      await settingsManager.setEnableDeposit(usdc.address, true)
@@ -1024,7 +1024,7 @@ describe("TriggerOrderManager", function () {
       tpTriggeredAmounts,
       slTriggeredAmounts,
       {from: wallet.address, value: 0}
-    )).to.be.revertedWith("position size should be greather than zero")
+    )).to.be.revertedWith("position size should be greater than zero")
    })
 
    it ("updateTriggerOrdersData for Long", async () => {
@@ -1232,7 +1232,7 @@ describe("TriggerOrderManager", function () {
       tpTriggeredAmounts,
       slTriggeredAmounts,
       {from: wallet.address, value: 0}
-    )).to.be.revertedWith("position size should be greather than zero")
+    )).to.be.revertedWith("position size should be greater than zero")
    })
 
    it ("updateTriggerOrdersData for Short", async () => {

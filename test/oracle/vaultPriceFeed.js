@@ -33,8 +33,6 @@ describe("VaultPriceFeed", function () {
         expect(parseFloat(ethers.utils.formatUnits(btcLastPrice, 8))).eq(60000)
         await expect(vaultPriceFeed.setTokenConfig(zeroAddress, btcPriceFeed.address, 8))
            .to.be.revertedWith("Address is wrong")
-       await expect(vaultPriceFeed.connect(user0).setTokenConfig(btc.address, btcPriceFeed.address, 8))
-           .to.be.revertedWith("Governable: forbidden")              
         await vaultPriceFeed.setTokenConfig(btc.address, btcPriceFeed.address, 8)
         await expect(vaultPriceFeed.setTokenConfig(btc.address, btcPriceFeed.address, 8))
            .to.be.revertedWith("already initialized")

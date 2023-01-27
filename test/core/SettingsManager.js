@@ -243,15 +243,15 @@ describe("SettingsManager", function () {
         _size,
         _collateral
       )
-      await settingsManager.setMaxBorrowAmountPerSide(
+      await settingsManager.setMaxOpenInterestPerSide(
         _isLong,
         10
       )
-      await settingsManager.setMaxBorrowAmountPerAsset(
+      await settingsManager.setMaxOpenInterestPerAsset(
         _indexToken,
         10
       )
-      await settingsManager.setMaxBorrowAmountPerUser(
+      await settingsManager.setMaxOpenInterestPerUser(
         10
       )
       await expect(settingsManager.validatePosition(
@@ -260,8 +260,8 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max borrow amount per side")
-      await settingsManager.setMaxBorrowAmountPerSide(
+      )).to.be.revertedWith("exceed max open interest per side")
+      await settingsManager.setMaxOpenInterestPerSide(
         _isLong,
         100
       )
@@ -271,8 +271,8 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max borrow amount per asset")
-      await settingsManager.setMaxBorrowAmountPerAsset(
+      )).to.be.revertedWith("exceed max open interest per asset")
+      await settingsManager.setMaxOpenInterestPerAsset(
         _indexToken,
         100
       )
@@ -282,8 +282,8 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max borrow amount per user")    
-      await settingsManager.setMaxBorrowAmountPerUser(
+      )).to.be.revertedWith("exceed max open interest per user")    
+      await settingsManager.setMaxOpenInterestPerUser(
         100
       )  
       await settingsManager.validatePosition(
@@ -317,19 +317,9 @@ describe("SettingsManager", function () {
       await settingsManager.setReferEnabled(referEnabled)
     })
 
-    it ("setCustomFeeForUser", async () => {
-      const _account = wallet.address
-      const _feePoints = 100
-      const _isEnabled = true
-      const maxFeePoints = 51000
-      await expect(settingsManager.setCustomFeeForUser(_account, maxFeePoints, _isEnabled))
-        .to.be.revertedWith("custom fee exceeds MAX")
-      await settingsManager.setCustomFeeForUser(_account, _feePoints, _isEnabled)
-    })
-
     it ("setFeeManager", async () => {
       await expect(settingsManager.connect(user2).setFeeManager(user0.address))
-        .to.be.revertedWith("Governable: forbidden")
+        .to.be.revertedWith("Ownable: caller is not the owner")
       await settingsManager.setFeeManager(user0.address)
     })
 
@@ -385,7 +375,7 @@ describe("SettingsManager", function () {
       const sender = wallet.address
       const isLong = true
       const amount = expandDecimals('10', 30)
-      await expect(settingsManager.decreaseBorrowedUsd(
+      await expect(settingsManager.decreaseOpenInterest(
         token,
         sender,
         isLong,
