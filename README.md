@@ -570,7 +570,7 @@ Example Output
 This is a function for executing user's TP or SL, or pending orders(limit order, stop-market order, stop limit order or trailing-stop).
 This function can be called by position owner or platform position manager
 ```
-vault.triggerPosition(
+positionVault.triggerPosition(
         address _account,
         address _indexToken,
         bool _isLong,
@@ -593,7 +593,7 @@ according to price change, the user trailing stop price will be changed.
 So for Long position, if the price rises, the the trailing stop price also rise
 This function can be called by position owner or platform position manager
 ```
-vault.updateTrailingStop(
+positionVault.updateTrailingStop(
         address _account,
         address _indexToken,
         bool _isLong,
