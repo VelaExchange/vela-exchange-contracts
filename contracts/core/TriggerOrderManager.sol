@@ -123,7 +123,6 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         bytes32 key = _getPositionKey(msg.sender, _indexToken, _isLong, _posId);
         (Position memory position, , ) = positionVault.getPosition(msg.sender, _indexToken, _isLong, _posId);
         require(position.size > 0, "position size should be greater than zero");
-        require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         payable(settingsManager.positionManager()).transfer(msg.value);
         bool validateTriggerData = validateTriggerOrdersData(
             _indexToken,
@@ -134,6 +133,9 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
             _slTriggeredAmounts
         );
         require(validateTriggerData, "triggerOrder data are incorrect");
+        if (triggerOrders[key].tpPrices.length <= _tpPrices.length || triggerOrders[key].slPrices.length <= _slPrices.length) {
+            require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
+        }
         triggerOrders[key] = TriggerOrder({
             key: key,
             tpTriggeredAmounts: _tpTriggeredAmounts,
