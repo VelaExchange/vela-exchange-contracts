@@ -1021,6 +1021,63 @@ Example Output
 ```
 ```
 
+### enableMarketOrder
+Owner Function
+
+This is a function for enable or disable market Order closeDelta time
+```
+settingsManager.enableMarketOrder(bool _enable)
+```
+
+Example Input
+```
+(
+    true // enable market order
+)
+```
+
+Example Output
+```
+```
+
+### enableForexMarket
+assetManagerWallet Function
+
+This is a function for enable or disable forex trade at forex close time
+```
+settingsManager.enableForexMarket(bool _enable)
+```
+
+Example Input
+```
+(
+    true // pause forex trade
+)
+```
+
+Example Output
+```
+```
+
+### setAssetManagerWallet
+Owner Function
+
+This is a function to asset manager wallet
+```
+settingsManager.setAssetManagerWallet(address _wallet)
+```
+
+Example Input
+```
+(
+    '0x70997970c51812dc3a010c7d01b50e0d17dc79c8' // 
+)
+```
+
+Example Output
+```
+```
+
 ### setCloseDeltaTime
 Owner Function
 
