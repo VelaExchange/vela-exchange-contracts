@@ -58,7 +58,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         IComplexRewarder[] indexed rewarders,
         bool _enableCooldown
     );
-    event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
+    event FarmDeposit(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmissionRateUpdated(address indexed caller, uint256 previousValue, uint256 newValue);
     event RewardLockedUp(address indexed user, uint256 indexed pid, uint256 amountLockedUp);
@@ -70,7 +70,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     event VestingDeposit(address account, uint256 amount);
     event VestingTransfer(address indexed from, address indexed to, uint256 value);
     event VestingWithdraw(address account, uint256 claimedAmount, uint256 balance);
-    event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
+    event FarmWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
     constructor(uint256 _vestingDuration, IBoringERC20 _esToken, IBoringERC20 _claimableToken) {
         //StartBlock always many years later from contract const ruct, will be set later in StartFarming function
@@ -200,7 +200,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
             pool.totalLp -= _amount;
         }
 
-        emit Withdraw(msg.sender, _pid, _amount);
+        emit FarmWithdraw(msg.sender, _pid, _amount);
     }
 
     function withdrawVesting() external nonReentrant {
@@ -260,7 +260,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
             pool.totalLp += _amount;
         }
 
-        emit Deposit(msg.sender, _pid, _amount);
+        emit FarmDeposit(msg.sender, _pid, _amount);
     }
 
     function _depositVesting(address _account, uint256 _amount) internal {
