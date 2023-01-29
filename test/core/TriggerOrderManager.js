@@ -176,6 +176,7 @@ describe("TriggerOrderManager", function () {
            name: "btc",
            address: btc.address,
            decimals: 18,
+           isForex: false,
            priceFeed: btcPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 30 * 10000,
@@ -185,6 +186,7 @@ describe("TriggerOrderManager", function () {
            name: "eth",
            address: eth.address,
            decimals: 18,
+           isForex: false,
            priceFeed: ethPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 30 * 10000,
@@ -194,6 +196,7 @@ describe("TriggerOrderManager", function () {
            name: "doge",
            address: doge.address,
            decimals: 18,
+           isForex: false,
            priceFeed: dogePriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 30 * 10000,
@@ -203,6 +206,7 @@ describe("TriggerOrderManager", function () {
            name: "gbp",
            address: gbp.address,
            decimals: 18,
+           isForex: true,
            priceFeed: gbpPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
@@ -212,6 +216,7 @@ describe("TriggerOrderManager", function () {
            name: "eur",
            address: eur.address,
            decimals: 18,
+           isForex: true,
            priceFeed: eurPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
@@ -221,6 +226,7 @@ describe("TriggerOrderManager", function () {
            name: "jpy",
            address: jpy.address,
            decimals: 18,
+           isForex: true,
            priceFeed: jpyPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
@@ -230,6 +236,7 @@ describe("TriggerOrderManager", function () {
            name: "usdc",
            address: usdc.address,
            decimals: 18,
+           isForex: true,
            priceFeed: usdcPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
@@ -239,26 +246,19 @@ describe("TriggerOrderManager", function () {
            name: "usdt",
            address: usdt.address,
            decimals: 18,
+           isForex: true,
            priceFeed: usdtPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
            marginFeeBasisPoints: 80, // 0.08% 80 / 100000
-         },
-         {
-           name: "vlp",
-           address: vlp.address,
-           decimals: 18,
-           priceFeed: vlpPriceFeed.address,
-           priceDecimals: 8,
-           maxLeverage: 100 * 10000,
-           marginFeeBasisPoints: 80, // 0.08% 80 / 100000
-         },
+         }
         ];
         for (const token of tokens) {
          await priceManager.setTokenConfig(
            token.address,
            token.decimals,
            token.maxLeverage,
+           token.isForex
          );
        }
         await vlp.setMinter(Vault.address, true); // vlp SetMinter

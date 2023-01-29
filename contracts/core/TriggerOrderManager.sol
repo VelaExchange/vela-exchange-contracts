@@ -133,7 +133,7 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
             _slTriggeredAmounts
         );
         require(validateTriggerData, "triggerOrder data are incorrect");
-        if (triggerOrders[key].tpPrices.length <= _tpPrices.length || triggerOrders[key].slPrices.length <= _slPrices.length) {
+        if (triggerOrders[key].tpPrices.length + triggerOrders[key].slPrices.length < _tpPrices.length + _slPrices.length) {
             require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         }
         triggerOrders[key] = TriggerOrder({

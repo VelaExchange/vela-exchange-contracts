@@ -102,20 +102,20 @@ describe("PriceManager", function () {
 
         const cryptoMaxLeverage = 100 * 10000
         const forexMaxLeverage = 100 * 10000
-        await expect(priceManager.setTokenConfig(zeroAddress, 18, cryptoMaxLeverage))
+        await expect(priceManager.setTokenConfig(zeroAddress, 18, cryptoMaxLeverage, true))
             .to.be.revertedWith("Address is wrong")
-        await expect(priceManager.setTokenConfig(btc.address, 18, 1))
+        await expect(priceManager.setTokenConfig(btc.address, 18, 1, true))
             .to.be.revertedWith("Max Leverage should be greater than Min Leverage")
-        await priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage)
-        await expect(priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage))
+        await priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage, false)
+        await expect(priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage, false))
             .to.be.revertedWith("already initialized")
-        await priceManager.setTokenConfig(eth.address, 18, cryptoMaxLeverage)
-        await priceManager.setTokenConfig(gbp.address, 18, forexMaxLeverage)
-        await priceManager.setTokenConfig(eur.address, 18, forexMaxLeverage)
-        await priceManager.setTokenConfig(doge.address, 18, cryptoMaxLeverage)
-        await priceManager.setTokenConfig(jpy.address, 18, forexMaxLeverage)
-        await priceManager.setTokenConfig(usdc.address, 18, cryptoMaxLeverage)
-        await priceManager.setTokenConfig(usdt.address, 18, cryptoMaxLeverage)
+        await priceManager.setTokenConfig(eth.address, 18, cryptoMaxLeverage, false)
+        await priceManager.setTokenConfig(gbp.address, 18, forexMaxLeverage, true)
+        await priceManager.setTokenConfig(eur.address, 18, forexMaxLeverage, true)
+        await priceManager.setTokenConfig(doge.address, 18, cryptoMaxLeverage, false)
+        await priceManager.setTokenConfig(jpy.address, 18, forexMaxLeverage, false)
+        await priceManager.setTokenConfig(usdc.address, 18, cryptoMaxLeverage, false)
+        await priceManager.setTokenConfig(usdt.address, 18, cryptoMaxLeverage, false)
     });
 
     it ("getNextAveragePrice", async () => {

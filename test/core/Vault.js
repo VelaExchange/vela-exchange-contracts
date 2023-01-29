@@ -239,6 +239,7 @@ describe("Vault", function () {
            name: "btc",
            address: btc.address,
            decimals: 18,
+           isForex: false,
            priceFeed: btcPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 30 * 10000,
@@ -248,6 +249,7 @@ describe("Vault", function () {
            name: "eth",
            address: eth.address,
            decimals: 18,
+           isForex: false,
            priceFeed: ethPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 30 * 10000,
@@ -257,6 +259,7 @@ describe("Vault", function () {
            name: "doge",
            address: doge.address,
            decimals: 18,
+           isForex: false,
            priceFeed: dogePriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 30 * 10000,
@@ -266,6 +269,7 @@ describe("Vault", function () {
            name: "gbp",
            address: gbp.address,
            decimals: 18,
+           isForex: true,
            priceFeed: gbpPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
@@ -275,6 +279,7 @@ describe("Vault", function () {
            name: "eur",
            address: eur.address,
            decimals: 18,
+           isForex: true,
            priceFeed: eurPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
@@ -284,6 +289,7 @@ describe("Vault", function () {
            name: "jpy",
            address: jpy.address,
            decimals: 18,
+           isForex: true,
            priceFeed: jpyPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
@@ -293,6 +299,7 @@ describe("Vault", function () {
            name: "usdc",
            address: usdc.address,
            decimals: 18,
+           isForex: true,
            priceFeed: usdcPriceFeed.address,
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
@@ -304,6 +311,7 @@ describe("Vault", function () {
            token.address,
            token.decimals,
            token.maxLeverage,
+           token.isForex
          );
        }
         await vlp.setMinter(Vault.address, true); // vlp SetMinter
@@ -2168,4 +2176,65 @@ describe("Vault", function () {
       posId
     )
   })  
+
+  it ("setAssetManagerWallet", async () => {
+    await expect(settingsManager.connect(user2).setAssetManagerWallet(user0.address))
+      .to.be.revertedWith("Ownable: caller is not the owner")
+    await settingsManager.setAssetManagerWallet(user0.address)
+  })
+
+  it ("pause Forex Market", async () => {
+    await expect(settingsManager.connect(user2).enableForexMarket(false))
+      .to.be.revertedWith("not allowed to manage forex")
+    await settingsManager.connect(user0).enableForexMarket(true)
+  })
+
+  it ("create new position after pausing forex market", async() =>{
+    const closeDeltaTime = 60 * 60 * 1
+    await settingsManager.setCloseDeltaTime(closeDeltaTime)
+    const indexToken = gbp.address;
+    const amountIn = expandDecimals('10', 30)
+    const toUsdAmount = expandDecimals('100', 30)
+    const isLong = false
+    const referAddress = user0.address;
+    const orderType = 0 // M
+    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
+    const expectedCryptoMarketPrice = await vaultPriceFeed.getLastPrice(btc.address);
+    const slippage = 1000 // 1%
+    const pendingCollateral = amountIn;
+    const pendingSize = toUsdAmount;
+    const triggerPrices = [
+      expectedMarketPrice,
+      slippage,
+      pendingCollateral,
+      pendingSize
+     ]
+    await expect(Vault.newPositionOrder(
+      indexToken, //_indexToken
+      isLong,
+      orderType,
+      triggerPrices, //triggerPrices
+      referAddress
+    )).to.be.revertedWith("prevent trade for forex close time")
+    await Vault.newPositionOrder(
+      btc.address, //_indexToken
+      isLong,
+      orderType,
+      [
+        expectedCryptoMarketPrice,
+        slippage,
+        pendingCollateral,
+        pendingSize
+       ], //triggerPrices
+      referAddress
+    )
+    await settingsManager.connect(user0).enableForexMarket(false)
+    await Vault.newPositionOrder(
+      indexToken, //_indexToken
+      isLong,
+      orderType,
+      triggerPrices, //triggerPrices
+      referAddress
+    )
+  })
 });

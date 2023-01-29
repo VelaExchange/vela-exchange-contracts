@@ -72,6 +72,7 @@ interface ISettingsManager {
     function marginFeeBasisPoints(address _token, bool _isLong) external view returns (uint256);
 
     function marketOrderEnabled() external view returns (bool);
+    function pauseForexForCloseTime() external view returns (bool);
 
     function positionManager() external view returns (address);
 

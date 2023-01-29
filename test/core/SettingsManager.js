@@ -317,10 +317,35 @@ describe("SettingsManager", function () {
       await settingsManager.setReferEnabled(referEnabled)
     })
 
+    it ("setAssetManagerWallet", async () => {
+      await expect(settingsManager.connect(user2).setAssetManagerWallet(user0.address))
+        .to.be.revertedWith("Ownable: caller is not the owner")
+      await settingsManager.setAssetManagerWallet(user0.address)
+    })
+
+    it ("enableForexMarket", async () => {
+      await expect(settingsManager.connect(user2).enableForexMarket(false))
+        .to.be.revertedWith("not allowed to manage forex")
+      await settingsManager.connect(user0).enableForexMarket(true)
+    })
+
     it ("setFeeManager", async () => {
       await expect(settingsManager.connect(user2).setFeeManager(user0.address))
         .to.be.revertedWith("Ownable: caller is not the owner")
       await settingsManager.setFeeManager(user0.address)
+    })
+
+    it ("setBountyPercent", async () => {
+      const bountyPercent = 250000
+      await expect(settingsManager.connect(user2).setBountyPercent(bountyPercent))
+        .to.be.revertedWith("Ownable: caller is not the owner")
+      await settingsManager.setBountyPercent(bountyPercent)
+    })
+
+    it ("enableMarketOrder", async () => {
+      await expect(settingsManager.connect(user2).enableMarketOrder(true))
+        .to.be.revertedWith("Ownable: caller is not the owner")
+      await settingsManager.enableMarketOrder(true)
     })
 
     it ("getFundingFee", async () => {
