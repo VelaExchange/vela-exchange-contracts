@@ -1024,7 +1024,7 @@ Example Output
 ### enableMarketOrder
 Owner Function
 
-This is a function for enable or disable market Order closeDelta time
+This is a function for enable or disable market Order
 ```
 settingsManager.enableMarketOrder(bool _enable)
 ```
