@@ -43,6 +43,13 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         _;
     }
 
+    modifier preventTradeForForexCloseTime(address _token) {
+        if (priceManager.isForex(_token)) {
+            require(!settingsManager.pauseForexForCloseTime() , "prevent trade for forex close time");
+        }
+        _;
+    }
+
     constructor(address _vlp, address _vUSDC) {
         vlp = _vlp;
         vUSDC = _vUSDC;
@@ -62,7 +69,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _posId,
         bool isPlus,
         uint256 _amount
-    ) external nonReentrant {
+    ) external nonReentrant preventTradeForForexCloseTime(_indexToken) {
         positionVault.addOrRemoveCollateral(msg.sender, _indexToken, _isLong, _posId, isPlus, _amount);
     }
 
@@ -72,7 +79,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _posId,
         uint256 _collateralDelta,
         uint256 _sizeDelta
-    ) external payable nonReentrant {
+    ) external payable nonReentrant preventTradeForForexCloseTime(_indexToken) {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         payable(settingsManager.positionManager()).transfer(msg.value);
         positionVault.addPosition(msg.sender, _indexToken, _isLong, _posId, _collateralDelta, _sizeDelta);
@@ -98,7 +105,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _sizeDelta,
         bool _isLong,
         uint256 _posId
-    ) external nonReentrant {
+    ) external nonReentrant preventTradeForForexCloseTime(_indexToken) {
         positionVault.decreasePosition(msg.sender, _indexToken, _sizeDelta, _isLong, _posId);
     }
 
@@ -128,7 +135,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         OrderType _orderType,
         uint256[] memory _params,
         address _refer
-    ) external payable nonReentrant {
+    ) external payable nonReentrant preventTradeForForexCloseTime(_indexToken) {
         if (_orderType != OrderType.MARKET) {
             require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
             payable(settingsManager.positionManager()).transfer(msg.value);

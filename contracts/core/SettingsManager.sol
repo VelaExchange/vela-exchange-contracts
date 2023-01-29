@@ -18,7 +18,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     ITokenFarm public immutable tokenFarm;
 
     address public override feeManager;
+    address public assetManagerWallet;
     bool public override marketOrderEnabled = true;
+    bool public override pauseForexForCloseTime;
     address public override positionManager;
     bool public override referEnabled;
     uint256 public maxOpenInterestPerUser;
@@ -56,7 +58,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     event ChangedReferEnabled(bool referEnabled);
     event ChangedReferFee(uint256 referFee);
+    event EnableForexMarket(bool _enabled);
     event EnableMarketOrder(bool _enabled);
+    event SetAssetManagerWallet(address manager);
     event SetBountyPercent(uint256 indexed bountyPercent);
     event SetDepositFee(uint256 indexed fee);
     event SetEnableDeposit(address indexed token, bool isEnabled);
@@ -125,6 +129,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit UpdateTotalOpenInterest(_token, _isLong, _amount);
     }
 
+    function enableForexMarket(bool _enable) external {
+        require(msg.sender == assetManagerWallet, 'not allowed to manage forex');
+        pauseForexForCloseTime = _enable;
+        emit EnableForexMarket(_enable);
+    }
     function enableMarketOrder(bool _enable) external onlyOwner {
         marketOrderEnabled = _enable;
         emit EnableMarketOrder(_enable);
@@ -140,6 +149,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         openInterestPerAsset[_token] += _amount;
         openInterestPerSide[_isLong] += _amount;
         emit UpdateTotalOpenInterest(_token, _isLong, _amount);
+    }
+
+    function setAssetManagerWallet(address _wallet) external onlyOwner {
+        assetManagerWallet = _wallet;
+        emit SetAssetManagerWallet(_wallet);
     }
 
     function setBountyPercent(uint256 _bountyPercent) external onlyOwner {
