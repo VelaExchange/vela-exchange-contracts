@@ -1062,7 +1062,7 @@ Example Output
 ### setAssetManagerWallet
 Owner Function
 
-This is a function to asset manager wallet
+This is a function to set asset manager wallet
 ```
 settingsManager.setAssetManagerWallet(address _wallet)
 ```
