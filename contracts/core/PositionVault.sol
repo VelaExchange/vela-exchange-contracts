@@ -189,9 +189,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             _isLong,
             position.refer
         );
-        confirm.confirmDelayStatus = false;
-        confirm.pendingDelayCollateral = 0;
-        confirm.pendingDelaySize = 0;
         emit ConfirmDelayTransaction(
             key,
             confirm.confirmDelayStatus,
@@ -199,6 +196,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             confirm.pendingDelaySize,
             fee
         );
+        confirm.confirmDelayStatus = false;
+        confirm.pendingDelayCollateral = 0;
+        confirm.pendingDelaySize = 0;
     }
 
     function decreasePosition(
@@ -248,14 +248,15 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             _posId,
             false
         );
+        uint256 bounty = (marginFees * settingsManager.bountyPercent()) / BASIS_POINTS_DIVISOR;
         require(liquidationState != LIQUIDATE_NONE_EXCEED, "not exceed or allowed");
         if (liquidationState == LIQUIDATE_THRESHOLD_EXCEED) {
             // max leverage exceeded but there is collateral remaining after deducting losses so decreasePosition instead
+            vault.transferBounty(msg.sender, bounty);
             _decreasePosition(_account, _indexToken, position.size, _isLong, _posId);
             return;
         }
         vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, marginFees);
-        uint256 bounty = (marginFees * settingsManager.bountyPercent()) / BASIS_POINTS_DIVISOR;
         vault.transferBounty(msg.sender, bounty);
         settingsManager.decreaseOpenInterest(_indexToken, _account, _isLong, position.size);
         _decreasePoolAmount(_indexToken, _isLong, marginFees);

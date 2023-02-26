@@ -9,6 +9,8 @@ unknown-*.json
 /cache
 /contracts/Vault/DefiProtocol.sol
 /contracts/Vault/vestedToken.sol
+/scripts/arbitrum
+/scripts/optimism
 # .env files
 .env
 .env.*

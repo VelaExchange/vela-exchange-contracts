@@ -10,7 +10,6 @@ import {Constants} from "../access/Constants.sol";
 
 contract PriceManager is IPriceManager, Ownable, Constants {
     address public immutable priceFeed;
-    mapping(address => bool) public isInitialized;
 
     mapping(address => bool) public override isForex;
     mapping(address => uint256) public override maxLeverage; //  50 * 10000 50x
@@ -22,13 +21,11 @@ contract PriceManager is IPriceManager, Ownable, Constants {
 
     function setTokenConfig(address _token, uint256 _tokenDecimals, uint256 _maxLeverage, bool _isForex) external onlyOwner {
         require(Address.isContract(_token), "Address is wrong");
-        require(!isInitialized[_token], "already initialized");
         tokenDecimals[_token] = _tokenDecimals;
         require(_maxLeverage > MIN_LEVERAGE, "Max Leverage should be greater than Min Leverage");
         maxLeverage[_token] = _maxLeverage;
         isForex[_token] = _isForex;
         getLastPrice(_token);
-        isInitialized[_token] = true;
     }
 
     function getNextAveragePrice(

@@ -107,8 +107,6 @@ describe("PriceManager", function () {
         await expect(priceManager.setTokenConfig(btc.address, 18, 1, true))
             .to.be.revertedWith("Max Leverage should be greater than Min Leverage")
         await priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage, false)
-        await expect(priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage, false))
-            .to.be.revertedWith("already initialized")
         await priceManager.setTokenConfig(eth.address, 18, cryptoMaxLeverage, false)
         await priceManager.setTokenConfig(gbp.address, 18, forexMaxLeverage, true)
         await priceManager.setTokenConfig(eur.address, 18, forexMaxLeverage, true)
