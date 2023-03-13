@@ -12,4 +12,6 @@ interface IVault {
     function takeVUSDOut(address _account, address _refer, uint256 _fee, uint256 _usdOut) external;
 
     function transferBounty(address _account, uint256 _amount) external;
+
+    function lastStakedAt(address _account) external view returns (uint256);
 }

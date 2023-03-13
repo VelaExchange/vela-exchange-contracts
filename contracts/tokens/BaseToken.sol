@@ -33,7 +33,7 @@ contract BaseToken is IERC20, Ownable {
         symbol = _symbol;
     }
 
-    function transfer(address _recipient, uint256 _amount) external override returns (bool) {
+    function transfer(address _recipient, uint256 _amount) public virtual override returns (bool) {
         _transfer(msg.sender, _recipient, _amount);
         return true;
     }
