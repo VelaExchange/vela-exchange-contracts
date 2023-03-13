@@ -8,7 +8,7 @@ const { ethers, upgrades } = require("hardhat");
 
 const { deployContract } = require("../../scripts/shared/helpers.js")
 const { toUsd, expandDecimals, getBlockTime, bigNumberify, zeroAddress} = require("../../scripts/shared/utilities.js")
-const { toChainlinkPrice } = require("../../scripts/shared/chainlink.js")
+const { toChainlinkPrice } = require("../../scripts/shared/chainlink.js");
 
 use(solidity)
 
@@ -45,6 +45,20 @@ describe("TokenFarm", function () {
         await vela.connect(wallet).mint(wallet.address, expandDecimals(100000, 18)); // mint eVELA
         await vlp.connect(wallet).mint(wallet.address, expandDecimals(100000, 18)); // mint eVELA
         await vela.connect(wallet).mint(tokenFarm.address, expandDecimals(100000, 18)); // mint eVELA
+        let vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0]);
+        let vault = await deployContract("Vault", [
+            vlp.address,
+            vusd.address
+        ]);
+        let PositionVault = await deployContract("PositionVault", []);
+        let settingsManager = await deployContract("SettingsManager",
+          [
+            PositionVault.address,
+            vusd.address,
+            tokenFarm.address
+          ]
+        );
+        await vlp.initialize(vault.address, settingsManager.address);
     });
 
     it ("deploy ComplexRewardPerSec and add pool info to tokenFarm", async () => {
