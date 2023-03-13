@@ -2,32 +2,39 @@
 
 pragma solidity 0.8.9;
 
+import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IPriceManager.sol";
-import "./interfaces/IVaultPriceFeed.sol";
 import {Constants} from "../access/Constants.sol";
 
 contract PriceManager is IPriceManager, Ownable, Constants {
-    address public immutable priceFeed;
+    IPyth pyth;
     mapping(address => bool) public isInitialized;
 
     mapping(address => bool) public override isForex;
     mapping(address => uint256) public override maxLeverage; //  50 * 10000 50x
+    mapping(address => bytes32) public priceIds;
     mapping(address => uint256) public override tokenDecimals;
 
-    constructor(address _priceFeed) {
-        priceFeed = _priceFeed;
+    constructor(address pythContract) {
+        pyth = IPyth(pythContract);
     }
 
-    function setTokenConfig(address _token, uint256 _tokenDecimals, uint256 _maxLeverage, bool _isForex) external onlyOwner {
+    function setTokenConfig(address _token, 
+        uint256 _tokenDecimals, 
+        uint256 _maxLeverage, 
+        bool _isForex,
+        bytes32 _priceId
+        ) external onlyOwner {
         require(Address.isContract(_token), "Address is wrong");
         require(!isInitialized[_token], "already initialized");
         tokenDecimals[_token] = _tokenDecimals;
         require(_maxLeverage > MIN_LEVERAGE, "Max Leverage should be greater than Min Leverage");
         maxLeverage[_token] = _maxLeverage;
         isForex[_token] = _isForex;
-        getLastPrice(_token);
+        priceIds[_token] = _priceId;
         isInitialized[_token] = true;
     }
 
@@ -90,6 +97,15 @@ contract PriceManager is IPriceManager, Ownable, Constants {
     }
 
     function getLastPrice(address _token) public view override returns (uint256) {
-        return IVaultPriceFeed(priceFeed).getLastPrice(_token);
+        PythStructs.Price memory priceInfo = pyth.getPrice(priceIds[_token]);
+        if (priceInfo.expo >= 0) {
+            uint256 exponent = uint256(uint32(priceInfo.expo));
+            uint256 price = uint256(uint64(priceInfo.price));
+            return price * (10 ** (PRICE_DECIMALS + exponent));
+        } else {
+            uint256 exponent = uint256(uint32(priceInfo.expo));
+            uint256 price = uint256(uint64(priceInfo.price));
+            return price * (10 ** (PRICE_DECIMALS - exponent));
+        }
     }
 }

@@ -36,6 +36,7 @@ contract Constants {
     uint256 public constant POSITION_STOP_LIMIT = 3;
     uint256 public constant POSITION_TRAILING_STOP = 4;
     uint256 public constant PRICE_PRECISION = 10 ** 30;
+    uint256 public constant PRICE_DECIMALS = 30;
     uint256 public constant TRAILING_STOP_TYPE_AMOUNT = 0;
     uint256 public constant TRAILING_STOP_TYPE_PERCENT = 1;
     uint256 public constant VLP_DECIMALS = 18;
