@@ -41,10 +41,10 @@ describe("PriceManager", function () {
     before(async function () {
         btc = await deployContract("BaseToken", ["Bitcoin", "BTC", 0])
         btcPriceFeed = await deployContract("FastPriceFeed", [])
-    
+
         eth = await deployContract("BaseToken", ["Ethereum", "ETH", 0])
         ethPriceFeed = await deployContract("FastPriceFeed", [])
-    
+
         doge = await deployContract("BaseToken", ["Dogecoin", "DOGE", 0])
         dogePriceFeed = await deployContract("FastPriceFeed", [])
 
@@ -66,14 +66,16 @@ describe("PriceManager", function () {
         vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
         vlp = await deployContract('VLP', [])
         vestingDuration = 6 * 30 * 24 * 60 * 60
-        unbondingPeriod = 14 * 24 * 60 * 60 
+        unbondingPeriod = 14 * 24 * 60 * 60
         cooldownDuration = 86400
         liquidationFeeUsd = toUsd(0) // _liquidationFeeUsd
         fundingInterval = 1 * 60 * 60 // fundingInterval = 8 hours
         fundingRateFactor = 100 //  fundingRateFactor
         feeRewardBasisPoints = 70000 // FeeRewardBasisPoints 70%
         depositFee = 3000
+        withdrawFee = 3000
         stakingFee = 3000
+        unstakingFee = 3000
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         priceManager = await deployContract("PriceManager", [
           vaultPriceFeed.address
@@ -136,21 +138,21 @@ describe("PriceManager", function () {
         const _averagePrice = 1000
         const _isLong = true
         const delta = await priceManager.getDelta(
-            _indexToken, 
+            _indexToken,
             _size,
             _averagePrice,
-            _isLong) 
+            _isLong)
         const _isLong2 = false
         const delta2 = await priceManager.getDelta(
-            _indexToken, 
+            _indexToken,
             _size,
             _averagePrice,
-            _isLong2) 
+            _isLong2)
         await expect(priceManager.getDelta(
-            _indexToken, 
+            _indexToken,
             _size,
             0,
-            _isLong2)).to.be.revertedWith("average price should be greater than zero") 
+            _isLong2)).to.be.revertedWith("average price should be greater than zero")
     })
 
 
@@ -158,8 +160,8 @@ describe("PriceManager", function () {
         const _indexToken = btc.address
         const usdAmount = 0
         const tokenAmount = await priceManager.usdToToken(
-            _indexToken, 
-            usdAmount) 
+            _indexToken,
+            usdAmount)
         expect(tokenAmount).eq(0)
     })
 
@@ -167,8 +169,8 @@ describe("PriceManager", function () {
         const _indexToken = btc.address
         const usdAmount = 1000
         const tokenAmount = await priceManager.usdToToken(
-            _indexToken, 
-            usdAmount) 
+            _indexToken,
+            usdAmount)
         // expect(tokenAmount).eq(0)
     })
 
@@ -177,8 +179,8 @@ describe("PriceManager", function () {
         const _indexToken = btc.address
         const tokenAmount = 0
         const usdAmount = await priceManager.tokenToUsd(
-            _indexToken, 
-            tokenAmount) 
+            _indexToken,
+            tokenAmount)
         expect(usdAmount).eq(0)
     })
 
@@ -186,14 +188,14 @@ describe("PriceManager", function () {
         const _indexToken = btc.address
         const tokenAmount = 1000
         const usdAmount = await priceManager.tokenToUsd(
-            _indexToken, 
-            tokenAmount) 
+            _indexToken,
+            tokenAmount)
         // expect(tokenAmount).eq(0)
     })
 
     it ("getLastPrice", async () => {
         const _indexToken = btc.address
         const lastPrice = await priceManager.getLastPrice(
-            _indexToken) 
+            _indexToken)
     })
 });

@@ -21,7 +21,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     address public assetManagerWallet;
     bool public override marketOrderEnabled = true;
     bool public override pauseForexForCloseTime;
-    address public override positionManager;
     bool public override referEnabled;
     uint256 public maxOpenInterestPerUser;
     uint256 public priceMovementPercent = 500; // 0.5%
@@ -31,16 +30,20 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public override cooldownDuration = 3 hours;
     uint256 public override delayDeltaTime = 1 minutes;
     uint256 public override depositFee = 300; // 0.3%
+    uint256 public override withdrawFee = 300; // 0.3%
     uint256 public override feeRewardBasisPoints = 70000; // 70%
     uint256 public override fundingInterval = 8 hours;
     uint256 public override liquidationFeeUsd; // 0 usd
     uint256 public override stakingFee = 300; // 0.3%
+    uint256 public override unstakingFee = 300; // 0.3%
     uint256 public override referFee = 5000; // 5%
     uint256 public override triggerGasFee = 0; //100 gwei;
 
     mapping(address => bool) public override isDeposit;
+    mapping(address => bool) public override isWithdraw;
     mapping(address => bool) public override isManager;
-    mapping(address => bool) public override isStaking;
+    mapping(address => bool) public override isStakingEnabled;
+    mapping(address => bool) public override isUnstakingEnabled;
 
     mapping(address => mapping(bool => uint256)) public override cumulativeFundingRates;
     mapping(address => mapping(bool => uint256)) public override fundingRateFactor;
@@ -63,8 +66,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetAssetManagerWallet(address manager);
     event SetBountyPercent(uint256 indexed bountyPercent);
     event SetDepositFee(uint256 indexed fee);
+    event SetWithdrawFee(uint256 indexed fee);
     event SetEnableDeposit(address indexed token, bool isEnabled);
+    event SetEnableWithdraw(address indexed token, bool isEnabled);
     event SetEnableStaking(address indexed token, bool isEnabled);
+    event SetEnableUnstaking(address indexed token, bool isEnabled);
     event SetFundingInterval(uint256 indexed fundingInterval);
     event SetFundingRateFactor(address indexed token, bool isLong, uint256 fundingRateFactor);
     event SetLiquidationFeeUsd(uint256 indexed _liquidationFeeUsd);
@@ -74,6 +80,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetMaxOpenInterestPerUser(uint256 maxOIAmount);
     event SetPositionManager(address manager, bool isManager);
     event SetStakingFee(uint256 indexed fee);
+    event SetUnstakingFee(uint256 indexed fee);
     event SetTriggerGasFee(uint256 indexed fee);
     event SetVaultSettings(uint256 indexed cooldownDuration, uint256 feeRewardBasisPoints);
     event UpdateFundingRate(address indexed token, bool isLong, uint256 fundingRate, uint256 lastFundingTime);
@@ -109,7 +116,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         bool _isLong,
         uint256 _amount
     ) external override onlyVault {
-        
+
         if (openInterestPerUser[_sender] < _amount) {
             openInterestPerUser[_sender] = 0;
         }
@@ -134,6 +141,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         pauseForexForCloseTime = _enable;
         emit EnableForexMarket(_enable);
     }
+
     function enableMarketOrder(bool _enable) external onlyOwner {
         marketOrderEnabled = _enable;
         emit EnableMarketOrder(_enable);
@@ -188,9 +196,15 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function setDepositFee(uint256 _fee) external onlyOwner {
-        require(_fee <= MAX_DEPOSIT_FEE, "deposit fee is bigger than max");
+        require(_fee <= MAX_DEPOSIT_WITHDRAW_FEE, "deposit fee is bigger than max");
         depositFee = _fee;
         emit SetDepositFee(_fee);
+    }
+
+    function setWithdrawFee(uint256 _fee) external onlyOwner {
+        require(_fee <= MAX_DEPOSIT_WITHDRAW_FEE, "withdraw fee is bigger than max");
+        withdrawFee = _fee;
+        emit SetWithdrawFee(_fee);
     }
 
     function setEnableDeposit(address _token, bool _isEnabled) external onlyOwner {
@@ -198,9 +212,19 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetEnableDeposit(_token, _isEnabled);
     }
 
+    function setEnableWithdraw(address _token, bool _isEnabled) external onlyOwner {
+        isWithdraw[_token] = _isEnabled;
+        emit SetEnableWithdraw(_token, _isEnabled);
+    }
+
     function setEnableStaking(address _token, bool _isEnabled) external onlyOwner {
-        isStaking[_token] = _isEnabled;
+        isStakingEnabled[_token] = _isEnabled;
         emit SetEnableStaking(_token, _isEnabled);
+    }
+
+    function setEnableUnstaking(address _token, bool _isEnabled) external onlyOwner {
+        isUnstakingEnabled[_token] = _isEnabled;
+        emit SetEnableUnstaking(_token, _isEnabled);
     }
 
     function setFundingInterval(uint256 _fundingInterval) external onlyOwner {
@@ -251,7 +275,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     function setPositionManager(address _manager, bool _isManager) external onlyOwner {
         isManager[_manager] = _isManager;
-        positionManager = _manager;
         emit SetPositionManager(_manager, _isManager);
     }
 
@@ -267,9 +290,15 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function setStakingFee(uint256 _fee) external onlyOwner {
-        require(_fee <= MAX_STAKING_FEE, "staking fee is bigger than max");
+        require(_fee <= MAX_STAKING_UNSTAKING_FEE, "staking fee is bigger than max");
         stakingFee = _fee;
         emit SetStakingFee(_fee);
+    }
+
+    function setUnstakingFee(uint256 _fee) external onlyOwner {
+        require(_fee <= MAX_STAKING_UNSTAKING_FEE, "unstaking fee is bigger than max");
+        unstakingFee = _fee;
+        emit SetUnstakingFee(_fee);
     }
 
     function setTriggerGasFee(uint256 _fee) external onlyOwner {

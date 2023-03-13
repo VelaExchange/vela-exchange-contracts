@@ -50,15 +50,17 @@ describe("SettingsManager", function () {
     let closeDeltaTime
     let delayDeltaTime
     let depositFee
+    let withdrawFee
     let stakingFee
+    let unstakingFee
 
     before(async function () {
         btc = await deployContract("BaseToken", ["Bitcoin", "BTC", 0])
         btcPriceFeed = await deployContract("FastPriceFeed", [])
-    
+
         eth = await deployContract("BaseToken", ["Ethereum", "ETH", 0])
         ethPriceFeed = await deployContract("FastPriceFeed", [])
-    
+
         doge = await deployContract("BaseToken", ["Dogecoin", "DOGE", 0])
         dogePriceFeed = await deployContract("FastPriceFeed", [])
 
@@ -80,7 +82,7 @@ describe("SettingsManager", function () {
         vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
         vlp = await deployContract('VLP', [])
         vestingDuration = 6 * 30 * 24 * 60 * 60
-        unbondingPeriod = 14 * 24 * 60 * 60 
+        unbondingPeriod = 14 * 24 * 60 * 60
         cooldownDuration = 86400
         liquidationFeeUsd = toUsd(0) // _liquidationFeeUsd
         fundingInterval = 1 * 60 * 60 // fundingInterval = 8 hours
@@ -89,7 +91,9 @@ describe("SettingsManager", function () {
         closeDeltaTime = 2 * 60 * 60;
         delayDeltaTime = 10 * 60
         depositFee = 3000
+        withdrawFee = 3000
         stakingFee = 3000
+        unstakingFee = 3000
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address])
@@ -98,7 +102,7 @@ describe("SettingsManager", function () {
            vlp.address,
            vusd.address
         ]);
-        PositionVault = await deployContract("PositionVault", [])        
+        PositionVault = await deployContract("PositionVault", [])
         priceManager = await deployContract("PriceManager", [
           vaultPriceFeed.address
         ])
@@ -118,9 +122,9 @@ describe("SettingsManager", function () {
       await expect(settingsManager.setVaultSettings(max_cooldown_duration, feeRewardBasisPoints))
         .to.be.revertedWith("invalid cooldownDuration")
       await expect(settingsManager.setVaultSettings(cooldownDuration, minFeeBasisPoints))
-        .to.be.revertedWith("feeRewardsBasisPoints not greater than min")        
+        .to.be.revertedWith("feeRewardsBasisPoints not greater than min")
       await expect(settingsManager.setVaultSettings(cooldownDuration, maxFeeBasisPoints))
-        .to.be.revertedWith("feeRewardsBasisPoints not smaller than max") 
+        .to.be.revertedWith("feeRewardsBasisPoints not smaller than max")
       await settingsManager.setVaultSettings(cooldownDuration, feeRewardBasisPoints)
     })
 
@@ -144,6 +148,12 @@ describe("SettingsManager", function () {
       await settingsManager.setDepositFee(depositFee)
     })
 
+    it ("setWithdrawFee", async () => {
+      await expect(settingsManager.setWithdrawFee(15000))
+        .to.be.revertedWith("withdraw fee is bigger than max")
+      await settingsManager.setWithdrawFee(withdrawFee)
+    })
+
     it ("setEnableDeposit", async () => {
       const token = usdt.address
       await settingsManager.setEnableDeposit(token, true)
@@ -152,6 +162,11 @@ describe("SettingsManager", function () {
     it ("setEnableStaking", async () => {
       const token = usdt.address
       await settingsManager.setEnableStaking(token, true)
+    })
+
+    it ("setEnableUnstaking", async () => {
+      const token = usdt.address
+      await settingsManager.setEnableUnstaking(token, true)
     })
 
     it ("setFundingInterval", async () => {
@@ -282,10 +297,10 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max open interest per user")    
+      )).to.be.revertedWith("exceed max open interest per user")
       await settingsManager.setMaxOpenInterestPerUser(
         100
-      )  
+      )
       await settingsManager.validatePosition(
         _account,
         _indexToken,
@@ -305,11 +320,11 @@ describe("SettingsManager", function () {
     })
 
     it ("setReferFee", async () => {
-      const fee1 = 10000000; // greater than feeDivisor 
+      const fee1 = 10000000; // greater than feeDivisor
       await expect(settingsManager.setReferFee(fee1))
         .to.be.revertedWith("fee should be smaller than feeDivider")
-      const fee2 = 100; // greater than feeDivisor 
-      await settingsManager.setReferFee(fee2)       
+      const fee2 = 100; // greater than feeDivisor
+      await settingsManager.setReferFee(fee2)
     })
 
     it ("setReferEnabled", async () => {
@@ -405,6 +420,6 @@ describe("SettingsManager", function () {
         sender,
         isLong,
         amount
-      )).to.be.revertedWith("Only vault has access") 
+      )).to.be.revertedWith("Only vault has access")
     })
 });
