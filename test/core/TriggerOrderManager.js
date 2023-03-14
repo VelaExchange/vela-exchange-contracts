@@ -50,10 +50,10 @@ describe("TriggerOrderManager", function () {
     before(async function () {
         btc = await deployContract("BaseToken", ["Bitcoin", "BTC", 0])
         btcPriceFeed = await deployContract("FastPriceFeed", [])
-    
+
         eth = await deployContract("BaseToken", ["Ethereum", "ETH", 0])
         ethPriceFeed = await deployContract("FastPriceFeed", [])
-    
+
         doge = await deployContract("BaseToken", ["Dogecoin", "DOGE", 0])
         dogePriceFeed = await deployContract("FastPriceFeed", [])
 
@@ -75,14 +75,16 @@ describe("TriggerOrderManager", function () {
         vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
         vlp = await deployContract('VLP', [])
         vestingDuration = 6 * 30 * 24 * 60 * 60
-        unbondingPeriod = 14 * 24 * 60 * 60 
+        unbondingPeriod = 14 * 24 * 60 * 60
         cooldownDuration = 86400
         liquidationFeeUsd = toUsd(0) // _liquidationFeeUsd
         fundingInterval = 1 * 60 * 60 // fundingInterval = 8 hours
         fundingRateFactor = 100 //  fundingRateFactor
         feeRewardBasisPoints = 70000 // FeeRewardBasisPoints 70%
         depositFee = 3000
+        withdrawFee = 3000
         stakingFee = 3000
+        unstakingFee = 3000
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address])
@@ -91,7 +93,7 @@ describe("TriggerOrderManager", function () {
            vlp.address,
            vusd.address
         ]);
-        PositionVault = await deployContract("PositionVault", [])        
+        PositionVault = await deployContract("PositionVault", [])
         priceManager = await deployContract("PriceManager", [
           vaultPriceFeed.address
         ])
@@ -221,7 +223,7 @@ describe("TriggerOrderManager", function () {
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
            marginFeeBasisPoints: 8, // 0.008% 80 / 100000
-         },    
+         },
          {
            name: "jpy",
            address: jpy.address,
@@ -231,7 +233,7 @@ describe("TriggerOrderManager", function () {
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
            marginFeeBasisPoints: 8, // 0.008% 80 / 100000
-         }, 
+         },
          {
            name: "usdc",
            address: usdc.address,
@@ -241,7 +243,7 @@ describe("TriggerOrderManager", function () {
            priceDecimals: 8,
            maxLeverage: 100 * 10000,
            marginFeeBasisPoints: 80, // 0.08% 80 / 100000
-         },    
+         },
          {
            name: "usdt",
            address: usdt.address,
@@ -282,7 +284,7 @@ describe("TriggerOrderManager", function () {
      const currentTimestamp = await getBlockTime(provider);
      const endTimestamp1 = currentTimestamp + 14 * 60 * 60 * 24 //1659716363  => delta 2,592,000
      const endTimestamp2 = currentTimestamp + 30 * 60 * 60 * 24
-     const endTimestamp3 = currentTimestamp + 30 * 60 * 60 * 24 
+     const endTimestamp3 = currentTimestamp + 30 * 60 * 60 * 24
      const rewardPerSec1 = expandDecimals(8267, 12)
      const rewardPerSec2 = expandDecimals(3858, 12)
      const rewardPerSec3 = expandDecimals(3858, 12)
@@ -446,30 +448,29 @@ describe("TriggerOrderManager", function () {
      await settingsManager.setMarginFeeBasisPoints(eur.address, true, EURLongMarginFeeBasisPoints);
      await settingsManager.setMarginFeeBasisPoints(eur.address, false, EURShortMarginFeeBasisPoints);
      await settingsManager.setLiquidateThreshold(JPYLiquidateThreshold, jpy.address);
-     await settingsManager.setMaxOpenInterestPerAsset(jpy.address, JPYMaxOpenInterest);
      await settingsManager.setFundingRateFactor(jpy.address, true, JPYLongFundingRateFactor);
      await settingsManager.setFundingRateFactor(jpy.address, false, JPYShortFundingRateFactor);
      await settingsManager.setMarginFeeBasisPoints(jpy.address, true, JPYLongMarginFeeBasisPoints);
      await settingsManager.setMarginFeeBasisPoints(jpy.address, false, JPYShortMarginFeeBasisPoints);
-     await settingsManager.setMaxOpenInterestPerSide(true, LONGMaxOpenInterest);
-     await settingsManager.setMaxOpenInterestPerSide(false, SHORTMaxOpenInterest);
      await settingsManager.setMaxOpenInterestPerUser(USERMaxOpenInterest);
      await settingsManager.setEnableDeposit(usdt.address, true)
      await settingsManager.setEnableStaking(usdt.address, true)
+     await settingsManager.setEnableUnstaking(usdt.address, true)
      await settingsManager.setEnableDeposit(usdc.address, true)
      await settingsManager.setEnableStaking(usdc.address, true)
+     await settingsManager.setEnableUnstaking(usdc.address, true)
    })
 
     it("Stake Stable Coins for Vault ", async () => {
      const amount = expandDecimals('100000', 18)
      const vlpBalanceBeforeStake = await vlp.balanceOf(wallet.address)
      const usdtBalanceBeforeStake = await usdt.balanceOf(wallet.address)
-     expect(parseFloat(ethers.utils.formatUnits(vlpBalanceBeforeStake, 18))).eq(0) 
+     expect(parseFloat(ethers.utils.formatUnits(vlpBalanceBeforeStake, 18))).eq(0)
      expect(parseFloat(ethers.utils.formatUnits(usdtBalanceBeforeStake, 18))).eq(10000000.0)
      await Vault.stake(wallet.address, usdt.address, amount);
      const vlpBalanceAfterStake = await vlp.balanceOf(wallet.address)
      const usdtBalanceAfterStake = await usdt.balanceOf(wallet.address)
-    //  expect(parseFloat(ethers.utils.formatUnits(vlpBalanceAfterStake, 18))).eq(6062.5) 
+    //  expect(parseFloat(ethers.utils.formatUnits(vlpBalanceAfterStake, 18))).eq(6062.5)
      // liquidity fee = 0.3%
      // amountAfterFee = 100000 * 99.7% = 99700 USDT (1USDT = 1usd)
      // VLP Price = 16usd
@@ -483,7 +484,7 @@ describe("TriggerOrderManager", function () {
      await usdc.connect(wallet).approve(Vault.address, expandDecimals('100000', 18)); // approve USDC
      await Vault.deposit(wallet.address, usdt.address, expandDecimals('100000', 18)); // deposit USDT
      await Vault.deposit(wallet.address, usdc.address, expandDecimals('100000', 18)); // deposit USDC
-   })     
+   })
 
    it ("vlpBalance", async () => {
      const vlpBalanceOf = await vlp.balanceOf(wallet.address)
@@ -561,24 +562,24 @@ describe("TriggerOrderManager", function () {
         .to.be.revertedWith("gasFee exceed max")
       await settingsManager.setTriggerGasFee(newTriggerGasFee)
       await expect(triggerOrderManager.updateTriggerOrders(
-        indexToken, 
-        isLong, 
-        posId, 
-        tpPrices, 
-        slPrices, 
-        tpAmountPercents, 
+        indexToken,
+        isLong,
+        posId,
+        tpPrices,
+        slPrices,
+        tpAmountPercents,
         slAmountPercents,
         tpTriggeredAmounts,
         slTriggeredAmounts,
         {from: wallet.address, value: 0}
       )).to.be.revertedWith("invalid triggerGasFee")
       await triggerOrderManager.updateTriggerOrders(
-        indexToken, 
-        isLong, 
-        posId, 
-        tpPrices, 
-        slPrices, 
-        tpAmountPercents, 
+        indexToken,
+        isLong,
+        posId,
+        tpPrices,
+        slPrices,
+        tpAmountPercents,
         slAmountPercents,
         tpTriggeredAmounts,
         slTriggeredAmounts,
@@ -592,9 +593,9 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 0
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
   })
 
@@ -612,9 +613,9 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 0
     await PositionVault.triggerPosition(
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
   })
 
@@ -624,11 +625,11 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 0
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
-  })  
+  })
 
   it ("setLatestAnswer for BTC", async () => {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
@@ -640,9 +641,9 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 0
     await PositionVault.triggerPosition(
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
   })
 
@@ -652,11 +653,11 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 0
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
-  })    
+  })
 
   it ("setLatestAnswer for BTC", async () => {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('59500'))
@@ -668,9 +669,9 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 0
     await PositionVault.triggerPosition(
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
   })
 
@@ -680,11 +681,11 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 0
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
-  })  
+  })
 
   it ("setLatestAnswer for BTC", async () => {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
@@ -748,12 +749,12 @@ describe("TriggerOrderManager", function () {
         0
       ]
       await triggerOrderManager.updateTriggerOrders(
-        indexToken, 
-        isLong, 
-        posId, 
-        tpPrices, 
-        slPrices, 
-        tpAmountPercents, 
+        indexToken,
+        isLong,
+        posId,
+        tpPrices,
+        slPrices,
+        tpAmountPercents,
         slAmountPercents,
         tpTriggeredAmounts,
         slTriggeredAmounts,
@@ -767,9 +768,9 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 1
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
    })
 
@@ -783,9 +784,9 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 1
     await PositionVault.triggerPosition(
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
   })
 
@@ -795,11 +796,11 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 1
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
-  })  
+  })
 
   it ("setLatestAnswer for BTC", async () => {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
@@ -865,12 +866,12 @@ describe("TriggerOrderManager", function () {
         0
       ]
       await triggerOrderManager.updateTriggerOrders(
-        indexToken, 
-        isLong, 
-        posId, 
-        tpPrices, 
-        slPrices, 
-        tpAmountPercents, 
+        indexToken,
+        isLong,
+        posId,
+        tpPrices,
+        slPrices,
+        tpAmountPercents,
         slAmountPercents,
         tpTriggeredAmounts,
         slTriggeredAmounts,
@@ -883,8 +884,8 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 2
     const triggerOrderInfo = await triggerOrderManager.cancelTriggerOrders (
-      indexToken, 
-      isLong, 
+      indexToken,
+      isLong,
       posId)
    })
 
@@ -894,11 +895,11 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 2
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account, 
-      indexToken, 
-      isLong, 
+      account,
+      indexToken,
+      isLong,
       posId)
-   })  
+   })
 
    it ("setLatestAnswer for BTC", async () => {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
@@ -910,9 +911,9 @@ describe("TriggerOrderManager", function () {
       const isLong = true
       const posId = 1
       await expect(PositionVault.triggerPosition(
-        account, 
-        indexToken, 
-        isLong, 
+        account,
+        indexToken,
+        isLong,
         posId))
         .to.be.revertedWith("TriggerOrder not Open")
    })
@@ -970,10 +971,10 @@ describe("TriggerOrderManager", function () {
       0
     ]
     await expect(triggerOrderManager.updateTriggerOrders(
-      indexToken, 
-      isLong, 
+      indexToken,
+      isLong,
       pId,
-      tpPrices, 
+      tpPrices,
       slPrices,
       tpAmountPercents,
       slAmountPercents,
@@ -1014,10 +1015,10 @@ describe("TriggerOrderManager", function () {
       0
     ]
     await expect(triggerOrderManager.updateTriggerOrders(
-      indexToken, 
-      isLong, 
+      indexToken,
+      isLong,
       pId,
-      tpPrices, 
+      tpPrices,
       slPrices,
       tpAmountPercents,
       slAmountPercents,
@@ -1058,10 +1059,10 @@ describe("TriggerOrderManager", function () {
       0
     ]
     await triggerOrderManager.updateTriggerOrders(
-      indexToken, 
-      isLong, 
+      indexToken,
+      isLong,
       pId,
-      tpPrices, 
+      tpPrices,
       slPrices,
       tpAmountPercents,
       slAmountPercents,
@@ -1178,10 +1179,10 @@ describe("TriggerOrderManager", function () {
       0
     ]
     await expect(triggerOrderManager.updateTriggerOrders(
-      indexToken, 
-      isLong, 
+      indexToken,
+      isLong,
       pId,
-      tpPrices, 
+      tpPrices,
       slPrices,
       tpAmountPercents,
       slAmountPercents,
@@ -1190,7 +1191,7 @@ describe("TriggerOrderManager", function () {
       {from: wallet.address, value: 0}
     )).to.be.revertedWith("triggerOrder data are incorrect")
    })
-   
+
    it ("updateTriggerOrdersData with position size = 0 for Short", async () => {
     const account = wallet.address
     const indexToken = btc.address
@@ -1222,10 +1223,10 @@ describe("TriggerOrderManager", function () {
       0
     ]
     await expect(triggerOrderManager.updateTriggerOrders(
-      indexToken, 
-      isLong, 
+      indexToken,
+      isLong,
       pId,
-      tpPrices, 
+      tpPrices,
       slPrices,
       tpAmountPercents,
       slAmountPercents,
@@ -1266,10 +1267,10 @@ describe("TriggerOrderManager", function () {
       0
     ]
     await triggerOrderManager.updateTriggerOrders(
-      indexToken, 
-      isLong, 
+      indexToken,
+      isLong,
       pId,
-      tpPrices, 
+      tpPrices,
       slPrices,
       tpAmountPercents,
       slAmountPercents,
@@ -1310,7 +1311,7 @@ describe("TriggerOrderManager", function () {
       .eq(true)
    })
 
-   
+
    it ("executeTriggerOrders for Short", async () => {
     const account = wallet.address
     const indexToken = btc.address

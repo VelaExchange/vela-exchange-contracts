@@ -3,19 +3,18 @@
 pragma solidity 0.8.9;
 
 interface ISettingsManager {
+
     function decreaseOpenInterest(address _token, address _sender, bool _isLong, uint256 _amount) external;
 
     function increaseOpenInterest(address _token, address _sender, bool _isLong, uint256 _amount) external;
 
     function updateCumulativeFundingRate(address _token, bool _isLong) external;
 
-    function openInterestPerAsset(address _token) external view returns (uint256);
-
-    function openInterestPerSide(bool _isLong) external view returns (uint256);
+    function openInterestPerAssetPerSide(address _token, bool _isLong) external view returns (uint256);
 
     function openInterestPerUser(address _sender) external view returns (uint256);
 
-    function bountyPercent() external view returns (uint256);
+    function bountyPercent() external view returns (uint32, uint32, uint32);
 
     function checkDelegation(address _master, address _delegate) external view returns (bool);
 
@@ -34,9 +33,13 @@ interface ISettingsManager {
 
     function cumulativeFundingRates(address _token, bool _isLong) external view returns (uint256);
 
+    function liquidationPendingTime() external view returns (uint256);
+
     function delayDeltaTime() external view returns (uint256);
 
     function depositFee() external view returns (uint256);
+
+    function withdrawFee() external view returns (uint256);
 
     function feeManager() external view returns (address);
 
@@ -59,9 +62,13 @@ interface ISettingsManager {
 
     function isDeposit(address _token) external view returns (bool);
 
+    function isWithdraw(address _token) external view returns (bool);
+
     function isManager(address _account) external view returns (bool);
 
-    function isStaking(address _token) external view returns (bool);
+    function isStakingEnabled(address _token) external view returns (bool);
+
+    function isUnstakingEnabled(address _token) external view returns (bool);
 
     function lastFundingTimes(address _token, bool _isLong) external view returns (uint256);
 
@@ -74,8 +81,6 @@ interface ISettingsManager {
     function marketOrderEnabled() external view returns (bool);
     function pauseForexForCloseTime() external view returns (bool);
 
-    function positionManager() external view returns (address);
-
     function priceMovementPercent() external view returns (uint256);
 
     function referFee() external view returns (uint256);
@@ -83,6 +88,8 @@ interface ISettingsManager {
     function referEnabled() external view returns (bool);
 
     function stakingFee() external view returns (uint256);
+
+    function unstakingFee() external view returns (uint256);
 
     function triggerGasFee() external view returns (uint256);
 
