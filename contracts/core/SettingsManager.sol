@@ -25,7 +25,14 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public maxOpenInterestPerUser;
     uint256 public priceMovementPercent = 500; // 0.5%
 
-    uint256 public override bountyPercent = 20000; // 20%
+    struct BountyPercent {
+        uint32 team;
+        uint32 firstCaller;
+        uint32 resolver;
+    } // pack to save gas
+    BountyPercent private bountyPercent_ = BountyPercent({team: 10000, firstCaller: 5000, resolver: 15000}); //team 10%, first caller 5% and resolver 15%
+    uint256 public override liquidationPendingTime = 10; // allow 10 seconds for manager to resolve liquidation
+
     uint256 public override closeDeltaTime = 1 hours;
     uint256 public override cooldownDuration = 3 hours;
     uint256 public override delayDeltaTime = 1 minutes;
@@ -64,7 +71,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event EnableForexMarket(bool _enabled);
     event EnableMarketOrder(bool _enabled);
     event SetAssetManagerWallet(address manager);
-    event SetBountyPercent(uint256 indexed bountyPercent);
+    event SetBountyPercent(uint256 bountyPercentTeam, uint256 bountyPercentFirstCaller, uint256 bountyPercentResolver);
     event SetDepositFee(uint256 indexed fee);
     event SetWithdrawFee(uint256 indexed fee);
     event SetEnableDeposit(address indexed token, bool isEnabled);
@@ -85,6 +92,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetVaultSettings(uint256 indexed cooldownDuration, uint256 feeRewardBasisPoints);
     event UpdateFundingRate(address indexed token, bool isLong, uint256 fundingRate, uint256 lastFundingTime);
     event UpdateTotalOpenInterest(address indexed token, bool isLong, uint256 amount);
+    event UpdateLiquidationPendingTime(uint256 liquidationPendingTime);
     event UpdateCloseDeltaTime(uint256 deltaTime);
     event UpdateDelayDeltaTime(uint256 deltaTime);
     event UpdateFeeManager(address indexed feeManager);
@@ -164,9 +172,20 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetAssetManagerWallet(_wallet);
     }
 
-    function setBountyPercent(uint256 _bountyPercent) external onlyOwner {
-        bountyPercent = _bountyPercent;
-        emit SetBountyPercent(_bountyPercent);
+    function setBountyPercent(
+        uint32 _bountyPercentTeam, 
+        uint32 _bountyPercentFirstCaller, 
+        uint32 _bountyPercentResolver
+    ) external onlyOwner {
+        require(_bountyPercentTeam + _bountyPercentFirstCaller + _bountyPercentResolver <= BASIS_POINTS_DIVISOR, "invalid bountyPercent");
+        bountyPercent_.team = _bountyPercentTeam;
+        bountyPercent_.firstCaller = _bountyPercentFirstCaller;
+        bountyPercent_.resolver = _bountyPercentResolver;
+        emit SetBountyPercent(_bountyPercentTeam, _bountyPercentFirstCaller, _bountyPercentResolver);
+    }
+
+    function bountyPercent() external view returns (uint32, uint32, uint32){
+        return (bountyPercent_.team, bountyPercent_.firstCaller, bountyPercent_.resolver);
     }
 
     function setFeeManager(address _feeManager) external onlyOwner {
@@ -181,6 +200,12 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         cooldownDuration = _cooldownDuration;
         feeRewardBasisPoints = _feeRewardsBasisPoints;
         emit SetVaultSettings(cooldownDuration, feeRewardBasisPoints);
+    }
+
+    function setLiquidationPendingTime(uint256 _liquidationPendingTime) external onlyOwner {
+        require(_liquidationPendingTime <= 60, "liquidationPendingTime is bigger than max");
+        liquidationPendingTime = _liquidationPendingTime;
+        emit UpdateLiquidationPendingTime(_liquidationPendingTime);
     }
 
     function setCloseDeltaTime(uint256 _deltaTime) external onlyOwner {
