@@ -58,6 +58,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         IComplexRewarder[] indexed rewarders,
         bool _enableCooldown
     );
+    event FarmConvert(address indexed user, uint256 amount);
     event FarmDeposit(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmissionRateUpdated(address indexed caller, uint256 previousValue, uint256 newValue);
@@ -115,6 +116,29 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
 
     function depositVesting(uint256 _amount) external nonReentrant {
         _depositVesting(msg.sender, _amount);
+    }
+
+    function depositWithConvert(uint256 _pid, uint256 _amount) external nonReentrant {
+        require (_amount > 0, "zero amount");
+        claimableToken.safeTransferFrom(msg.sender, address(this), _amount); //transfer VELA in
+
+        PoolInfo storage pool = poolInfo[_pid];
+        require(pool.lpToken == esToken, "target pool not esVELA"); // target _pid must be esVELA pool
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        
+        esToken.mint(address(this), _amount);
+
+        user.amount += _amount;
+        user.startTimestamp = block.timestamp;
+
+        for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
+            pool.rewarders[rewarderId].onVelaReward(_pid, msg.sender, user.amount);
+        }
+
+        pool.totalLp += _amount;
+        
+        emit FarmConvert(msg.sender, _amount);
+        emit FarmDeposit(msg.sender, _pid, _amount);
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.

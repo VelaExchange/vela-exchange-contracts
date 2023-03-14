@@ -606,4 +606,16 @@ describe("TokenFarm", function () {
             rewardPerSec
         )).to.be.revertedWith("add reward info: bad new endTimestamp")
     })
+
+    it ("deposit with convert", async () => {
+        const amount = expandDecimals('100', 18)
+        expect( (await tokenFarm.poolInfo(2)).lpToken ).equal(eVela.address) //pool id=2 for eVela
+        await vela.approve(tokenFarm.address, amount)
+        let eVELA_balance_before = await eVela.balanceOf(tokenFarm.address)
+        expect(tokenFarm.depositWithConvert(2, 0)).to.be.revertedWith("zero amount")
+        expect(tokenFarm.depositWithConvert(1, amount)).to.be.revertedWith("target pool not esVELA")
+        await tokenFarm.depositWithConvert(2, amount)
+        let eVELA_balance_after = await eVela.balanceOf(tokenFarm.address)
+        expect(eVELA_balance_after.sub(eVELA_balance_before)).eq(amount)
+    })
 });
