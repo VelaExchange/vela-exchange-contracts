@@ -16,7 +16,7 @@ contract Constants {
     uint256 public constant LIQUIDATE_THRESHOLD_EXCEED = 2;
     uint256 public constant MAX_DEPOSIT_FEE = 10000; // 10%
     uint256 public constant MAX_DELTA_TIME = 24 hours;
-    uint256 public constant MAX_COOLDOWN_DURATION = 48 hours;
+    uint256 public constant MAX_COOLDOWN_DURATION = 30 days;
     uint256 public constant MAX_FEE_BASIS_POINTS = 5000; // 5%
     uint256 public constant MAX_FEE_REWARD_BASIS_POINTS = BASIS_POINTS_DIVISOR; // 100%
     uint256 public constant MAX_FUNDING_RATE_FACTOR = 10000; // 1%
