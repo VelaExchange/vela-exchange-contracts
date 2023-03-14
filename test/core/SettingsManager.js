@@ -336,10 +336,11 @@ describe("SettingsManager", function () {
     })
 
     it ("setBountyPercent", async () => {
-      const bountyPercent = 250000
-      await expect(settingsManager.connect(user2).setBountyPercent(bountyPercent))
+      await expect(settingsManager.connect(user2).setBountyPercent(25000, 25000, 25000))
         .to.be.revertedWith("Ownable: caller is not the owner")
-      await settingsManager.setBountyPercent(bountyPercent)
+        await expect(settingsManager.setBountyPercent(50000, 50000, 1000))
+        .to.be.revertedWith("invalid bountyPercent")
+      await settingsManager.setBountyPercent(25000, 25000, 25000)
     })
 
     it ("enableMarketOrder", async () => {

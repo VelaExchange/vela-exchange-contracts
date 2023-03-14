@@ -3,6 +3,7 @@
 pragma solidity 0.8.9;
 
 interface ISettingsManager {
+
     function decreaseOpenInterest(address _token, address _sender, bool _isLong, uint256 _amount) external;
 
     function increaseOpenInterest(address _token, address _sender, bool _isLong, uint256 _amount) external;
@@ -15,7 +16,7 @@ interface ISettingsManager {
 
     function openInterestPerUser(address _sender) external view returns (uint256);
 
-    function bountyPercent() external view returns (uint256);
+    function bountyPercent() external view returns (uint32, uint32, uint32);
 
     function checkDelegation(address _master, address _delegate) external view returns (bool);
 
@@ -33,6 +34,8 @@ interface ISettingsManager {
     function cooldownDuration() external view returns (uint256);
 
     function cumulativeFundingRates(address _token, bool _isLong) external view returns (uint256);
+
+    function liquidationPendingTime() external view returns (uint256);
 
     function delayDeltaTime() external view returns (uint256);
 

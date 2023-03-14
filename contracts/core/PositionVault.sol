@@ -32,6 +32,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     mapping(bytes32 => Position) public positions;
     mapping(bytes32 => ConfirmInfo) public confirms;
     mapping(bytes32 => OrderInfo) public orders;
+    mapping(bytes32 => address) public liquidateRegistrant;
+    mapping(bytes32 => uint256) public liquidateRegisterTime;
+
     event AddOrRemoveCollateral(
         bytes32 indexed key,
         bool isPlus,
@@ -67,6 +70,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     event UpdatePoolAmount(address indexed token, bool isLong, uint256 amount);
     event UpdateReservedAmount(address indexed token, bool isLong, uint256 amount);
     event UpdateTrailingStop(bytes32 key, uint256 stpPrice);
+    event RegisterLiquidation(address account, address token, bool isLong, uint256 posId, address caller, uint256 marginFees);
     modifier onlyVault() {
         require(msg.sender == address(vault), "Only vault has access");
         _;
@@ -232,6 +236,28 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         isInitialized = true;
     }
 
+    function registerLiquidatePosition(
+        address _account,
+        address _indexToken,
+        bool _isLong,
+        uint256 _posId
+    ) external nonReentrant {
+        settingsManager.updateCumulativeFundingRate(_indexToken, _isLong);
+        bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
+        require(liquidateRegistrant[key] == address(0), "not the firstCaller");
+        (uint256 liquidationState, uint256 marginFees) = vaultUtils.validateLiquidation(
+            _account,
+            _indexToken,
+            _isLong,
+            _posId,
+            false
+        );
+        require(liquidationState != LIQUIDATE_NONE_EXCEED, "not exceed or allowed");
+        liquidateRegistrant[key] = msg.sender;
+        liquidateRegisterTime[key] = block.timestamp;
+        emit RegisterLiquidation(_account, _indexToken, _isLong, _posId, msg.sender, marginFees);
+    }
+
     function liquidatePosition(
         address _account,
         address _indexToken,
@@ -240,6 +266,12 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     ) external nonReentrant {
         settingsManager.updateCumulativeFundingRate(_indexToken, _isLong);
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
+        require(
+            settingsManager.isManager(msg.sender) ||
+                ( msg.sender == liquidateRegistrant[key] &&
+                liquidateRegisterTime[key] + settingsManager.liquidationPendingTime() <= block.timestamp ),
+            "not manager or not allowed before pendingTime"
+        );
         Position memory position = positions[key];
         (uint256 liquidationState, uint256 marginFees) = vaultUtils.validateLiquidation(
             _account,
@@ -255,8 +287,24 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             return;
         }
         vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, marginFees);
-        uint256 bounty = (marginFees * settingsManager.bountyPercent()) / BASIS_POINTS_DIVISOR;
-        vault.transferBounty(msg.sender, bounty);
+        (uint32 teamPercent, uint32 firstCallerPercent, uint32 resolverPercent) = settingsManager.bountyPercent();
+        uint256 bountyTeam = (marginFees * teamPercent) / BASIS_POINTS_DIVISOR;
+        //uint256 bounty = bountyTeam; //this can be used in log, leave to future
+        vault.transferBounty(settingsManager.feeManager(), bountyTeam);
+        if ( msg.sender == liquidateRegistrant[key] || liquidateRegistrant[key] == address(0)){ 
+            // same address to receive firstCaller bounty and resolver bounty
+            uint256 bountyCaller = (marginFees * (firstCallerPercent+resolverPercent)) / BASIS_POINTS_DIVISOR;
+            vault.transferBounty(msg.sender, bountyCaller);
+            //bounty += bountyCaller;
+        }else{
+            uint256 bountyCaller = (marginFees * firstCallerPercent) / BASIS_POINTS_DIVISOR;
+            vault.transferBounty(liquidateRegistrant[key], bountyCaller);
+            //bounty += bountyCaller;
+            uint256 bountyResolver = (marginFees * resolverPercent) / BASIS_POINTS_DIVISOR;
+            vault.transferBounty(msg.sender, bountyResolver);
+            //bounty += bountyResolver;
+        }
+
         settingsManager.decreaseOpenInterest(_indexToken, _account, _isLong, position.size);
         _decreasePoolAmount(_indexToken, _isLong, marginFees);
         vaultUtils.emitLiquidatePositionEvent(_account, _indexToken, _isLong, _posId);
