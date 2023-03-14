@@ -15,8 +15,6 @@ use(solidity)
 describe("SettingsManager", function () {
     const provider = waffle.provider
     const [wallet, user0, user1, user2, user3] = provider.getWallets()
-    let Vault;
-    let VaultUtils;
     let vusd;
     let vlp;
     let vela;
@@ -24,7 +22,6 @@ describe("SettingsManager", function () {
     let PositionVault;
     let priceManager;
     let settingsManager;
-    let triggerOrderManager;
     let tokenFarm;
     let vestingDuration
     let btc
@@ -35,48 +32,23 @@ describe("SettingsManager", function () {
     let jpy
     let usdc
     let usdt
-    let btcPriceFeed
-    let ethPriceFeed
-    let dogePriceFeed
-    let gbpPriceFeed
-    let eurPriceFeed
-    let jpyPriceFeed
-    let usdcPriceFeed
-    let usdtPriceFeed
-    let vlpPriceFeed
-    let vaultPriceFeed
     let cooldownDuration
     let feeRewardBasisPoints // FeeRewardBasisPoints 70%
     let closeDeltaTime
     let delayDeltaTime
     let depositFee
     let stakingFee
+    let pyth
 
     before(async function () {
         btc = await deployContract("BaseToken", ["Bitcoin", "BTC", 0])
-        btcPriceFeed = await deployContract("FastPriceFeed", [])
-    
         eth = await deployContract("BaseToken", ["Ethereum", "ETH", 0])
-        ethPriceFeed = await deployContract("FastPriceFeed", [])
-    
         doge = await deployContract("BaseToken", ["Dogecoin", "DOGE", 0])
-        dogePriceFeed = await deployContract("FastPriceFeed", [])
-
         gbp = await deployContract("BaseToken", ["Pound Sterling", "GBP", 0])
-        gbpPriceFeed = await deployContract("FastPriceFeed", [])
-
         eur = await deployContract("BaseToken", ["Euro", "EUR", 0])
-        eurPriceFeed = await deployContract("FastPriceFeed", [])
-
         jpy = await deployContract("BaseToken", ["Japanese Yan", "JPY", 0])
-        jpyPriceFeed = await deployContract("FastPriceFeed", [])
-
         usdt = await deployContract("BaseToken", ["Tether USD", "USDT", expandDecimals('10000000', 18)])
-        usdtPriceFeed = await deployContract("FastPriceFeed", [])
-
         usdc = await deployContract("BaseToken", ["USD Coin", "USDC", expandDecimals('10000000', 18)])
-        usdcPriceFeed = await deployContract("FastPriceFeed", [])
-        vlpPriceFeed = await deployContract("FastPriceFeed", [])
         vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
         vlp = await deployContract('VLP', [])
         vestingDuration = 6 * 30 * 24 * 60 * 60
@@ -93,15 +65,105 @@ describe("SettingsManager", function () {
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address])
-        vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
            vlp.address,
            vusd.address
         ]);
         PositionVault = await deployContract("PositionVault", [])        
         priceManager = await deployContract("PriceManager", [
-          vaultPriceFeed.address
+          pyth
         ])
+        const tokens = [
+          {
+            name: "btc",
+            address: btc.address,
+            decimals: 18,
+            isForex: false,
+            priceId: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+            priceDecimals: 8,
+            maxLeverage: 30 * 10000,
+            marginFeeBasisPoints: 80, // 0.08% 80 / 100000
+          },
+          {
+            name: "eth",
+            address: eth.address,
+            decimals: 18,
+            isForex: false,
+            priceId: "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
+            priceDecimals: 8,
+            maxLeverage: 30 * 10000,
+            marginFeeBasisPoints: 80, // 0.08% 80 / 100000
+          },
+          {
+            name: "doge",
+            address: doge.address,
+            decimals: 18,
+            isForex: false,
+            priceId: "0xdcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c",
+            priceDecimals: 8,
+            maxLeverage: 30 * 10000,
+            marginFeeBasisPoints: 80, // 0.08% 80 / 100000
+          },
+          {
+            name: "gbp",
+            address: gbp.address,
+            decimals: 18,
+            isForex: true,
+            priceId: "0x84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1",
+            priceDecimals: 8,
+            maxLeverage: 100 * 10000,
+            marginFeeBasisPoints: 8, // 0.008% 80 / 100000
+          },
+          {
+            name: "eur",
+            address: eur.address,
+            decimals: 18,
+            isForex: true,
+            priceId: "0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b",
+            priceDecimals: 8,
+            maxLeverage: 100 * 10000,
+            marginFeeBasisPoints: 8, // 0.008% 80 / 100000
+          },    
+          {
+            name: "jpy",
+            address: jpy.address,
+            decimals: 18,
+            isForex: true,
+            priceId: "0xef2c98c804ba503c6a707e38be4dfbb16683775f195b091252bf24693042fd52",
+            priceDecimals: 8,
+            maxLeverage: 100 * 10000,
+            marginFeeBasisPoints: 8, // 0.008% 80 / 100000
+          }, 
+          {
+            name: "usdc",
+            address: usdc.address,
+            decimals: 18,
+            isForex: true,
+            priceId: "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
+            priceDecimals: 8,
+            maxLeverage: 100 * 10000,
+            marginFeeBasisPoints: 80, // 0.08% 80 / 100000
+          },    
+          {
+            name: "usdt",
+            address: usdt.address,
+            decimals: 18,
+            isForex: true,
+            priceId: "0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b",
+            priceDecimals: 8,
+            maxLeverage: 100 * 10000,
+            marginFeeBasisPoints: 80, // 0.08% 80 / 100000
+          }
+         ];
+        for (const token of tokens) {
+          await priceManager.setTokenConfig(
+            token.address,
+            token.decimals,
+            token.maxLeverage,
+            token.isForex,
+            token.priceId
+          );
+        }
         settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,
