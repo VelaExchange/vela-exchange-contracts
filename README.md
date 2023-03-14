@@ -5,7 +5,7 @@ A complete breakdown of our exchange functionality and all contract addresses, f
 
 ## Basic Sample Hardhat Project
 
-This project demonstrates a basic Hardhat use case. 
+This project demonstrates a basic Hardhat use case.
 It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
 If you are not familiar with hardhat, you can refer it from the link below.
 https://hardhat.org/tutorial
@@ -48,7 +48,7 @@ All contracts deployed to Arbitrum Goerli are detailed at in our [Testnet Contra
 | Vault                | 0xa6061456cf27E6973D9aa592297bd56894Eb5307 | https://testnet.arbiscan.io/address/0xa6061456cf27E6973D9aa592297bd56894Eb5307 |
 | PositionVault        | 0x1dd07152b883c1d0A8490A35121A2e559dFE0702 | https://testnet.arbiscan.io/address/0x1dd07152b883c1d0A8490A35121A2e559dFE0702 |
 | VaultUtils           | 0x2CB6f026266F6b9451E559dD7c4BbF1bD0DD2045 | https://testnet.arbiscan.io/address/0x2CB6f026266F6b9451E559dD7c4BbF1bD0DD2045 |
-| PriceManager         | 0x2c4478Dd91341Cb50521F2Af7174FB3C73A7DbEC | https://testnet.arbiscan.io/address/0x2c4478Dd91341Cb50521F2Af7174FB3C73A7DbEC | 
+| PriceManager         | 0x2c4478Dd91341Cb50521F2Af7174FB3C73A7DbEC | https://testnet.arbiscan.io/address/0x2c4478Dd91341Cb50521F2Af7174FB3C73A7DbEC |
 | SettingsManager      | 0xce12b20F44E8fD27E4cd67eBc5c4F871400f84e7 | https://testnet.arbiscan.io/address/0xce12b20F44E8fD27E4cd67eBc5c4F871400f84e7 |
 | TriggerOrderManager  | 0x2E26d50c130aD55331DfF77e629433F93a962eDE | https://testnet.arbiscan.io/address/0x2E26d50c130aD55331DfF77e629433F93a962eDE |
 
@@ -100,8 +100,8 @@ Example Output
 
 ### deposit
 
-This is a function to deposit USDC for getting vUSD. 
-Users can open and close positions with vUSD for getting profits via leverage. 
+This is a function to deposit USDC for getting vUSD.
+Users can open and close positions with vUSD for getting profits via leverage.
 So users need to deposit USDC at first time.
 
 ```
@@ -109,13 +109,13 @@ vault.deposit (
         address _account,
         address _token,
         uint256 _amount
-    ) 
+    )
 ```
 
 Example Input
 for depositing 100 USDC(USDC decimals is 6),
 ```
-('0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266', '0x93F2394ceA60fa9E2E9AC215cd8ba04c30ed103b', 
+('0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266', '0x93F2394ceA60fa9E2E9AC215cd8ba04c30ed103b',
 '100000000')
 ```
 
@@ -135,13 +135,13 @@ vault.withdraw(
         address _token,
         address _account,
         uint256 _amount
-    ) 
+    )
 ```
 
 Example Input
 for withdawing 100 vUSD(vUSD decimals is 30),
 ```
-('0x93F2394ceA60fa9E2E9AC215cd8ba04c30ed103b',  '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266', 
+('0x93F2394ceA60fa9E2E9AC215cd8ba04c30ed103b',  '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266',
 '10000000000000000000000000000000')
 ```
 
@@ -152,9 +152,9 @@ Example Output
 
 ### stake
 
-This is a function to stake USDC for getting VLP. 
-By staking USDC, you will receive VLP. 
-Every time fees are generated, vlp price will be increased. 
+This is a function to stake USDC for getting VLP.
+By staking USDC, you will receive VLP.
+Every time fees are generated, vlp price will be increased.
 VLP holders will receive rewards from our platform fees.
 
 ```
@@ -217,14 +217,14 @@ vault.newPositionOrder(
         address _refer
     )
 
-    (OrderType 
+    (OrderType
         Market Order -> 0,
         Limit Order  -> 1,
         Stop-Market Order -> 2,
         Stop-Limit Order -> 3
     )
     for all orders, _params[2] -> collateral, _params[3] -> position size amount
-    In Market Order's case, _params[0] -> mark price, _params[1] -> slippage percent, 
+    In Market Order's case, _params[0] -> mark price, _params[1] -> slippage percent,
     In Limit Order's case, _params[0] -> limit price
     In Stop-Market Order's case, _params[1] -> stop price,
     In Stop-Limit Order's case, _params[0] -> limit price, _params[1] -> stop price
@@ -332,12 +332,12 @@ vault.addOrRemoveCollateral(
 ```
 
 Example Input
-If you wanna add collateral 10, then 
+If you wanna add collateral 10, then
 ```
 ('0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', true, '0', true, '10000000000000000000000000000000')
 ```
 
-If you wanna remove collateral 10, then 
+If you wanna remove collateral 10, then
 ```
 ('0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', true, '0', false, '10000000000000000000000000000000')
 ```
@@ -358,7 +358,7 @@ vault.addPosition(
 ```
 
 Example Input
-If you wanna add collateral 10, position size 100, then 
+If you wanna add collateral 10, position size 100, then
 ```
 ('0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', true, '0', '10000000000000000000000000000000', '100000000000000000000000000000000')
 ```
@@ -389,7 +389,7 @@ vault.addTrailingStop(
 Example Input
 if you wanna add trailing stop by price change(so you want to take trail stop order when the last price exceeds 1$ change)
 ```
-('0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', true, '0', 
+('0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', true, '0',
 [
     '10000000000000000000000000000000',
     '100000000000000000000000000000000',
@@ -400,7 +400,7 @@ if you wanna add trailing stop by price change(so you want to take trail stop or
 
 if you wanna add trailing stop by percent change(so you want to take trail stop order when the last price exceeds 2% change)
 ```
-('0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', true, '0', 
+('0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', true, '0',
 [
     '10000000000000000000000000000000',
     '100000000000000000000000000000000',
@@ -499,9 +499,9 @@ positionVault.getPosition(
 Example Input
 ```
 (
-    '0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', 
-    true, 
-    '0' 
+    '0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec',
+    true,
+    '0'
 )
 ```
 Example Output
@@ -993,7 +993,7 @@ Example Input
 ```
 (
     '0',  // no cooldownduration
-    '70000' // 70% 
+    '70000' // 70%
 )
 ```
 
@@ -1070,7 +1070,7 @@ settingsManager.setAssetManagerWallet(address _wallet)
 Example Input
 ```
 (
-    '0x70997970c51812dc3a010c7d01b50e0d17dc79c8' // 
+    '0x70997970c51812dc3a010c7d01b50e0d17dc79c8' //
 )
 ```
 
@@ -1144,13 +1144,13 @@ This is an owner function for enable deposit or withdraw for token.
 settingsManager.setEnableDeposit(
         address _token,
         bool _isEnabled
-    ) 
+    )
 ```
 
 Example Input
 ```
 (
-    '0x93F2394ceA60fa9E2E9AC215cd8ba04c30ed103b', 
+    '0x93F2394ceA60fa9E2E9AC215cd8ba04c30ed103b',
     true // we allow users to deposit or withdraw only USDC
 )
 ```
@@ -1167,13 +1167,13 @@ This is an owner function for enable stake or unstake for token.
 settingsManager.setEnableStaking(
         address _token,
         bool _isEnabled
-    ) 
+    )
 ```
 
 Example Input
 ```
 (
-    '0x93F2394ceA60fa9E2E9AC215cd8ba04c30ed103b', 
+    '0x93F2394ceA60fa9E2E9AC215cd8ba04c30ed103b',
     true // we allow users to stake or unstake only USDC for VLP
 )
 ```

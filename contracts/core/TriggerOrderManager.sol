@@ -123,7 +123,7 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         bytes32 key = _getPositionKey(msg.sender, _indexToken, _isLong, _posId);
         (Position memory position, , ) = positionVault.getPosition(msg.sender, _indexToken, _isLong, _posId);
         require(position.size > 0, "position size should be greater than zero");
-        payable(settingsManager.positionManager()).transfer(msg.value);
+        payable(settingsManager.feeManager()).transfer(msg.value);
         bool validateTriggerData = validateTriggerOrdersData(
             _indexToken,
             _isLong,

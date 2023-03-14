@@ -52,6 +52,7 @@ describe("VLP", function () {
           ]
         );
         await settingsManager.setEnableStaking(usdc.address, true);
+        await settingsManager.setEnableUnstaking(usdc.address, true);
         await vlp.initialize(Vault.address, settingsManager.address);
         await Vault.setVaultSettings(
             priceManager.address,
@@ -60,7 +61,7 @@ describe("VLP", function () {
         );
         await vusd.transferOwnership(Vault.address);
         await vlp.setMinter(Vault.address, true);
-        
+
         await usdc.connect(wallet).approve(Vault.address,  amount);
         await Vault.stake(wallet.address, usdc.address, amount);
     });
@@ -79,5 +80,5 @@ describe("VLP", function () {
         await ethers.provider.send('evm_increaseTime', [passTime]);
         vlp.transfer(user1.address, amount);
     })
-    
+
 });
