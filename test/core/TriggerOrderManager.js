@@ -448,13 +448,10 @@ describe("TriggerOrderManager", function () {
      await settingsManager.setMarginFeeBasisPoints(eur.address, true, EURLongMarginFeeBasisPoints);
      await settingsManager.setMarginFeeBasisPoints(eur.address, false, EURShortMarginFeeBasisPoints);
      await settingsManager.setLiquidateThreshold(JPYLiquidateThreshold, jpy.address);
-     await settingsManager.setMaxOpenInterestPerAsset(jpy.address, JPYMaxOpenInterest);
      await settingsManager.setFundingRateFactor(jpy.address, true, JPYLongFundingRateFactor);
      await settingsManager.setFundingRateFactor(jpy.address, false, JPYShortFundingRateFactor);
      await settingsManager.setMarginFeeBasisPoints(jpy.address, true, JPYLongMarginFeeBasisPoints);
      await settingsManager.setMarginFeeBasisPoints(jpy.address, false, JPYShortMarginFeeBasisPoints);
-     await settingsManager.setMaxOpenInterestPerSide(true, LONGMaxOpenInterest);
-     await settingsManager.setMaxOpenInterestPerSide(false, SHORTMaxOpenInterest);
      await settingsManager.setMaxOpenInterestPerUser(USERMaxOpenInterest);
      await settingsManager.setEnableDeposit(usdt.address, true)
      await settingsManager.setEnableStaking(usdt.address, true)
