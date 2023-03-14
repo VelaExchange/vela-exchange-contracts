@@ -335,26 +335,17 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         }
         require(_size >= _collateral, "position size should be greater than collateral");
         require(
-            openInterestPerSide[_isLong] + _size <=
-                (
-                    maxOpenInterestPerSide[_isLong] > 0
-                        ? maxOpenInterestPerSide[_isLong]
-                        : DEFAULT_MAX_OPEN_INTEREST
-                ),
+            openInterestPerSide[_isLong] + _size <= maxOpenInterestPerSide[_isLong],
             "exceed max open interest per side"
         );
         require(
             openInterestPerAsset[_indexToken] + _size <=
-                (
-                    maxOpenInterestPerAsset[_indexToken] > 0
-                        ? maxOpenInterestPerAsset[_indexToken]
-                        : DEFAULT_MAX_OPEN_INTEREST
-                ),
+                maxOpenInterestPerAsset[_indexToken],
             "exceed max open interest per asset"
         );
         require(
             openInterestPerUser[_account] + _size <=
-                (maxOpenInterestPerUser > 0 ? maxOpenInterestPerUser : DEFAULT_MAX_OPEN_INTEREST),
+                maxOpenInterestPerUser,
             "exceed max open interest per user"
         );
     }
