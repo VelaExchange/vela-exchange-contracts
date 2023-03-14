@@ -57,13 +57,10 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => mapping(bool => uint256)) public override marginFeeBasisPoints; // = 100; // 0.1%
     mapping(address => mapping(bool => uint256)) public override lastFundingTimes;
 
-    mapping(bool => uint256) public maxOpenInterestPerSide;
-
     mapping(address => uint256) public liquidateThreshold;
     mapping(address => mapping(bool => uint256)) public maxOpenInterestPerAssetPerSide;
     mapping(address => mapping(bool => uint256)) public override openInterestPerAssetPerSide;
     mapping(address => uint256) public override openInterestPerUser;
-    mapping(bool => uint256) public override openInterestPerSide;
     mapping(address => EnumerableSet.AddressSet) private _delegatesByMaster;
 
     event ChangedReferEnabled(bool referEnabled);
@@ -83,7 +80,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetLiquidationFeeUsd(uint256 indexed _liquidationFeeUsd);
     event SetMarginFeeBasisPoints(address indexed token, bool isLong, uint256 marginFeeBasisPoints);
     event SetMaxOpenInterestPerAssetPerSide(address indexed token, bool isLong, uint256 maxOIAmount);
-    event SetMaxOpenInterestPerSide(bool isLong, uint256 maxOIAmount);
     event SetMaxOpenInterestPerUser(uint256 maxOIAmount);
     event SetPositionManager(address manager, bool isManager);
     event SetStakingFee(uint256 indexed fee);
@@ -136,11 +132,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         } else {
             openInterestPerAssetPerSide[_token][_isLong] -= _amount;
         }
-        if (openInterestPerSide[_isLong] < _amount) {
-            openInterestPerSide[_isLong] = 0;
-        } else {
-            openInterestPerSide[_isLong] -= _amount;
-        }
         emit UpdateTotalOpenInterest(_token, _isLong, _amount);
     }
 
@@ -163,7 +154,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     ) external override onlyVault {
         openInterestPerUser[_sender] += _amount;
         openInterestPerAssetPerSide[_token][_isLong] += _amount;
-        openInterestPerSide[_isLong] += _amount;
         emit UpdateTotalOpenInterest(_token, _isLong, _amount);
     }
 
@@ -293,10 +283,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         setMaxOpenInterestPerAssetPerSide(_token, false, _maxAmount);
     }
 
-    function setMaxOpenInterestPerSide(bool _isLong, uint256 _maxAmount) external onlyOwner {
-        maxOpenInterestPerSide[_isLong] = _maxAmount;
-        emit SetMaxOpenInterestPerSide(_isLong, _maxAmount);
-    }
 
     function setMaxOpenInterestPerUser(uint256 _maxAmount) external onlyOwner {
         maxOpenInterestPerUser = _maxAmount;
@@ -394,13 +380,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         }
         require(_size >= _collateral, "position size should be greater than collateral");
         require(
-            openInterestPerSide[_isLong] + _size <= maxOpenInterestPerSide[_isLong],
-            "exceed max open interest per side"
-        );
-        require(
-            openInterestPerAsset[_indexToken] + _size <=
-                maxOpenInterestPerAsset[_indexToken],
-            "exceed max open interest per asset"
+            openInterestPerAssetPerSide[_indexToken][_isLong] + _size <=
+                maxOpenInterestPerAssetPerSide[_indexToken][_isLong],
+            "exceed max open interest per asset and per side"
         );
         require(
             openInterestPerUser[_account] + _size <=

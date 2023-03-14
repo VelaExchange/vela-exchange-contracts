@@ -12,8 +12,6 @@ interface ISettingsManager {
 
     function openInterestPerAssetPerSide(address _token, bool _isLong) external view returns (uint256);
 
-    function openInterestPerSide(bool _isLong) external view returns (uint256);
-
     function openInterestPerUser(address _sender) external view returns (uint256);
 
     function bountyPercent() external view returns (uint32, uint32, uint32);
