@@ -13,7 +13,7 @@ contract Constants {
     uint256 public constant LIQUIDATE_NONE_EXCEED = 0;
     uint256 public constant LIQUIDATE_FEE_EXCEED = 1;
     uint256 public constant LIQUIDATE_THRESHOLD_EXCEED = 2;
-    uint256 public constant MAX_DEPOSIT_FEE = 10000; // 10%
+    uint256 public constant MAX_DEPOSIT_WITHDRAW_FEE = 10000; // 10%
     uint256 public constant MAX_DELTA_TIME = 24 hours;
     uint256 public constant MAX_COOLDOWN_DURATION = 48 hours;
     uint256 public constant MAX_FEE_BASIS_POINTS = 5000; // 5%
@@ -21,7 +21,7 @@ contract Constants {
     uint256 public constant MAX_FUNDING_RATE_FACTOR = 10000; // 1%
     uint256 public constant MAX_FUNDING_RATE_INTERVAL = 48 hours;
     uint256 public constant MAX_LIQUIDATION_FEE_USD = 100 * PRICE_PRECISION; // 100 USD
-    uint256 public constant MAX_STAKING_FEE = 10000; // 10%
+    uint256 public constant MAX_STAKING_UNSTAKING_FEE = 10000; // 10%
     uint256 public constant MAX_TOKENFARM_COOLDOWN_DURATION = 4 weeks;
     uint256 public constant MAX_TRIGGER_GAS_FEE = 1e8 gwei;
     uint256 public constant MAX_VESTING_DURATION = 700 days;
