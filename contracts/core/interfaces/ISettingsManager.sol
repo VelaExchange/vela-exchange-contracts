@@ -38,6 +38,8 @@ interface ISettingsManager {
 
     function depositFee() external view returns (uint256);
 
+    function withdrawFee() external view returns (uint256);
+
     function feeManager() external view returns (address);
 
     function feeRewardBasisPoints() external view returns (uint256);
@@ -59,9 +61,13 @@ interface ISettingsManager {
 
     function isDeposit(address _token) external view returns (bool);
 
+    function isWithdraw(address _token) external view returns (bool);
+
     function isManager(address _account) external view returns (bool);
 
-    function isStaking(address _token) external view returns (bool);
+    function isStakingEnabled(address _token) external view returns (bool);
+
+    function isUnstakingEnabled(address _token) external view returns (bool);
 
     function lastFundingTimes(address _token, bool _isLong) external view returns (uint256);
 
@@ -74,8 +80,6 @@ interface ISettingsManager {
     function marketOrderEnabled() external view returns (bool);
     function pauseForexForCloseTime() external view returns (bool);
 
-    function positionManager() external view returns (address);
-
     function priceMovementPercent() external view returns (uint256);
 
     function referFee() external view returns (uint256);
@@ -83,6 +87,8 @@ interface ISettingsManager {
     function referEnabled() external view returns (bool);
 
     function stakingFee() external view returns (uint256);
+
+    function unstakingFee() external view returns (uint256);
 
     function triggerGasFee() external view returns (uint256);
 

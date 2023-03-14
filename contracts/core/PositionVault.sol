@@ -258,9 +258,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 bounty = (marginFees * settingsManager.bountyPercent()) / BASIS_POINTS_DIVISOR;
         vault.transferBounty(msg.sender, bounty);
         settingsManager.decreaseOpenInterest(_indexToken, _account, _isLong, position.size);
+        _decreaseReservedAmount(_indexToken, _isLong, position.size);
         _decreasePoolAmount(_indexToken, _isLong, marginFees);
         vaultUtils.emitLiquidatePositionEvent(_account, _indexToken, _isLong, _posId);
         delete positions[key];
+        delete confirms[key];
         // pay the fee receive using the pool, we assume that in general the liquidated amount should be sufficient to cover
         // the liquidation fees
     }
@@ -391,7 +393,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             } else if (order.positionType == POSITION_STOP_LIMIT) {
                 order.positionType = POSITION_LIMIT;
             } else if (order.positionType == POSITION_TRAILING_STOP) {
-                _decreasePosition(_account, _indexToken, order.pendingSize, _isLong, _posId);
                 order.positionType = POSITION_MARKET;
                 order.pendingCollateral = 0;
                 order.pendingSize = 0;
@@ -461,6 +462,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         } else {
             vaultUtils.emitClosePositionEvent(_account, _indexToken, _isLong, _posId);
             delete positions[key];
+            delete confirms[key];
         }
         if (usdOutFee <= usdOut) {
             if (usdOutFee != usdOut) {
