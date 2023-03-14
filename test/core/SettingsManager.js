@@ -258,12 +258,9 @@ describe("SettingsManager", function () {
         _size,
         _collateral
       )
-      await settingsManager.setMaxOpenInterestPerSide(
-        _isLong,
-        10
-      )
-      await settingsManager.setMaxOpenInterestPerAsset(
+      await settingsManager.setMaxOpenInterestPerAssetPerSide(
         _indexToken,
+        _isLong,
         10
       )
       await settingsManager.setMaxOpenInterestPerUser(
@@ -275,18 +272,12 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max open interest per side")
-      await settingsManager.setMaxOpenInterestPerSide(
+      )).to.be.revertedWith("exceed max open interest per asset and per side")
+      await settingsManager.setMaxOpenInterestPerAssetPerSide(
+        _indexToken,
         _isLong,
         100
       )
-      await expect(settingsManager.validatePosition(
-        _account,
-        _indexToken,
-        _isLong,
-        100,
-        10
-      )).to.be.revertedWith("exceed max open interest per asset per side")
       await settingsManager.setMaxOpenInterestPerAsset(
         _indexToken,
         100
@@ -319,7 +310,7 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max open interest per asset per side")
+      )).to.be.revertedWith("exceed max open interest per asset and per side")
       settingsManager.validatePosition( // should not revert for the other side
         _account,
         _indexToken,

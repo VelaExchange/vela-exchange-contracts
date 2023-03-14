@@ -389,8 +389,6 @@ describe("Vault", function () {
       await settingsManager.setLiquidateThreshold(JPYLiquidateThreshold, jpy.address);
       await settingsManager.setMarginFeeBasisPoints(jpy.address, true, JPYLongMarginFeeBasisPoints);
       await settingsManager.setMarginFeeBasisPoints(jpy.address, false, JPYShortMarginFeeBasisPoints);
-      await settingsManager.setMaxOpenInterestPerSide(true, LONGMaxOpenInterest);
-      await settingsManager.setMaxOpenInterestPerSide(false, SHORTMaxOpenInterest);
       await settingsManager.setMaxOpenInterestPerUser(USERMaxOpenInterest);
       await settingsManager.setEnableDeposit(usdc.address, true);
       await settingsManager.setEnableWithdraw(usdc.address, true);
@@ -1978,7 +1976,7 @@ describe("Vault", function () {
       isLong,
       posId,
       true
-    )).to.be.revertedWith("Vault: maxThreshold exceeded")
+    )).to.be.revertedWith("Vault: fees exceed collateral")
     if (validateLiquidation[0].toNumber() == 2) { // Liquidate Max Threshold
       await PositionVault.liquidatePosition(account, indexToken, isLong, posId)
     }
