@@ -1870,11 +1870,15 @@ describe("Vault", function () {
     )
   })
 
+  let snapshot;
+
   it ("liquidatePosition for Long", async () => {
     const account = wallet.address
     const indexToken = btc.address;
     const isLong = true
     const posId = 0
+    await settingsManager.setPositionManager(wallet.address, true) 
+    // wallet is now the manager, can directly call liquidatePosition now
     await expect(PositionVault.liquidatePosition(account, indexToken, isLong, posId))
       .to.be.revertedWith("not exceed or allowed")
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice(43800))
@@ -1892,9 +1896,58 @@ describe("Vault", function () {
       posId,
       false
     )
-    if (validateLiquidation[0].toNumber() > 0) {
-      await PositionVault.liquidatePosition(account, indexToken, isLong, posId)
-    }
+    expect(validateLiquidation[0].toNumber()).gt(0)
+    snapshot = await ethers.provider.send('evm_snapshot', [])
+    await PositionVault.liquidatePosition(account, indexToken, isLong, posId)
+    await ethers.provider.send('evm_revert', [snapshot])  
+    // rollback to position 0 not liquidated
+  })
+
+  it ("liquidatePosition not manager", async () => {
+    const account = wallet.address
+    const indexToken = btc.address;
+    const isLong = true
+    const posId = 0
+
+    let [status, marginFee] = await VaultUtils.validateLiquidation(
+      account,
+      indexToken,
+      isLong,
+      posId,
+      false
+    )
+    expect(status.toNumber()).eq(1); //should be liquidatable
+
+    let [bountyTeam, bountyFirstCaller, bountyResolver] = await settingsManager.bountyPercent();
+
+    //user2 cannot directly liquidatePosition
+    await expect(PositionVault.connect(user2).liquidatePosition(account, indexToken, isLong, posId))
+      .to.be.revertedWith("not manager or not allowed before pendingTime")
+    await PositionVault.connect(user2).registerLiquidatePosition(account, indexToken, isLong, posId);
+    await ethers.provider.send('evm_increaseTime', [5]);
+    // and user2 cannot liquidatePosition within the liquidationPendingTime 10s
+    await expect(PositionVault.connect(user2).liquidatePosition(account, indexToken, isLong, posId))
+      .to.be.revertedWith("not manager or not allowed before pendingTime");
+    
+    snapshot = await ethers.provider.send('evm_snapshot', []);
+    // the manager can do liquidatePosition in the liquidationPendingTime
+    let vUSD_team_before = await vusd.balanceOf(feeManagerAddress)
+    let vUSD_user2_before = await vusd.balanceOf(user2.address)
+    let vUSD_user1_before = await vusd.balanceOf(user1.address)
+    
+    await PositionVault.connect(user1).liquidatePosition(account, indexToken, isLong, posId) // user2 as firstCaller, and then user1 resolve
+    expect((await vusd.balanceOf(feeManagerAddress)).sub(vUSD_team_before)).eq(marginFee.mul(bountyTeam).div(BASIS_POINTS_DIVISOR))
+    expect((await vusd.balanceOf(user2.address)).sub(vUSD_user2_before)).eq(marginFee.mul(bountyFirstCaller).div(BASIS_POINTS_DIVISOR))
+    expect((await vusd.balanceOf(user1.address)).sub(vUSD_user1_before)).eq(marginFee.mul(bountyResolver).div(BASIS_POINTS_DIVISOR))
+
+    await ethers.provider.send('evm_revert', [snapshot])
+    await ethers.provider.send('evm_increaseTime', [10]);
+
+    // user2 can successfully do the liquidation after 10s
+    await PositionVault.connect(user2).liquidatePosition(account, indexToken, isLong, posId)
+    expect((await vusd.balanceOf(feeManagerAddress)).sub(vUSD_team_before)).eq(marginFee.mul(bountyTeam).div(BASIS_POINTS_DIVISOR))
+    expect((await vusd.balanceOf(user2.address)).sub(vUSD_user2_before)).eq(marginFee.mul(bountyFirstCaller+bountyResolver).div(BASIS_POINTS_DIVISOR))
+    expect((await vusd.balanceOf(user1.address))).eq(vUSD_user1_before)
   })
 
 
