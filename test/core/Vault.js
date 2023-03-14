@@ -529,11 +529,12 @@ describe("Vault", function () {
 
    it("depositFor with Stable Coins", async () => {
     const amount = expandDecimals('1000', 18)
+    await usdc.connect(wallet).transfer(user1.address, amount)
     const originalVLPBalance = await vusd.balanceOf(wallet.address)
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount);
-    await usdc.connect(wallet).approve(Vault.address,  amount); // approve USDC
+    await usdc.connect(user1).approve(Vault.address,  amount); // approve USDC
     await expect(Vault.connect(user1).deposit(wallet.address, usdc.address, amount))
-    .to.be.revertedWith("zero amount or not allowed for depositFor"); // deposit USDC
+    .to.be.revertedWith("not allowed for depositFor"); // deposit USDC
     await settingsManager.connect(wallet).delegate([user1.address, user0.address])
     expect(await settingsManager.checkDelegation(wallet.address, user1.address))
       .eq(true)
@@ -565,15 +566,16 @@ describe("Vault", function () {
 
    it("stakeFor with Stable Coins", async () => {
     const amount = expandDecimals('1000', 18)
+    await usdc.connect(wallet).transfer(user1.address, amount)
     const totalUSDC = await Vault.totalUSDC()
     const totalVLP = await Vault.totalVLP()
     expect(await Vault.getVLPPrice())
       .eq(bigNumberify(BASIS_POINTS_DIVISOR).mul(expandDecimals('1', 18)).mul(totalUSDC).div(totalVLP).div(PRICE_PRECISION))
     const originalVLPBalance = await vlp.balanceOf(wallet.address)
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount);
-    await usdc.connect(wallet).approve(Vault.address,  amount); // approve USDC
+    await usdc.connect(user1).approve(Vault.address,  amount); // approve USDC
     await expect(Vault.connect(user1).stake(wallet.address, usdc.address, amount))
-      .to.be.revertedWith("zero amount or not allowed for stakeFor"); // stake USDC
+      .to.be.revertedWith("not allowed for stakeFor"); // stake USDC
     await settingsManager.connect(wallet).delegate([user1.address, user0.address])
     expect(await settingsManager.checkDelegation(wallet.address, user1.address))
       .eq(true)

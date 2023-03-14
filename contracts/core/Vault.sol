@@ -112,11 +112,14 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     function deposit(address _account, address _token, uint256 _amount) external nonReentrant {
         uint256 collateralDeltaUsd = priceManager.tokenToUsd(_token, _amount);
         require(settingsManager.isDeposit(_token), "deposit not allowed");
-        require(
-            (settingsManager.checkDelegation(_account, msg.sender)) && _amount > 0,
-            "zero amount or not allowed for depositFor"
-        );
-        _transferIn(_account, _token, _amount);
+        require(_amount > 0, "zero amount");
+        if(_account != msg.sender) {
+            require(
+                settingsManager.checkDelegation(_account, msg.sender),
+                "not allowed for depositFor"
+            );
+        }
+        _transferIn(msg.sender, _token, _amount);
         uint256 fee = (collateralDeltaUsd * settingsManager.depositFee()) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = collateralDeltaUsd - fee;
         _accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
@@ -160,12 +163,14 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function stake(address _account, address _token, uint256 _amount) external nonReentrant {
         require(settingsManager.isStakingEnabled(_token), "stake not allowed");
-        require(
-            (settingsManager.checkDelegation(_account, msg.sender)) && _amount > 0,
-            "zero amount or not allowed for stakeFor"
-        );
+        require(_amount > 0, "zero amount");
         uint256 usdAmount = priceManager.tokenToUsd(_token, _amount);
-        _transferIn(_account, _token, _amount);
+        if(_account != msg.sender){
+            require(settingsManager.checkDelegation(_account, msg.sender),
+                "not allowed for stakeFor"
+            );
+        }
+        _transferIn(msg.sender, _token, _amount);
         uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee()) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
         uint256 mintAmount;
