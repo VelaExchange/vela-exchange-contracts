@@ -236,7 +236,7 @@ contract VaultUtils is IVaultUtils, Constants {
                 if (_raise) {
                     revert("Vault: losses exceed collateral");
                 }
-                return (LIQUIDATE_FEE_EXCEED, migrateFeeUsd);
+                return (LIQUIDATE_FEE_EXCEED, position.collateral);
             }
 
             uint256 remainingCollateral = position.collateral;
