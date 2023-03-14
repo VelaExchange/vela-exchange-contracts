@@ -81,7 +81,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _sizeDelta
     ) external payable nonReentrant preventTradeForForexCloseTime(_indexToken) {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.positionManager()).transfer(msg.value);
+        payable(settingsManager.feeManager()).transfer(msg.value);
         positionVault.addPosition(msg.sender, _indexToken, _isLong, _posId, _collateralDelta, _sizeDelta);
     }
 
@@ -92,7 +92,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256[] memory _params
     ) external payable nonReentrant {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.positionManager()).transfer(msg.value);
+        payable(settingsManager.feeManager()).transfer(msg.value);
         positionVault.addTrailingStop(msg.sender, _indexToken, _isLong, _posId, _params);
     }
 
@@ -141,7 +141,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     ) external payable nonReentrant preventTradeForForexCloseTime(_indexToken) {
         if (_orderType != OrderType.MARKET) {
             require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-            payable(settingsManager.positionManager()).transfer(msg.value);
+            payable(settingsManager.feeManager()).transfer(msg.value);
         }
         positionVault.newPositionOrder(msg.sender, _indexToken, _isLong, _orderType, _params, _refer);
     }
@@ -162,7 +162,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     function stake(address _account, address _token, uint256 _amount) external nonReentrant {
-        require(settingsManager.isStaking(_token), "stake not allowed");
+        require(settingsManager.isStakingEnabled(_token), "stake not allowed");
         require(_amount > 0, "zero amount");
         uint256 usdAmount = priceManager.tokenToUsd(_token, _amount);
         if(_account != msg.sender){
@@ -204,7 +204,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     function unstake(address _tokenOut, uint256 _vlpAmount, address _receiver) external nonReentrant {
-        require(settingsManager.isStaking(_tokenOut), "unstake not allowed");
+        require(settingsManager.isUnstakingEnabled(_tokenOut), "unstake not allowed");
         require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "zero amount not allowed and cant exceed totalVLP");
         require(
             lastStakedAt[msg.sender] + settingsManager.cooldownDuration() <= block.timestamp,
@@ -213,7 +213,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         IMintable(vlp).burn(msg.sender, _vlpAmount);
         uint256 usdAmount = (_vlpAmount * totalUSDC) / totalVLP;
         totalVLP -= _vlpAmount;
-        uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee()) / BASIS_POINTS_DIVISOR;
+        uint256 usdAmountFee = (usdAmount * settingsManager.unstakingFee()) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
         totalUSDC -= usdAmount;
         uint256 amountOut = priceManager.usdToToken(_tokenOut, usdAmountAfterFee);
@@ -224,10 +224,10 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     function withdraw(address _token, address _account, uint256 _amount) external nonReentrant {
-        uint256 fee = (_amount * settingsManager.depositFee()) / BASIS_POINTS_DIVISOR;
+        uint256 fee = (_amount * settingsManager.withdrawFee()) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = _amount - fee;
         uint256 collateralDelta = priceManager.usdToToken(_token, afterFeeAmount);
-        require(settingsManager.isDeposit(_token), "withdraw not allowed");
+        require(settingsManager.isWithdraw(_token), "withdraw not allowed");
         _accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
         IVUSDC(vUSDC).burn(address(msg.sender), _amount);
         _distributeFee(_account, ZERO_ADDRESS, fee);
