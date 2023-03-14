@@ -9,7 +9,7 @@ interface ISettingsManager {
 
     function updateCumulativeFundingRate(address _token, bool _isLong) external;
 
-    function openInterestPerAsset(address _token) external view returns (uint256);
+    function openInterestPerAssetPerSide(address _token, bool _isLong) external view returns (uint256);
 
     function openInterestPerSide(bool _isLong) external view returns (uint256);
 
