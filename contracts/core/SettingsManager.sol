@@ -374,13 +374,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
             return 0;
         }
         return
-            ((
-                fundingRateFactor[_token][_isLong] > 0
-                    ? fundingRateFactor[_token][_isLong]
-                    : DEFAULT_FUNDING_RATE_FACTOR
-            ) *
+            (
+                fundingRateFactor[_token][_isLong] *
                 positionVault.reservedAmounts(_token, _isLong) *
-                intervals) / positionVault.poolAmounts(_token, _isLong);
+                intervals
+            ) / positionVault.poolAmounts(_token, _isLong);
     }
 
     function checkDelegation(address _master, address _delegate) public view override returns (bool) {
