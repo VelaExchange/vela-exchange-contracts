@@ -31,6 +31,12 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         isInitialized[_token] = true;
     }
 
+    function setMaxLeverage(address _token, uint256 _maxLeverage) external onlyOwner {
+        require(isInitialized[_token] == true, "can only modify maxLeverage for existing tokens");
+        require(_maxLeverage > MIN_LEVERAGE, "Max Leverage should be greater than Min Leverage");
+        maxLeverage[_token] = _maxLeverage;
+    }
+
     function getNextAveragePrice(
         address _indexToken,
         uint256 _size,

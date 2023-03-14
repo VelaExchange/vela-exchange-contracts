@@ -196,4 +196,9 @@ describe("PriceManager", function () {
         const lastPrice = await priceManager.getLastPrice(
             _indexToken) 
     })
+
+    it ("setMaxLeverage", async () => {
+        await priceManager.setMaxLeverage(eth.address, 50 * 10000)
+        expect(parseInt(await priceManager.maxLeverage(eth.address))).to.be.equal(50 * 10000)
+    })
 });
