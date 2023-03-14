@@ -286,7 +286,7 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max open interest per asset")
+      )).to.be.revertedWith("exceed max open interest per asset per side")
       await settingsManager.setMaxOpenInterestPerAsset(
         _indexToken,
         100
@@ -308,6 +308,30 @@ describe("SettingsManager", function () {
         100,
         50
       )
+      await settingsManager.setMaxOpenInterestPerAssetPerSide(
+        _indexToken,
+        _isLong,
+        10
+      );
+      await expect(settingsManager.validatePosition(
+        _account,
+        _indexToken,
+        _isLong,
+        100,
+        10
+      )).to.be.revertedWith("exceed max open interest per asset per side")
+      settingsManager.validatePosition( // should not revert for the other side
+        _account,
+        _indexToken,
+        !_isLong,
+        100,
+        10
+      );
+      await settingsManager.setMaxOpenInterestPerAssetPerSide(
+        _indexToken,
+        _isLong,
+        100
+      );
     })
 
     it ("setStakingFee", async () => {
