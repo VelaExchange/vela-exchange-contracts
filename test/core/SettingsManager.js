@@ -407,4 +407,10 @@ describe("SettingsManager", function () {
         amount
       )).to.be.revertedWith("Only vault has access") 
     })
+
+    it ("setTokenFarm", async () => {
+      let tokenFarm2 = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address])
+      expect(settingsManager.setTokenFarm(user0.address)).to.be.revertedWith("tokenFarm address is invalid")
+      await settingsManager.setTokenFarm(tokenFarm2.address)
+    })
 });

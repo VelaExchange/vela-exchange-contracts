@@ -15,7 +15,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     using EnumerableSet for EnumerableSet.AddressSet;
     address public immutable vUSDC;
     IPositionVault public immutable positionVault;
-    ITokenFarm public immutable tokenFarm;
+    ITokenFarm public tokenFarm;
 
     address public override feeManager;
     address public assetManagerWallet;
@@ -95,6 +95,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         positionVault = IPositionVault(_positionVault);
         tokenFarm = ITokenFarm(_tokenFarm);
         vUSDC = _vUSDC;
+    }
+
+    function setTokenFarm(address _tokenFarm) external onlyOwner{
+        require(Address.isContract(_tokenFarm), "tokenFarm address is invalid");
+        tokenFarm = ITokenFarm(_tokenFarm);
     }
 
     function delegate(address[] memory _delegates) external {
