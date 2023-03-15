@@ -228,11 +228,17 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 afterFeeAmount = _amount - fee;
         uint256 collateralDelta = priceManager.usdToToken(_token, afterFeeAmount);
         require(settingsManager.isWithdraw(_token), "withdraw not allowed");
+        if(_account != msg.sender) {
+            require(
+                settingsManager.checkDelegation(_account, msg.sender),
+                "not allowed for withdrawFor"
+            );
+        }
         _accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
-        IVUSDC(vUSDC).burn(address(msg.sender), _amount);
+        IVUSDC(vUSDC).burn(address(_account), _amount);
         _distributeFee(_account, ZERO_ADDRESS, fee);
         _transferOut(_token, collateralDelta, _account);
-        emit Withdraw(address(msg.sender), _token, collateralDelta);
+        emit Withdraw(address(_account), _token, collateralDelta);
     }
 
     function transferBounty(address _account, uint256 _amount) external override onlyVault {
