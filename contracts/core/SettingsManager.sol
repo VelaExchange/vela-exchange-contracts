@@ -18,10 +18,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     ITokenFarm public immutable tokenFarm;
 
     address public override feeManager;
-    address public assetManagerWallet;
     bool public override marketOrderEnabled = true;
     bool public override pauseForexForCloseTime;
-    bool public override referEnabled;
+    bool public override referEnabled = true;
     uint256 public maxOpenInterestPerUser;
     uint256 public priceMovementPercent = 500; // 0.5%
 
@@ -51,6 +50,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => bool) public override isManager;
     mapping(address => bool) public override isStakingEnabled;
     mapping(address => bool) public override isUnstakingEnabled;
+    mapping(address => bool) isOperator;
 
     mapping(address => mapping(bool => uint256)) public override cumulativeFundingRates;
     mapping(address => mapping(bool => uint256)) public override fundingRateFactor;
@@ -102,7 +102,13 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         _;
     }
 
+    modifier onlyOperator{
+        require(isOperator[msg.sender], "Not Operator");
+        _;
+    }
+
     constructor(address _positionVault, address _vUSDC, address _tokenFarm) {
+        isOperator[owner()] = true;
         require(Address.isContract(_positionVault), "vault address is invalid");
         require(Address.isContract(_vUSDC), "vUSD address is invalid");
         require(Address.isContract(_tokenFarm), "tokenFarm address is invalid");
@@ -138,13 +144,20 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit UpdateTotalOpenInterest(_token, _isLong, _amount);
     }
 
-    function enableForexMarket(bool _enable) external {
-        require(msg.sender == assetManagerWallet, 'not allowed to manage forex');
+    function addOperator(address op) external onlyOwner {
+        isOperator[op] = true;
+    }
+
+    function removeOperator(address op) external onlyOwner {
+        isOperator[op] = false;
+    }
+
+    function enableForexMarket(bool _enable) external onlyOperator {
         pauseForexForCloseTime = _enable;
         emit EnableForexMarket(_enable);
     }
 
-    function enableMarketOrder(bool _enable) external onlyOwner {
+    function enableMarketOrder(bool _enable) external onlyOperator {
         marketOrderEnabled = _enable;
         emit EnableMarketOrder(_enable);
     }
@@ -160,16 +173,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit UpdateTotalOpenInterest(_token, _isLong, _amount);
     }
 
-    function setAssetManagerWallet(address _wallet) external onlyOwner {
-        assetManagerWallet = _wallet;
-        emit SetAssetManagerWallet(_wallet);
-    }
-
     function setBountyPercent(
-        uint32 _bountyPercentTeam, 
-        uint32 _bountyPercentFirstCaller, 
+        uint32 _bountyPercentTeam,
+        uint32 _bountyPercentFirstCaller,
         uint32 _bountyPercentResolver
-    ) external onlyOwner {
+    ) external onlyOperator {
         require(_bountyPercentTeam + _bountyPercentFirstCaller + _bountyPercentResolver <= BASIS_POINTS_DIVISOR, "invalid bountyPercent");
         bountyPercent_.team = _bountyPercentTeam;
         bountyPercent_.firstCaller = _bountyPercentFirstCaller;
@@ -181,12 +189,12 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         return (bountyPercent_.team, bountyPercent_.firstCaller, bountyPercent_.resolver);
     }
 
-    function setFeeManager(address _feeManager) external onlyOwner {
+    function setFeeManager(address _feeManager) external onlyOperator {
         feeManager = _feeManager;
         emit UpdateFeeManager(_feeManager);
     }
 
-    function setVaultSettings(uint256 _cooldownDuration, uint256 _feeRewardsBasisPoints) external onlyOwner {
+    function setVaultSettings(uint256 _cooldownDuration, uint256 _feeRewardsBasisPoints) external onlyOperator {
         require(_cooldownDuration <= MAX_COOLDOWN_DURATION, "invalid cooldownDuration");
         require(_feeRewardsBasisPoints >= MIN_FEE_REWARD_BASIS_POINTS, "feeRewardsBasisPoints not greater than min");
         require(_feeRewardsBasisPoints < MAX_FEE_REWARD_BASIS_POINTS, "feeRewardsBasisPoints not smaller than max");
@@ -195,143 +203,143 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetVaultSettings(cooldownDuration, feeRewardBasisPoints);
     }
 
-    function setLiquidationPendingTime(uint256 _liquidationPendingTime) external onlyOwner {
+    function setLiquidationPendingTime(uint256 _liquidationPendingTime) external onlyOperator {
         require(_liquidationPendingTime <= 60, "liquidationPendingTime is bigger than max");
         liquidationPendingTime = _liquidationPendingTime;
         emit UpdateLiquidationPendingTime(_liquidationPendingTime);
     }
 
-    function setCloseDeltaTime(uint256 _deltaTime) external onlyOwner {
+    function setCloseDeltaTime(uint256 _deltaTime) external onlyOperator {
         require(_deltaTime <= MAX_DELTA_TIME, "closeDeltaTime is bigger than max");
         closeDeltaTime = _deltaTime;
         emit UpdateCloseDeltaTime(_deltaTime);
     }
 
-    function setDelayDeltaTime(uint256 _deltaTime) external onlyOwner {
+    function setDelayDeltaTime(uint256 _deltaTime) external onlyOperator {
         require(_deltaTime <= MAX_DELTA_TIME, "delayDeltaTime is bigger than max");
         delayDeltaTime = _deltaTime;
         emit UpdateDelayDeltaTime(_deltaTime);
     }
 
-    function setDepositFee(uint256 _fee) external onlyOwner {
+    function setDepositFee(uint256 _fee) external onlyOperator {
         require(_fee <= MAX_DEPOSIT_WITHDRAW_FEE, "deposit fee is bigger than max");
         depositFee = _fee;
         emit SetDepositFee(_fee);
     }
 
-    function setWithdrawFee(uint256 _fee) external onlyOwner {
+    function setWithdrawFee(uint256 _fee) external onlyOperator {
         require(_fee <= MAX_DEPOSIT_WITHDRAW_FEE, "withdraw fee is bigger than max");
         withdrawFee = _fee;
         emit SetWithdrawFee(_fee);
     }
 
-    function setEnableDeposit(address _token, bool _isEnabled) external onlyOwner {
+    function setEnableDeposit(address _token, bool _isEnabled) external onlyOperator {
         isDeposit[_token] = _isEnabled;
         emit SetEnableDeposit(_token, _isEnabled);
     }
 
-    function setEnableWithdraw(address _token, bool _isEnabled) external onlyOwner {
+    function setEnableWithdraw(address _token, bool _isEnabled) external onlyOperator {
         isWithdraw[_token] = _isEnabled;
         emit SetEnableWithdraw(_token, _isEnabled);
     }
 
-    function setEnableStaking(address _token, bool _isEnabled) external onlyOwner {
+    function setEnableStaking(address _token, bool _isEnabled) external onlyOperator {
         isStakingEnabled[_token] = _isEnabled;
         emit SetEnableStaking(_token, _isEnabled);
     }
 
-    function setEnableUnstaking(address _token, bool _isEnabled) external onlyOwner {
+    function setEnableUnstaking(address _token, bool _isEnabled) external onlyOperator {
         isUnstakingEnabled[_token] = _isEnabled;
         emit SetEnableUnstaking(_token, _isEnabled);
     }
 
-    function setFundingInterval(uint256 _fundingInterval) external onlyOwner {
+    function setFundingInterval(uint256 _fundingInterval) external onlyOperator {
         require(_fundingInterval >= MIN_FUNDING_RATE_INTERVAL, "fundingInterval should be greater than MIN");
         require(_fundingInterval <= MAX_FUNDING_RATE_INTERVAL, "fundingInterval should be smaller than MAX");
         fundingInterval = _fundingInterval;
         emit SetFundingInterval(fundingInterval);
     }
 
-    function setFundingRateFactor(address _token, bool _isLong, uint256 _fundingRateFactor) external onlyOwner {
+    function setFundingRateFactor(address _token, bool _isLong, uint256 _fundingRateFactor) external onlyOperator {
         require(_fundingRateFactor <= MAX_FUNDING_RATE_FACTOR, "fundingRateFactor should be smaller than MAX");
         fundingRateFactor[_token][_isLong] = _fundingRateFactor;
         emit SetFundingRateFactor(_token, _isLong, _fundingRateFactor);
     }
 
-    function setLiquidateThreshold(uint256 _newThreshold, address _token) external onlyOwner {
+    function setLiquidateThreshold(uint256 _newThreshold, address _token) external onlyOperator {
         emit UpdateThreshold(liquidateThreshold[_token], _newThreshold);
         require(_newThreshold < BASIS_POINTS_DIVISOR, "threshold should be smaller than MAX");
         liquidateThreshold[_token] = _newThreshold;
     }
 
-    function setLiquidationFeeUsd(uint256 _liquidationFeeUsd) external onlyOwner {
+    function setLiquidationFeeUsd(uint256 _liquidationFeeUsd) external onlyOperator {
         require(_liquidationFeeUsd <= MAX_LIQUIDATION_FEE_USD, "liquidationFeeUsd should be smaller than MAX");
         liquidationFeeUsd = _liquidationFeeUsd;
         emit SetLiquidationFeeUsd(_liquidationFeeUsd);
     }
 
-    function setMarginFeeBasisPoints(address _token, bool _isLong, uint256 _marginFeeBasisPoints) external onlyOwner {
+    function setMarginFeeBasisPoints(address _token, bool _isLong, uint256 _marginFeeBasisPoints) external onlyOperator {
         require(_marginFeeBasisPoints <= MAX_FEE_BASIS_POINTS, "marginFeeBasisPoints should be smaller than MAX");
         marginFeeBasisPoints[_token][_isLong] = _marginFeeBasisPoints;
         emit SetMarginFeeBasisPoints(_token, _isLong, _marginFeeBasisPoints);
     }
 
-    function setMaxOpenInterestPerAssetPerSide(address _token, bool _isLong, uint256 _maxAmount) public onlyOwner {
+    function setMaxOpenInterestPerAssetPerSide(address _token, bool _isLong, uint256 _maxAmount) public onlyOperator {
         maxOpenInterestPerAssetPerSide[_token][_isLong] = _maxAmount;
         emit SetMaxOpenInterestPerAssetPerSide(_token, _isLong, _maxAmount);
     }
 
-    function setMaxOpenInterestPerAsset(address _token, uint256 _maxAmount) external onlyOwner {
+    function setMaxOpenInterestPerAsset(address _token, uint256 _maxAmount) external onlyOperator {
         setMaxOpenInterestPerAssetPerSide(_token, true, _maxAmount);
         setMaxOpenInterestPerAssetPerSide(_token, false, _maxAmount);
     }
 
 
-    function setMaxOpenInterestPerUser(uint256 _maxAmount) external onlyOwner {
+    function setMaxOpenInterestPerUser(uint256 _maxAmount) external onlyOperator {
         maxOpenInterestPerUser = _maxAmount;
         emit SetMaxOpenInterestPerUser(_maxAmount);
     }
 
-    function setMaxOpenInterestPerWallet(address _account, uint256 _maxAmount) external onlyOwner {
+    function setMaxOpenInterestPerWallet(address _account, uint256 _maxAmount) external onlyOperator {
         maxOpenInterestPerWallet[_account] = _maxAmount;
         emit SetMaxOpenInterestPerWallet(_account, _maxAmount);
     }
 
-    function setPositionManager(address _manager, bool _isManager) external onlyOwner {
+    function setPositionManager(address _manager, bool _isManager) external onlyOperator {
         isManager[_manager] = _isManager;
         emit SetPositionManager(_manager, _isManager);
     }
 
-    function setPriceMovementPercent(uint256 _priceMovementPercent) external onlyOwner {
+    function setPriceMovementPercent(uint256 _priceMovementPercent) external onlyOperator {
         require(_priceMovementPercent <= MAX_PRICE_MOVEMENT_PERCENT, "price percent should be smaller than max percent");
         priceMovementPercent = _priceMovementPercent;
         emit SetPriceMovementPercent(_priceMovementPercent);
     }
 
-    function setReferEnabled(bool _referEnabled) external onlyOwner {
+    function setReferEnabled(bool _referEnabled) external onlyOperator {
         referEnabled = _referEnabled;
         emit ChangedReferEnabled(referEnabled);
     }
 
-    function setReferFee(uint256 _fee) external onlyOwner {
+    function setReferFee(uint256 _fee) external onlyOperator {
         require(_fee <= BASIS_POINTS_DIVISOR, "fee should be smaller than feeDivider");
         referFee = _fee;
         emit ChangedReferFee(_fee);
     }
 
-    function setStakingFee(uint256 _fee) external onlyOwner {
+    function setStakingFee(uint256 _fee) external onlyOperator {
         require(_fee <= MAX_STAKING_UNSTAKING_FEE, "staking fee is bigger than max");
         stakingFee = _fee;
         emit SetStakingFee(_fee);
     }
 
-    function setUnstakingFee(uint256 _fee) external onlyOwner {
+    function setUnstakingFee(uint256 _fee) external onlyOperator {
         require(_fee <= MAX_STAKING_UNSTAKING_FEE, "unstaking fee is bigger than max");
         unstakingFee = _fee;
         emit SetUnstakingFee(_fee);
     }
 
-    function setTriggerGasFee(uint256 _fee) external onlyOwner {
+    function setTriggerGasFee(uint256 _fee) external onlyOperator {
         require(_fee <= MAX_TRIGGER_GAS_FEE, "gasFee exceed max");
         triggerGasFee = _fee;
         emit SetTriggerGasFee(_fee);

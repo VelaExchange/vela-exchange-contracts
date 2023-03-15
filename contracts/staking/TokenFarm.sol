@@ -46,9 +46,15 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     mapping(address => uint256) public lastVestingUpdateTimes;
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
     mapping(address => uint256) public lockedVestingAmounts;
+    mapping(address => bool) isOperator;
 
     modifier validatePoolByPid(uint256 _pid) {
         require(_pid < poolInfo.length, "Pool does not exist");
+        _;
+    }
+
+    modifier onlyOperator{
+        require(isOperator[msg.sender], "Not Operator");
         _;
     }
 
@@ -75,9 +81,18 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
 
     constructor(uint256 _vestingDuration, IBoringERC20 _esToken, IBoringERC20 _claimableToken) {
         //StartBlock always many years later from contract const ruct, will be set later in StartFarming function
+        isOperator[owner()] = true;
         claimableToken = _claimableToken;
         esToken = _esToken;
         vestingDuration = _vestingDuration;
+    }
+
+    function addOperator(address op) external onlyOwner {
+        isOperator[op] = true;
+    }
+
+    function removeOperator(address op) external onlyOwner {
+        isOperator[op] = false;
     }
 
     // Add a new lp to the pool. Can only be called by the owner.
@@ -86,7 +101,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         IBoringERC20 _lpToken,
         IComplexRewarder[] calldata _rewarders,
         bool _enableCooldown
-    ) external onlyOwner {
+    ) external onlyOperator {
         require(_rewarders.length <= 10, "add: too many rewarders");
         require(Address.isContract(address(_lpToken)), "add: LP token must be a valid contract");
 
@@ -125,7 +140,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         PoolInfo storage pool = poolInfo[_pid];
         require(pool.lpToken == esToken, "target pool not esVELA"); // target _pid must be esVELA pool
         UserInfo storage user = userInfo[_pid][msg.sender];
-        
+
         esToken.mint(address(this), _amount);
 
         user.amount += _amount;
@@ -136,7 +151,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         }
 
         pool.totalLp += _amount;
-        
+
         emit FarmConvert(msg.sender, _amount);
         emit FarmDeposit(msg.sender, _pid, _amount);
     }
@@ -159,7 +174,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     }
 
     // Update the given pool's Vela allocation point and deposit fee. Can only be called by the owner.
-    function set(uint256 _pid, IComplexRewarder[] calldata _rewarders) external onlyOwner validatePoolByPid(_pid) {
+    function set(uint256 _pid, IComplexRewarder[] calldata _rewarders) external onlyOperator validatePoolByPid(_pid) {
         require(_rewarders.length <= 10, "set: too many rewarders");
 
         for (uint256 rewarderId = 0; rewarderId < _rewarders.length; ++rewarderId) {
@@ -171,13 +186,13 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit Set(_pid, _rewarders);
     }
 
-    function updateCooldownDuration(uint256 _newCooldownDuration) external onlyOwner {
+    function updateCooldownDuration(uint256 _newCooldownDuration) external onlyOperator {
         require(_newCooldownDuration <= MAX_TOKENFARM_COOLDOWN_DURATION, "cooldown duration exceeds max");
         cooldownDuration = _newCooldownDuration;
         emit UpdateCooldownDuration(_newCooldownDuration);
     }
 
-    function updateRewardTierInfo(uint256[] memory _levels, uint256[] memory _percents) external onlyOwner {
+    function updateRewardTierInfo(uint256[] memory _levels, uint256[] memory _percents) external onlyOperator {
         uint256 totalLength = tierLevels.length;
         require(_levels.length == _percents.length, "the length should the same");
         require(_validateLevels(_levels), "levels not sorted");
@@ -193,7 +208,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit UpdateRewardTierInfo(_levels, _percents);
     }
 
-    function updateVestingDuration(uint256 _vestingDuration) external onlyOwner {
+    function updateVestingDuration(uint256 _vestingDuration) external onlyOperator {
         require(_vestingDuration <= MAX_VESTING_DURATION, "vesting duration exceeds max");
         vestingDuration = _vestingDuration;
         emit UpdateVestingPeriod(_vestingDuration);
