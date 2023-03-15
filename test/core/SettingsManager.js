@@ -370,27 +370,22 @@ describe("SettingsManager", function () {
       await settingsManager.setPriceMovementPercent(priceMovementPercent2)
     })
 
-    it ("setAssetManagerWallet", async () => {
-      await expect(settingsManager.connect(user2).setAssetManagerWallet(user0.address))
-        .to.be.revertedWith("Ownable: caller is not the owner")
-      await settingsManager.setAssetManagerWallet(user0.address)
-    })
-
     it ("enableForexMarket", async () => {
+      await settingsManager.addOperator(user0.address);
       await expect(settingsManager.connect(user2).enableForexMarket(false))
-        .to.be.revertedWith("not allowed to manage forex")
+        .to.be.revertedWith("Not Operator")
       await settingsManager.connect(user0).enableForexMarket(true)
     })
 
     it ("setFeeManager", async () => {
       await expect(settingsManager.connect(user2).setFeeManager(user0.address))
-        .to.be.revertedWith("Ownable: caller is not the owner")
+        .to.be.revertedWith("Not Operator")
       await settingsManager.setFeeManager(user0.address)
     })
 
     it ("setBountyPercent", async () => {
       await expect(settingsManager.connect(user2).setBountyPercent(25000, 25000, 25000))
-        .to.be.revertedWith("Ownable: caller is not the owner")
+        .to.be.revertedWith("Not Operator")
         await expect(settingsManager.setBountyPercent(50000, 50000, 1000))
         .to.be.revertedWith("invalid bountyPercent")
       await settingsManager.setBountyPercent(25000, 25000, 25000)
@@ -398,7 +393,7 @@ describe("SettingsManager", function () {
 
     it ("enableMarketOrder", async () => {
       await expect(settingsManager.connect(user2).enableMarketOrder(true))
-        .to.be.revertedWith("Ownable: caller is not the owner")
+        .to.be.revertedWith("Not Operator")
       await settingsManager.enableMarketOrder(true)
     })
 

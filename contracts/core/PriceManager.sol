@@ -15,12 +15,27 @@ contract PriceManager is IPriceManager, Ownable, Constants {
     mapping(address => bool) public override isForex;
     mapping(address => uint256) public override maxLeverage; //  50 * 10000 50x
     mapping(address => uint256) public override tokenDecimals;
+    mapping(address => bool) isOperator;
+
+    modifier onlyOperator{
+        require(isOperator[msg.sender] || msg.sender == owner(), "Not Operator");
+        _;
+    }
 
     constructor(address _priceFeed) {
+        isOperator[owner()] = true;
         priceFeed = _priceFeed;
     }
 
-    function setTokenConfig(address _token, uint256 _tokenDecimals, uint256 _maxLeverage, bool _isForex) external onlyOwner {
+    function addOperator(address op) external onlyOwner {
+        isOperator[op] = true;
+    }
+
+    function removeOperator(address op) external onlyOwner {
+        isOperator[op] = false;
+    }
+
+    function setTokenConfig(address _token, uint256 _tokenDecimals, uint256 _maxLeverage, bool _isForex) external onlyOperator {
         require(Address.isContract(_token), "Address is wrong");
         require(!isInitialized[_token], "already initialized");
         tokenDecimals[_token] = _tokenDecimals;
@@ -31,7 +46,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         isInitialized[_token] = true;
     }
 
-    function setMaxLeverage(address _token, uint256 _maxLeverage) external onlyOwner {
+    function setMaxLeverage(address _token, uint256 _maxLeverage) external onlyOperator {
         require(isInitialized[_token] == true, "can only modify maxLeverage for existing tokens");
         require(_maxLeverage > MIN_LEVERAGE, "Max Leverage should be greater than Min Leverage");
         maxLeverage[_token] = _maxLeverage;
