@@ -103,15 +103,15 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     modifier onlyOperator{
-        require(isOperator[msg.sender], "Not Operator");
+        require(isOperator[msg.sender] || msg.sender == owner(), "Not Operator");
         _;
     }
 
     constructor(address _positionVault, address _vUSDC, address _tokenFarm) {
-        isOperator[owner()] = true;
         require(Address.isContract(_positionVault), "vault address is invalid");
         require(Address.isContract(_vUSDC), "vUSD address is invalid");
         require(Address.isContract(_tokenFarm), "tokenFarm address is invalid");
+        isOperator[owner()] = true;
         positionVault = IPositionVault(_positionVault);
         tokenFarm = ITokenFarm(_tokenFarm);
         vUSDC = _vUSDC;

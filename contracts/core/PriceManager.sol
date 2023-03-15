@@ -18,7 +18,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
     mapping(address => bool) isOperator;
 
     modifier onlyOperator{
-        require(isOperator[msg.sender], "Not Operator");
+        require(isOperator[msg.sender] || msg.sender == owner(), "Not Operator");
         _;
     }
 

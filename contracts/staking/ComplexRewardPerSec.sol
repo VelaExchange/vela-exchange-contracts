@@ -54,7 +54,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     }
 
     modifier onlyOperator{
-        require(isOperator[msg.sender], "Not Operator");
+        require(isOperator[msg.sender] || msg.sender == owner(), "Not Operator");
         _;
     }
 

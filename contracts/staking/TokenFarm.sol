@@ -54,7 +54,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     }
 
     modifier onlyOperator{
-        require(isOperator[msg.sender], "Not Operator");
+        require(isOperator[msg.sender] || msg.sender == owner(), "Not Operator");
         _;
     }
 
@@ -64,6 +64,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         IComplexRewarder[] indexed rewarders,
         bool _enableCooldown
     );
+
     event FarmConvert(address indexed user, uint256 amount);
     event FarmDeposit(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);

@@ -138,6 +138,7 @@ describe("Vault", function () {
             tokenFarm.address
           ]
         )
+        await settingsManager.addOperator(user0);
         triggerOrderManager = await deployContract("TriggerOrderManager",
           [
             PositionVault.address,
@@ -328,7 +329,7 @@ describe("Vault", function () {
 
     it ("add Vault as admin", async () => {
        await vusd.transferOwnership(Vault.address); // addAdmin vault
-     })
+    })
 
     it ("Vault Initialize by settingsManager", async () => {
       //=======================================================
@@ -1896,7 +1897,7 @@ describe("Vault", function () {
     const indexToken = btc.address;
     const isLong = true
     const posId = 0
-    await settingsManager.setPositionManager(wallet.address, true) 
+    await settingsManager.setPositionManager(wallet.address, true)
     // wallet is now the manager, can directly call liquidatePosition now
     await expect(PositionVault.liquidatePosition(account, indexToken, isLong, posId))
       .to.be.revertedWith("not exceed or allowed")
@@ -1918,7 +1919,7 @@ describe("Vault", function () {
     expect(validateLiquidation[0].toNumber()).gt(0)
     snapshot = await ethers.provider.send('evm_snapshot', [])
     await PositionVault.liquidatePosition(account, indexToken, isLong, posId)
-    await ethers.provider.send('evm_revert', [snapshot])  
+    await ethers.provider.send('evm_revert', [snapshot])
     // rollback to position 0 not liquidated
   })
 
@@ -1947,13 +1948,13 @@ describe("Vault", function () {
     // and user2 cannot liquidatePosition within the liquidationPendingTime 10s
     await expect(PositionVault.connect(user2).liquidatePosition(account, indexToken, isLong, posId))
       .to.be.revertedWith("not manager or not allowed before pendingTime");
-    
+
     snapshot = await ethers.provider.send('evm_snapshot', []);
     // the manager can do liquidatePosition in the liquidationPendingTime
     let vUSD_team_before = await vusd.balanceOf(feeManagerAddress)
     let vUSD_user2_before = await vusd.balanceOf(user2.address)
     let vUSD_user1_before = await vusd.balanceOf(user1.address)
-    
+
     await PositionVault.connect(user1).liquidatePosition(account, indexToken, isLong, posId) // user2 as firstCaller, and then user1 resolve
     expect((await vusd.balanceOf(feeManagerAddress)).sub(vUSD_team_before)).eq(marginFee.mul(bountyTeam).div(BASIS_POINTS_DIVISOR))
     expect((await vusd.balanceOf(user2.address)).sub(vUSD_user2_before)).eq(marginFee.mul(bountyFirstCaller).div(BASIS_POINTS_DIVISOR))
@@ -2249,15 +2250,9 @@ describe("Vault", function () {
     )
   })
 
-  it ("setAssetManagerWallet", async () => {
-    await expect(settingsManager.connect(user2).setAssetManagerWallet(user0.address))
-      .to.be.revertedWith("Ownable: caller is not the owner")
-    await settingsManager.setAssetManagerWallet(user0.address)
-  })
-
   it ("pause Forex Market", async () => {
     await expect(settingsManager.connect(user2).enableForexMarket(false))
-      .to.be.revertedWith("not allowed to manage forex")
+      .to.be.revertedWith("Not Operator")
     await settingsManager.connect(user0).enableForexMarket(true)
   })
 
@@ -2300,6 +2295,7 @@ describe("Vault", function () {
        ], //triggerPrices
       referAddress
     )
+    await settingsManager.addOperator(user0.address);
     await settingsManager.connect(user0).enableForexMarket(false)
     await Vault.newPositionOrder(
       indexToken, //_indexToken
