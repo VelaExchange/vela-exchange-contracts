@@ -349,7 +349,7 @@ describe("SettingsManager", function () {
       )
     })
 
-    it ("setPriceMovementPercent", async () => {
+    it ("setReferEnabled", async () => {
       const referEnabled = true
       await settingsManager.setReferEnabled(referEnabled)
     })
@@ -362,7 +362,7 @@ describe("SettingsManager", function () {
       await settingsManager.setReferFee(fee2)
     })
 
-    it ("setReferEnabled", async () => {
+    it ("setPriceMovementPercent", async () => {
       const priceMovementPercent = 10000000; // greater than feeDivisor
       await expect(settingsManager.setPriceMovementPercent(priceMovementPercent))
         .to.be.revertedWith("price percent should be smaller than max percent")
