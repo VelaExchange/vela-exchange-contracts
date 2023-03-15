@@ -281,12 +281,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             false
         );
         require(liquidationState != LIQUIDATE_NONE_EXCEED, "not exceed or allowed");
-        if (liquidationState == LIQUIDATE_THRESHOLD_EXCEED) {
-            // max leverage exceeded but there is collateral remaining after deducting losses so decreasePosition instead
-            _decreasePosition(_account, _indexToken, position.size, _isLong, _posId);
-            return;
-        }
-        vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, marginFees);
+
         (uint32 teamPercent, uint32 firstCallerPercent, uint32 resolverPercent) = settingsManager.bountyPercent();
         uint256 bountyTeam = (marginFees * teamPercent) / BASIS_POINTS_DIVISOR;
         //uint256 bounty = bountyTeam; //this can be used in log, leave to future
@@ -304,6 +299,13 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             vault.transferBounty(msg.sender, bountyResolver);
             //bounty += bountyResolver;
         }
+
+        if (liquidationState == LIQUIDATE_THRESHOLD_EXCEED) {
+            // max leverage exceeded but there is collateral remaining after deducting losses so decreasePosition instead
+            _decreasePosition(_account, _indexToken, position.size, _isLong, _posId);
+            return;
+        }
+        vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, marginFees);
         settingsManager.decreaseOpenInterest(_indexToken, _account, _isLong, position.size);
         _decreaseReservedAmount(_indexToken, _isLong, position.size);
         _decreasePoolAmount(_indexToken, _isLong, marginFees);
