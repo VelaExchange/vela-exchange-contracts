@@ -389,7 +389,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         require(
             openInterestPerUser[_account] + _size <=
                 (maxOpenInterestPerWallet[_account] == 0 ? DEFAULT_MAX_OI_PER_WALLET : maxOpenInterestPerWallet[_account]),
-            "exceed max open interest per this account"
+            "exceed max open interest for this account"
         );
         require(
             openInterestPerAssetPerSide[_indexToken][_isLong] + _size <=

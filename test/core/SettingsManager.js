@@ -288,7 +288,7 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max open interest per this account")
+      )).to.be.revertedWith("exceed max open interest for this account")
       await settingsManager.setMaxOpenInterestPerWallet(
         _account,
         1000000
