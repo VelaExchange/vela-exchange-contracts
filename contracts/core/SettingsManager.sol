@@ -61,6 +61,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => mapping(bool => uint256)) public maxOpenInterestPerAssetPerSide;
     mapping(address => mapping(bool => uint256)) public override openInterestPerAssetPerSide;
     mapping(address => uint256) public override openInterestPerUser;
+    mapping(address => uint256) public maxOpenInterestPerWallet;
     mapping(address => EnumerableSet.AddressSet) private _delegatesByMaster;
 
     event ChangedReferEnabled(bool referEnabled);
@@ -81,7 +82,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetMarginFeeBasisPoints(address indexed token, bool isLong, uint256 marginFeeBasisPoints);
     event SetMaxOpenInterestPerAssetPerSide(address indexed token, bool isLong, uint256 maxOIAmount);
     event SetMaxOpenInterestPerUser(uint256 maxOIAmount);
+    event SetMaxOpenInterestPerWallet(address indexed account, uint256 maxOIAmount);
     event SetPositionManager(address manager, bool isManager);
+    event SetPriceMovementPercent(uint256 priceMovementPercent);
     event SetStakingFee(uint256 indexed fee);
     event SetUnstakingFee(uint256 indexed fee);
     event SetTriggerGasFee(uint256 indexed fee);
@@ -289,9 +292,20 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetMaxOpenInterestPerUser(_maxAmount);
     }
 
+    function setMaxOpenInterestPerWallet(address _account, uint256 _maxAmount) external onlyOwner {
+        maxOpenInterestPerWallet[_account] = _maxAmount;
+        emit SetMaxOpenInterestPerWallet(_account, _maxAmount);
+    }
+
     function setPositionManager(address _manager, bool _isManager) external onlyOwner {
         isManager[_manager] = _isManager;
         emit SetPositionManager(_manager, _isManager);
+    }
+
+    function setPriceMovementPercent(uint256 _priceMovementPercent) external onlyOwner {
+        require(_priceMovementPercent <= MAX_PRICE_MOVEMENT_PERCENT, "price percent should be smaller than max percent");
+        priceMovementPercent = _priceMovementPercent;
+        emit SetPriceMovementPercent(_priceMovementPercent);
     }
 
     function setReferEnabled(bool _referEnabled) external onlyOwner {
@@ -379,6 +393,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
             return;
         }
         require(_size >= _collateral, "position size should be greater than collateral");
+        require(
+            openInterestPerUser[_account] + _size <=
+                (maxOpenInterestPerWallet[_account] == 0 ? DEFAULT_MAX_OI_PER_WALLET : maxOpenInterestPerWallet[_account]),
+            "exceed max open interest for this account"
+        );
         require(
             openInterestPerAssetPerSide[_indexToken][_isLong] + _size <=
                 maxOpenInterestPerAssetPerSide[_indexToken][_isLong],

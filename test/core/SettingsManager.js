@@ -278,6 +278,21 @@ describe("SettingsManager", function () {
         _isLong,
         100
       )
+      await settingsManager.setMaxOpenInterestPerWallet(
+        _account,
+        1
+      )
+      await expect(settingsManager.validatePosition(
+        _account,
+        _indexToken,
+        _isLong,
+        100,
+        10
+      )).to.be.revertedWith("exceed max open interest for this account")
+      await settingsManager.setMaxOpenInterestPerWallet(
+        _account,
+        1000000
+      )
       await settingsManager.setMaxOpenInterestPerAsset(
         _indexToken,
         100
@@ -334,6 +349,11 @@ describe("SettingsManager", function () {
       )
     })
 
+    it ("setReferEnabled", async () => {
+      const referEnabled = true
+      await settingsManager.setReferEnabled(referEnabled)
+    })
+
     it ("setReferFee", async () => {
       const fee1 = 10000000; // greater than feeDivisor
       await expect(settingsManager.setReferFee(fee1))
@@ -342,9 +362,12 @@ describe("SettingsManager", function () {
       await settingsManager.setReferFee(fee2)
     })
 
-    it ("setReferEnabled", async () => {
-      const referEnabled = true
-      await settingsManager.setReferEnabled(referEnabled)
+    it ("setPriceMovementPercent", async () => {
+      const priceMovementPercent = 10000000; // greater than feeDivisor
+      await expect(settingsManager.setPriceMovementPercent(priceMovementPercent))
+        .to.be.revertedWith("price percent should be smaller than max percent")
+      const priceMovementPercent2 = 100; // greater than feeDivisor
+      await settingsManager.setPriceMovementPercent(priceMovementPercent2)
     })
 
     it ("setAssetManagerWallet", async () => {

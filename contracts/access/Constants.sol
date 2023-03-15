@@ -9,6 +9,7 @@ contract Constants {
     uint8 public constant STAKING_PID_FOR_CHARGE_FEE = 1;
     uint256 public constant BASIS_POINTS_DIVISOR = 100000;
     uint256 public constant DEFAULT_VLP_PRICE = 100000;
+    uint256 public constant DEFAULT_MAX_OI_PER_WALLET = 1000000000 * PRICE_PRECISION;
     uint256 public constant FUNDING_RATE_PRECISION = 1000000;
     uint256 public constant LIQUIDATE_NONE_EXCEED = 0;
     uint256 public constant LIQUIDATE_FEE_EXCEED = 1;
@@ -21,6 +22,7 @@ contract Constants {
     uint256 public constant MAX_FUNDING_RATE_FACTOR = 10000; // 1%
     uint256 public constant MAX_FUNDING_RATE_INTERVAL = 48 hours;
     uint256 public constant MAX_LIQUIDATION_FEE_USD = 100 * PRICE_PRECISION; // 100 USD
+    uint256 public constant MAX_PRICE_MOVEMENT_PERCENT = 10000; // 10%
     uint256 public constant MAX_STAKING_UNSTAKING_FEE = 10000; // 10%
     uint256 public constant MAX_TOKENFARM_COOLDOWN_DURATION = 4 weeks;
     uint256 public constant MAX_TRIGGER_GAS_FEE = 1e8 gwei;
