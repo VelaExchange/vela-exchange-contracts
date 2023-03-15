@@ -84,6 +84,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetMaxOpenInterestPerUser(uint256 maxOIAmount);
     event SetMaxOpenInterestPerWallet(address indexed account, uint256 maxOIAmount);
     event SetPositionManager(address manager, bool isManager);
+    event SetPriceMovementPercent(uint256 priceMovementPercent);
     event SetStakingFee(uint256 indexed fee);
     event SetUnstakingFee(uint256 indexed fee);
     event SetTriggerGasFee(uint256 indexed fee);
@@ -299,6 +300,12 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     function setPositionManager(address _manager, bool _isManager) external onlyOwner {
         isManager[_manager] = _isManager;
         emit SetPositionManager(_manager, _isManager);
+    }
+
+    function setPriceMovementPercent(uint256 _priceMovementPercent) external onlyOwner {
+        require(_priceMovementPercent <= MAX_PRICE_MOVEMENT_PERCENT, "price percent should be smaller than max percent");
+        priceMovementPercent = _priceMovementPercent;
+        emit SetPriceMovementPercent(_priceMovementPercent);
     }
 
     function setReferEnabled(bool _referEnabled) external onlyOwner {

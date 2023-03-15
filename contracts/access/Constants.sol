@@ -22,6 +22,7 @@ contract Constants {
     uint256 public constant MAX_FUNDING_RATE_FACTOR = 10000; // 1%
     uint256 public constant MAX_FUNDING_RATE_INTERVAL = 48 hours;
     uint256 public constant MAX_LIQUIDATION_FEE_USD = 100 * PRICE_PRECISION; // 100 USD
+    uint256 public constant MAX_PRICE_MOVEMENT_PERCENT = 10000; // 10%
     uint256 public constant MAX_STAKING_UNSTAKING_FEE = 10000; // 10%
     uint256 public constant MAX_TOKENFARM_COOLDOWN_DURATION = 4 weeks;
     uint256 public constant MAX_TRIGGER_GAS_FEE = 1e8 gwei;
