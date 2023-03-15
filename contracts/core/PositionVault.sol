@@ -280,11 +280,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             _posId,
             false
         );
-        uint256 bounty = (marginFees * settingsManager.bountyPercent()) / BASIS_POINTS_DIVISOR;
         require(liquidationState != LIQUIDATE_NONE_EXCEED, "not exceed or allowed");
         if (liquidationState == LIQUIDATE_THRESHOLD_EXCEED) {
             // max leverage exceeded but there is collateral remaining after deducting losses so decreasePosition instead
-            vault.transferBounty(msg.sender, bounty);
             _decreasePosition(_account, _indexToken, position.size, _isLong, _posId);
             return;
         }
