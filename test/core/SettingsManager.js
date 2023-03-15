@@ -278,6 +278,21 @@ describe("SettingsManager", function () {
         _isLong,
         100
       )
+      await settingsManager.setMaxOpenInterestPerWallet(
+        _account,
+        1
+      )
+      await expect(settingsManager.validatePosition(
+        _account,
+        _indexToken,
+        _isLong,
+        100,
+        10
+      )).to.be.revertedWith("exceed max open interest per this account")
+      await settingsManager.setMaxOpenInterestPerWallet(
+        _account,
+        1000000
+      )
       await settingsManager.setMaxOpenInterestPerAsset(
         _indexToken,
         100
