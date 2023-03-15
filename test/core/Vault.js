@@ -600,6 +600,17 @@ describe("Vault", function () {
       (collateralToken.mul(bigNumberify(BASIS_POINTS_DIVISOR).sub(bigNumberify(withdrawFee))).div(bigNumberify(BASIS_POINTS_DIVISOR))).add(orignalUSDCBalance))
   })
 
+  it('withdrawFor', async() => {
+    const vusdAmount = expandDecimals('100', 30)
+    const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
+    const collateralToken = await priceManager.usdToToken(usdc.address, vusdAmount);
+    await expect(Vault.connect(user2).withdraw(usdc.address, wallet.address, vusdAmount)).to.be.revertedWith("not allowed for withdrawFor")
+    await settingsManager.delegate([user2.address])
+    await Vault.connect(user2).withdraw(usdc.address, wallet.address, vusdAmount)
+    expect(await usdc.balanceOf(wallet.address)).eq(
+      (collateralToken.mul(bigNumberify(BASIS_POINTS_DIVISOR).sub(bigNumberify(withdrawFee))).div(bigNumberify(BASIS_POINTS_DIVISOR))).add(orignalUSDCBalance))
+  })
+
   it("unstake with General Token", async () => {
     const amount = expandDecimals('10', 18)
     await expect(Vault.unstake(btc.address, amount, wallet.address))
