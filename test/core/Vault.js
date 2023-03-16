@@ -2251,9 +2251,9 @@ describe("Vault", function () {
   })
 
   it ("pause Forex Market", async () => {
-    await expect(settingsManager.connect(user2).enableForexMarket(false))
+    await expect(settingsManager.connect(user2).pauseForexMarket(false))
       .to.be.revertedWith("Not Operator")
-    await settingsManager.connect(user0).enableForexMarket(true)
+    await settingsManager.connect(user0).pauseForexMarket(true)
   })
 
   it ("create new position after pausing forex market", async() =>{
@@ -2296,7 +2296,7 @@ describe("Vault", function () {
       referAddress
     )
     await settingsManager.addOperator(user0.address);
-    await settingsManager.connect(user0).enableForexMarket(false)
+    await settingsManager.connect(user0).pauseForexMarket(false)
     await Vault.newPositionOrder(
       indexToken, //_indexToken
       isLong,
