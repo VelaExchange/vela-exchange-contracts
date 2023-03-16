@@ -270,7 +270,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     function setLiquidateThreshold(uint256 _newThreshold, address _token) external onlyOperator {
         emit UpdateThreshold(liquidateThreshold[_token], _newThreshold);
-        require(_newThreshold < BASIS_POINTS_DIVISOR, "threshold should be smaller than MAX");
+        require(_newThreshold < LIQUIDATE_THRESHOLD_DIVISOR, "threshold should be smaller than MAX");
         liquidateThreshold[_token] = _newThreshold;
     }
 

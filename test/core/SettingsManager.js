@@ -192,9 +192,9 @@ describe("SettingsManager", function () {
     })
 
     it ("setLiquidateThreshold", async () => {
-      const newThreshold = 200
+      const newThreshold = 2000
       const token = btc.address
-      const maxThreshold = 120000
+      const maxThreshold = 1200000
       await expect(settingsManager.setLiquidateThreshold(maxThreshold, token))
         .to.be.revertedWith("threshold should be smaller than MAX")
       await settingsManager.setLiquidateThreshold(newThreshold, token)

@@ -8,6 +8,7 @@ contract Constants {
     uint8 public constant ORDER_NOT_FILLED = 0;
     uint8 public constant STAKING_PID_FOR_CHARGE_FEE = 1;
     uint256 public constant BASIS_POINTS_DIVISOR = 100000;
+    uint256 public constant LIQUIDATE_THRESHOLD_DIVISOR = 10 * BASIS_POINTS_DIVISOR;
     uint256 public constant DEFAULT_VLP_PRICE = 100000;
     uint256 public constant DEFAULT_MAX_OI_PER_WALLET = 1000000000 * PRICE_PRECISION;
     uint256 public constant FUNDING_RATE_PRECISION = 1000000;
