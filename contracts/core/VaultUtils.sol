@@ -425,7 +425,7 @@ contract VaultUtils is IVaultUtils, Constants {
 
         if (
             _collateral - (_marginFees + settingsManager.liquidationFeeUsd()) <
-            (_size * (BASIS_POINTS_DIVISOR - settingsManager.liquidateThreshold(_indexToken))) / BASIS_POINTS_DIVISOR
+            (_size * (LIQUIDATE_THRESHOLD_DIVISOR - settingsManager.liquidateThreshold(_indexToken))) / LIQUIDATE_THRESHOLD_DIVISOR
         ) {
             if (_raise) {
                 revert("Vault: maxThreshold exceeded");
