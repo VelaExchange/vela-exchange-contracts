@@ -93,6 +93,8 @@ interface ISettingsManager {
 
     function triggerGasFee() external view returns (uint256);
 
+    function globalGasFee() external view returns (uint256);
+
     function validatePosition(
         address _account,
         address _indexToken,

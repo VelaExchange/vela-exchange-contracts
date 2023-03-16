@@ -44,6 +44,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public override unstakingFee = 300; // 0.3%
     uint256 public override referFee = 5000; // 5%
     uint256 public override triggerGasFee = 0; //100 gwei;
+    uint256 public override globalGasFee = 0;
 
     mapping(address => bool) public override isDeposit;
     mapping(address => bool) public override isWithdraw;
@@ -88,6 +89,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetStakingFee(uint256 indexed fee);
     event SetUnstakingFee(uint256 indexed fee);
     event SetTriggerGasFee(uint256 indexed fee);
+    event SetGlobalGasFee(uint256 indexed fee);
     event SetVaultSettings(uint256 indexed cooldownDuration, uint256 feeRewardBasisPoints);
     event UpdateFundingRate(address indexed token, bool isLong, uint256 fundingRate, uint256 lastFundingTime);
     event UpdateTotalOpenInterest(address indexed token, bool isLong, uint256 amount);
@@ -340,9 +342,15 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function setTriggerGasFee(uint256 _fee) external onlyOperator {
-        require(_fee <= MAX_TRIGGER_GAS_FEE, "gasFee exceed max");
+        require(_fee <= MAX_TRIGGER_GAS_FEE, "trigger gas fee exceed max");
         triggerGasFee = _fee;
         emit SetTriggerGasFee(_fee);
+    }
+
+    function setGlobalGasFee(uint256 _fee) external onlyOperator {
+        require(_fee <= MAX_GLOBAL_GAS_FEE, "global gas fee exceed max");
+        globalGasFee = _fee;
+        emit SetGlobalGasFee(_fee);
     }
 
     function updateCumulativeFundingRate(address _token, bool _isLong) external override onlyVault {
