@@ -105,7 +105,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _sizeDelta,
         bool _isLong,
         uint256 _posId
-    ) external nonReentrant preventTradeForForexCloseTime(_indexToken) {
+    ) payable external nonReentrant preventTradeForForexCloseTime(_indexToken) {
+        require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
+        payable(settingsManager.feeManager()).transfer(msg.value);
         positionVault.decreasePosition(msg.sender, _indexToken, _sizeDelta, _isLong, _posId);
     }
 
@@ -142,6 +144,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         if (_orderType != OrderType.MARKET) {
             require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
             payable(settingsManager.feeManager()).transfer(msg.value);
+        } else {
+          require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
+          payable(settingsManager.feeManager()).transfer(msg.value);
         }
         positionVault.newPositionOrder(msg.sender, _indexToken, _isLong, _orderType, _params, _refer);
     }

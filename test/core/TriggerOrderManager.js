@@ -559,7 +559,7 @@ describe("TriggerOrderManager", function () {
       ]
       const newTriggerGasFee = expandDecimals('1', 16)
       await expect(settingsManager.setTriggerGasFee(expandDecimals('1', 18)))
-        .to.be.revertedWith("gasFee exceed max")
+        .to.be.revertedWith("trigger gas fee exceed max")
       await settingsManager.setTriggerGasFee(newTriggerGasFee)
       await expect(triggerOrderManager.updateTriggerOrders(
         indexToken,

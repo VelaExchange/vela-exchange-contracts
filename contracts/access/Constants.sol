@@ -26,6 +26,7 @@ contract Constants {
     uint256 public constant MAX_STAKING_UNSTAKING_FEE = 10000; // 10%
     uint256 public constant MAX_TOKENFARM_COOLDOWN_DURATION = 4 weeks;
     uint256 public constant MAX_TRIGGER_GAS_FEE = 1e8 gwei;
+    uint256 public constant MAX_GLOBAL_GAS_FEE = 1e8 gwei;
     uint256 public constant MAX_VESTING_DURATION = 700 days;
     uint256 public constant MIN_FUNDING_RATE_INTERVAL = 1 hours;
     uint256 public constant MIN_LEVERAGE = 10000; // 1x
