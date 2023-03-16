@@ -37,14 +37,15 @@ describe("TokenFarm", function () {
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address])
-        await eVela.setMinter(wallet.address, true); 
-        await eVela.setMinter(tokenFarm.address, true)
-        await vela.setMinter(wallet.address, true); 
-        await vlp.setMinter(wallet.address, true)
-        await eVela.connect(wallet).mint(wallet.address, expandDecimals(100000, 18)); // mint eVELA
-        await vela.connect(wallet).mint(wallet.address, expandDecimals(100000, 18)); // mint eVELA
+        await eVela.transferOwnership(tokenFarm.address)
+        await vela.transferOwnership(wallet.address);
+        const owner = await vela.owner()
+        console.log("owner : ", owner, wallet.address)
+        await vela.connect(wallet).mint(wallet.address, expandDecimals(10000000, 18)); // mint vela Token
+        await vela.connect(wallet).approve(tokenFarm.address,  expandDecimals('10000000', 18)); // VELA approve
+        await tokenFarm.depositVelaForVesting(expandDecimals('10000000', 18))
+        await vlp.transferOwnership(wallet.address)
         await vlp.connect(wallet).mint(wallet.address, expandDecimals(100000, 18)); // mint eVELA
-        await vela.connect(wallet).mint(tokenFarm.address, expandDecimals(100000, 18)); // mint eVELA
         let vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0]);
         let vault = await deployContract("Vault", [
             vlp.address,
@@ -72,7 +73,6 @@ describe("TokenFarm", function () {
         rewardPerSec1 = expandDecimals(8267, 12)
         rewardPerSec2 = expandDecimals(3858, 12)
         rewardPerSec3 = expandDecimals(3858, 12)
-        await eVela.connect(wallet).mint(wallet.address, expandDecimals(10000000, 18)); // mint eVELA
         await vela.connect(wallet).mint(wallet.address, expandDecimals(100000, 18)); // mint vela Token
         await vela.connect(wallet).mint(user0.address, expandDecimals(100, 18)); // mint vela Token
         await vela.connect(wallet).mint(user1.address, expandDecimals(100, 18)); // mint vela Token

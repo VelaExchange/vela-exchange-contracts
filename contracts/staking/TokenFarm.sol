@@ -69,6 +69,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     event FarmDeposit(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmissionRateUpdated(address indexed caller, uint256 previousValue, uint256 newValue);
+    event MintVestingToken(address indexed account, uint256 amount);
     event RewardLockedUp(address indexed user, uint256 indexed pid, uint256 amountLockedUp);
     event Set(uint256 indexed pid, IComplexRewarder[] indexed rewarders);
     event UpdateCooldownDuration(uint256 cooldownDuration);
@@ -134,6 +135,13 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         _depositVesting(msg.sender, _amount);
     }
 
+    function depositVelaForVesting(uint256 _amount) external nonReentrant {
+        require (_amount > 0, "zero amount");
+        claimableToken.safeTransferFrom(msg.sender, address(this), _amount); //transfer VELA in
+        esToken.mint(msg.sender, _amount);
+        emit MintVestingToken(msg.sender, _amount);
+    }
+
     function depositWithConvert(uint256 _pid, uint256 _amount) external nonReentrant {
         require (_amount > 0, "zero amount");
         claimableToken.safeTransferFrom(msg.sender, address(this), _amount); //transfer VELA in
@@ -154,6 +162,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         pool.totalLp += _amount;
 
         emit FarmConvert(msg.sender, _amount);
+        emit MintVestingToken(address(this), _amount);
         emit FarmDeposit(msg.sender, _pid, _amount);
     }
 

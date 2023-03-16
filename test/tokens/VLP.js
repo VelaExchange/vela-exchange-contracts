@@ -60,7 +60,7 @@ describe("VLP", function () {
             PositionVault.address,
         );
         await vusd.transferOwnership(Vault.address);
-        await vlp.setMinter(Vault.address, true);
+        await vlp.transferOwnership(Vault.address);
 
         await usdc.connect(wallet).approve(Vault.address,  amount);
         await Vault.stake(wallet.address, usdc.address, amount);
