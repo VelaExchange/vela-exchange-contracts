@@ -36,32 +36,22 @@ describe("MintableBaseToken", function () {
         expect(await btc.owner()).eq(user1.address)
     })
 
-    it ("setMinter", async () => {
-        await expect(btc.connect(wallet).setMinter(user2.address, true))
-            .to.be.revertedWith('Ownable: caller is not the owner')
-        await btc.connect(user1).setMinter(user2.address, true)
-        await btc.connect(user1).setMinter(user2.address, true)
-        await expect(btc.connect(user1).setMinter(user2.address, true)).to.be.revertedWith("cant exceed max count")
-    })
-
     it("mint", async () => {
         const amount = expandDecimals('1000', 18)
         await expect(btc.connect(user3).mint(user1.address, amount))
-          .to.be.revertedWith('MintableBaseToken: forbidden')
-        await expect(btc.connect(user2).mint(zeroAddress, amount))
-          .to.be.revertedWith('BaseToken: mint to the zero address')
-        await btc.connect(user2).mint(user1.address, amount)
+          .to.be.revertedWith('Ownable: caller is not the owner')
+        await btc.connect(user1).mint(user1.address, amount)
     }) 
 
     it("burn", async () => {
         const amount = expandDecimals('1000', 18)
         const bigAmount = expandDecimals('10000', 18)
         await expect(btc.connect(user3).burn(user1.address, amount))
-          .to.be.revertedWith('MintableBaseToken: forbidden')
-        await expect(btc.connect(user2).burn(zeroAddress, amount))
+          .to.be.revertedWith('Ownable: caller is not the owner')
+        await expect(btc.connect(user1).burn(zeroAddress, amount))
           .to.be.revertedWith('BaseToken: burn from the zero address')
-        await expect(btc.connect(user2).burn(user1.address, bigAmount))
+        await expect(btc.connect(user1).burn(user1.address, bigAmount))
           .to.be.revertedWith('BaseToken: burn amount exceeds balance')
-        await btc.connect(user2).burn(user1.address, amount)
+        await btc.connect(user1).burn(user1.address, amount)
     }) 
 });

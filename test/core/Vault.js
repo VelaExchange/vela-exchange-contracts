@@ -95,7 +95,6 @@ describe("Vault", function () {
         usdc = await deployContract("BaseToken", ["USD Coin", "USDC", expandDecimals('10000000', 18)])
         usdcPriceFeed = await deployContract("FastPriceFeed", [])
 
-        vlpPriceFeed = await deployContract("FastPriceFeed", [])
         vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
         vlp = await deployContract('VLP', [])
         vela = await deployContract('Vela', [trustForwarder])
@@ -138,7 +137,7 @@ describe("Vault", function () {
             tokenFarm.address
           ]
         )
-        await settingsManager.addOperator(user0);
+        await settingsManager.addOperator(user0.address);
         triggerOrderManager = await deployContract("TriggerOrderManager",
           [
             PositionVault.address,
@@ -319,7 +318,7 @@ describe("Vault", function () {
            token.isForex
          );
        }
-        await vlp.setMinter(Vault.address, true); // vlp SetMinter
+        await vlp.transferOwnership(Vault.address); // vlp transferOwnership
         await settingsManager.setPositionManager(positionManagerAddress, true);
         await settingsManager.setDepositFee(depositFee);
         await settingsManager.setWithdrawFee(withdrawFee);
@@ -427,9 +426,10 @@ describe("Vault", function () {
      const rewardPerSec1 = expandDecimals(8267, 12) // 10k
      const rewardPerSec2 = expandDecimals(3858, 12) // 10k
      const rewardPerSec3 = expandDecimals(3858, 12) // 10k
-     await eVela.setMinter(tokenFarm.address, true);
-     await eVela.setMinter(wallet.address, true);
-     await eVela.mint(wallet.address, expandDecimals(1000000, 18)); // mint eVELA
+     await eVela.transferOwnership(tokenFarm.address); // transferOwnership
+     await vela.connect(wallet).mint(wallet.address, expandDecimals(10000000, 18)); // mint vela Token
+     await vela.connect(wallet).approve(tokenFarm.address,  expandDecimals('1000000', 18)); // VELA approve
+     await tokenFarm.depositVelaForVesting(expandDecimals('1000000', 18))
      const complexRewardPerSec1 = await deployContract("ComplexRewarderPerSec", [
       eVela.address,
       tokenFarm.address

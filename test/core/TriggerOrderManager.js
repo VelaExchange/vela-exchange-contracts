@@ -263,7 +263,7 @@ describe("TriggerOrderManager", function () {
            token.isForex
          );
        }
-        await vlp.setMinter(Vault.address, true); // vlp SetMinter
+        await vlp.transferOwnership(Vault.address); // transferOwnership
      // await VaultUtils.setDepositFee(depositFee);
      // await VaultUtils.setStakingFee(stakingFee);
     });
@@ -288,10 +288,11 @@ describe("TriggerOrderManager", function () {
      const rewardPerSec1 = expandDecimals(8267, 12)
      const rewardPerSec2 = expandDecimals(3858, 12)
      const rewardPerSec3 = expandDecimals(3858, 12)
-     await eVela.setMinter(wallet.address, true); // eVela setMinter the gov
-     await vela.setMinter(wallet.address, true);
-     await eVela.connect(wallet).mint(wallet.address, expandDecimals(10000000, 18)); // mint eVELA
+     await vela.transferOwnership(wallet.address);
+     await eVela.transferOwnership(tokenFarm.address); // transferOwnership
      await vela.connect(wallet).mint(wallet.address, expandDecimals(10000000, 18)); // mint vela Token
+     await vela.connect(wallet).approve(tokenFarm.address,  expandDecimals('1000000', 18)); // VELA approve
+     await tokenFarm.depositVelaForVesting(expandDecimals('1000000', 18))
      const complexRewardPerSec1 = await deployContract("ComplexRewarderPerSec", [
          eVela.address,
          tokenFarm.address
