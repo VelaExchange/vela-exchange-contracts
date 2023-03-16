@@ -67,7 +67,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     event ChangedReferEnabled(bool referEnabled);
     event ChangedReferFee(uint256 referFee);
-    event EnableForexMarket(bool _enabled);
+    event PauseForexMarket(bool _paused);
     event EnableMarketOrder(bool _enabled);
     event SetAssetManagerWallet(address manager);
     event SetBountyPercent(uint256 bountyPercentTeam, uint256 bountyPercentFirstCaller, uint256 bountyPercentResolver);
@@ -154,9 +154,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         isOperator[op] = false;
     }
 
-    function enableForexMarket(bool _enable) external onlyOperator {
-        pauseForexForCloseTime = _enable;
-        emit EnableForexMarket(_enable);
+    function pauseForexMarket(bool _paused) external onlyOperator {
+        pauseForexForCloseTime = _paused;
+        emit PauseForexMarket(_paused);
     }
 
     function enableMarketOrder(bool _enable) external onlyOperator {

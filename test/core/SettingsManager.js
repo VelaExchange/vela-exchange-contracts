@@ -370,11 +370,11 @@ describe("SettingsManager", function () {
       await settingsManager.setPriceMovementPercent(priceMovementPercent2)
     })
 
-    it ("enableForexMarket", async () => {
+    it ("pauseForexMarket", async () => {
       await settingsManager.addOperator(user0.address);
-      await expect(settingsManager.connect(user2).enableForexMarket(false))
+      await expect(settingsManager.connect(user2).pauseForexMarket(false))
         .to.be.revertedWith("Not Operator")
-      await settingsManager.connect(user0).enableForexMarket(true)
+      await settingsManager.connect(user0).pauseForexMarket(true)
     })
 
     it ("setFeeManager", async () => {
