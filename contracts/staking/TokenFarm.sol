@@ -126,6 +126,12 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         }
     }
 
+    function claim() external nonReentrant {
+        address account = msg.sender;
+        address _receiver = account;
+        _claim(account, _receiver);
+    }
+
     // Deposit tokens for Vela allocation.
     function deposit(uint256 _pid, uint256 _amount) external nonReentrant {
         _deposit(_pid, _amount);

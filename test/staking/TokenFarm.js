@@ -332,6 +332,13 @@ describe("TokenFarm", function () {
         await ethers.provider.send('evm_mine');
     })
 
+    it ("Claim", async () => {
+        const passTime = 60 * 60 * 24 * 20
+        await ethers.provider.send('evm_increaseTime', [passTime]);
+        await ethers.provider.send('evm_mine');
+        await tokenFarm.connect(wallet).claim()
+    })
+
     it ("withdrawVesting", async () => {
         const beforeVelaBalance = await vela.balanceOf(wallet.address)
         const vestedAmount = await tokenFarm.getVestedAmount(wallet.address)
