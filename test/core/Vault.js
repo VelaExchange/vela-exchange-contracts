@@ -320,10 +320,10 @@ describe("Vault", function () {
        }
         await vlp.transferOwnership(Vault.address); // vlp transferOwnership
         await settingsManager.setPositionManager(positionManagerAddress, true);
-        await settingsManager.setDepositFee(depositFee);
-        await settingsManager.setWithdrawFee(withdrawFee);
-        await settingsManager.setStakingFee(stakingFee);
-        await settingsManager.setUnstakingFee(unstakingFee);
+        await settingsManager.setDepositFee(token.address, depositFee);
+        await settingsManager.setWithdrawFee(token.address, withdrawFee);
+        await settingsManager.setStakingFee(token.address, stakingFee);
+        await settingsManager.setUnstakingFee(token.address, unstakingFee);
     });
 
     it ("add Vault as admin", async () => {

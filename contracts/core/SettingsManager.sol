@@ -37,13 +37,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public override closeDeltaTime = 1 hours;
     uint256 public override cooldownDuration = 3 hours;
     uint256 public override delayDeltaTime = 1 minutes;
-    uint256 public override depositFee = 300; // 0.3%
-    uint256 public override withdrawFee = 300; // 0.3%
-    uint256 public override feeRewardBasisPoints = 70000; // 70%
+    uint256 public override feeRewardBasisPoints = 50000; // 50%
     uint256 public override fundingInterval = 8 hours;
     uint256 public override liquidationFeeUsd; // 0 usd
-    uint256 public override stakingFee = 300; // 0.3%
-    uint256 public override unstakingFee = 300; // 0.3%
     uint256 public override referFee = 5000; // 5%
     uint256 public override triggerGasFee = 0; //100 gwei;
     uint256 public override globalGasFee = 0;
@@ -53,6 +49,10 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => bool) public override isManager;
     mapping(address => bool) public override isStakingEnabled;
     mapping(address => bool) public override isUnstakingEnabled;
+    mapping(address => uint256) public override depositFee;
+    mapping(address => uint256) public override withdrawFee;
+    mapping(address => uint256) public override stakingFee;
+    mapping(address => uint256) public override unstakingFee;
 
     mapping(address => mapping(bool => uint256)) public override cumulativeFundingRates;
     mapping(address => mapping(bool => uint256)) public override fundingRateFactor;
@@ -72,8 +72,8 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event EnableMarketOrder(bool _enabled);
     event SetAssetManagerWallet(address manager);
     event SetBountyPercent(uint256 bountyPercentTeam, uint256 bountyPercentFirstCaller, uint256 bountyPercentResolver);
-    event SetDepositFee(uint256 indexed fee);
-    event SetWithdrawFee(uint256 indexed fee);
+    event SetDepositFee(address indexed token, uint256 indexed fee);
+    event SetWithdrawFee(address indexed token, uint256 indexed fee);
     event SetEnableDeposit(address indexed token, bool isEnabled);
     event SetEnableWithdraw(address indexed token, bool isEnabled);
     event SetEnableStaking(address indexed token, bool isEnabled);
@@ -87,8 +87,8 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetMaxOpenInterestPerWallet(address indexed account, uint256 maxOIAmount);
     event SetPositionManager(address manager, bool isManager);
     event SetPriceMovementPercent(uint256 priceMovementPercent);
-    event SetStakingFee(uint256 indexed fee);
-    event SetUnstakingFee(uint256 indexed fee);
+    event SetStakingFee(address indexed token, uint256 indexed fee);
+    event SetUnstakingFee(address indexed token, uint256 indexed fee);
     event SetTriggerGasFee(uint256 indexed fee);
     event SetGlobalGasFee(uint256 indexed fee);
     event SetVaultSettings(uint256 indexed cooldownDuration, uint256 feeRewardBasisPoints);
@@ -220,18 +220,18 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit UpdateDelayDeltaTime(_deltaTime);
     }
 
-    function setDepositFee(uint256 _fee) external {
+    function setDepositFee(address token, uint256 _fee) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         require(_fee <= MAX_DEPOSIT_WITHDRAW_FEE, "deposit fee is bigger than max");
-        depositFee = _fee;
-        emit SetDepositFee(_fee);
+        depositFee[token] = _fee;
+        emit SetDepositFee(token, _fee);
     }
 
-    function setWithdrawFee(uint256 _fee) external {
+    function setWithdrawFee(address token, uint256 _fee) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         require(_fee <= MAX_DEPOSIT_WITHDRAW_FEE, "withdraw fee is bigger than max");
-        withdrawFee = _fee;
-        emit SetWithdrawFee(_fee);
+        withdrawFee[token] = _fee;
+        emit SetWithdrawFee(token, _fee);
     }
 
     function setEnableDeposit(address _token, bool _isEnabled) external {
@@ -345,18 +345,18 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit ChangedReferFee(_fee);
     }
 
-    function setStakingFee(uint256 _fee) external {
+    function setStakingFee(address token, uint256 _fee) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         require(_fee <= MAX_STAKING_UNSTAKING_FEE, "staking fee is bigger than max");
-        stakingFee = _fee;
-        emit SetStakingFee(_fee);
+        stakingFee[token] = _fee;
+        emit SetStakingFee(token, _fee);
     }
 
-    function setUnstakingFee(uint256 _fee) external {
+    function setUnstakingFee(address token, uint256 _fee) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         require(_fee <= MAX_STAKING_UNSTAKING_FEE, "unstaking fee is bigger than max");
-        unstakingFee = _fee;
-        emit SetUnstakingFee(_fee);
+        unstakingFee[token] = _fee;
+        emit SetUnstakingFee(token, _fee);
     }
 
     function setTriggerGasFee(uint256 _fee) external {
