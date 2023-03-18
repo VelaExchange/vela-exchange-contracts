@@ -983,6 +983,12 @@ describe("Vault", function () {
       isLong,
       posId
     )
+    expect(PositionVault.updateTrailingStop(
+      account,
+      indexToken,
+      isLong,
+      posId
+    )).to.be.reverted; //should not be able to call updateTrailingStop after a success
     const validateTriggerBeforePriceChange = await VaultUtils.validateTrigger(
       account,
       indexToken,
