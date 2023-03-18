@@ -12,7 +12,7 @@ contract ExchangeOperators is Ownable {
 
   modifier onlyOperator(uint8 level) {
       require(isOperator[_msgSender()] > uint8(OperatorLevel.NONE), "Not an operator");
-      require(isOperator[_msgSender()] >= level, "Invalid operator");
+      require(isOperator[_msgSender()] > level, "Invalid operator");
       _;
   }
 
