@@ -280,6 +280,16 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     function _mintOrBurnVUSDForVault(bool _mint, uint256 _amount, uint256 _fee, address _refer) internal {
+        if (_fee != 0 && _refer != ZERO_ADDRESS && settingsManager.referEnabled()) {
+            uint256 referFee = (_fee * settingsManager.referFee()) / BASIS_POINTS_DIVISOR;
+            IVUSDC(vUSDC).mint(_refer, referFee);
+            if (_mint) {
+                _amount -= referFee;
+            } else {
+                _amount += referFee;
+            }
+            _fee -= referFee;
+        }
         address _feeManager = settingsManager.feeManager();
         if (_fee != 0 && _feeManager != ZERO_ADDRESS) {
             uint256 feeReward = (_fee * settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
@@ -289,16 +299,6 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
                 _amount -= feeMinusFeeReward;
             } else {
                 _amount += feeMinusFeeReward;
-            }
-            _fee = feeReward;
-        }
-        if (_refer != ZERO_ADDRESS && settingsManager.referEnabled()) {
-            uint256 referFee = (_fee * settingsManager.referFee()) / BASIS_POINTS_DIVISOR;
-            IVUSDC(vUSDC).mint(_refer, referFee);
-            if (_mint) {
-                _amount -= referFee;
-            } else {
-                _amount += referFee;
             }
         }
         if (_mint) {

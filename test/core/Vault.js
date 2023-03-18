@@ -2305,4 +2305,41 @@ describe("Vault", function () {
       referAddress
     )
   })
+
+  
+  it ("referFee managerFee", async() =>{
+    const closeDeltaTime = 60 * 60 * 1
+    await settingsManager.setCloseDeltaTime(closeDeltaTime)
+    const indexToken = gbp.address;
+    const amountIn = expandDecimals('10', 30)
+    const toUsdAmount = expandDecimals('100', 30)
+    const isLong = false
+    const referAddress = user0.address;
+    const orderType = 0 // M
+    const expectedCryptoMarketPrice = await vaultPriceFeed.getLastPrice(btc.address);
+    const slippage = 1000 // 1%
+    const pendingCollateral = amountIn;
+    const pendingSize = toUsdAmount;
+    let referBalanceBefore = await vusd.balanceOf(referAddress)
+    let managerBalanceBefore = await vusd.balanceOf(feeManagerAddress)
+    await Vault.newPositionOrder(
+      btc.address, //_indexToken
+      isLong,
+      orderType,
+      [
+        expectedCryptoMarketPrice,
+        slippage,
+        pendingCollateral,
+        pendingSize
+       ], //triggerPrices
+      referAddress
+    )
+    let referBalanceAfter = await vusd.balanceOf(referAddress)
+    let managerBalanceAfter = await vusd.balanceOf(feeManagerAddress)
+    let fee = await settingsManager.getPositionFee(btc.address, isLong, pendingSize)
+    let referFee = fee.mul(await settingsManager.referFee()).div(BASIS_POINTS_DIVISOR)
+    expect(referFee).eq(referBalanceAfter.sub(referBalanceBefore));
+    let managerFee = fee.sub(referFee).mul(BASIS_POINTS_DIVISOR-(await settingsManager.feeRewardBasisPoints())).div(BASIS_POINTS_DIVISOR);
+    expect(managerFee).eq(managerBalanceAfter.sub(managerBalanceBefore));
+  })
 });
