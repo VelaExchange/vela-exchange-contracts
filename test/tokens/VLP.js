@@ -16,6 +16,7 @@ describe("VLP", function () {
     const provider = waffle.provider
     const [wallet, user0, user1, user2, user3] = provider.getWallets()
     let vlp;
+    let operator
     const amount = expandDecimals('1000', 6)
 
     before(async function () {
@@ -26,9 +27,11 @@ describe("VLP", function () {
             vlp.address,
             vusd.address
         ]);
+        operator = await deployContract('ExchangeOperators', [])
         let vaultPriceFeed = await deployContract("VaultPriceFeed", []);
         let priceManager = await deployContract("PriceManager", [
-            vaultPriceFeed.address
+            vaultPriceFeed.address,
+            operator.address
         ]);
         let usdcPriceFeed = await deployContract("FastPriceFeed", [])
         await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
@@ -43,10 +46,11 @@ describe("VLP", function () {
         let PositionVault = await deployContract("PositionVault", []);
         let vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         let eVela = await deployContract('eVELA', [])
-        let tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address])
+        let tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
         let settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,
+            operator.address,
             vusd.address,
             tokenFarm.address
           ]

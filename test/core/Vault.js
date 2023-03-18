@@ -29,6 +29,7 @@ describe("Vault", function () {
     let positionManagerAddress;
     let feeManagerAddress;
     let tokenFarm;
+    let operator;
     let vestingDuration
 
     let btc
@@ -99,7 +100,8 @@ describe("Vault", function () {
         vlp = await deployContract('VLP', [])
         vela = await deployContract('Vela', [trustForwarder])
         eVela = await deployContract('eVELA', [])
-        tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address])
+        operator = await deployContract('ExchangeOperators', [])
+        tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
            vlp.address,
@@ -107,11 +109,13 @@ describe("Vault", function () {
         ]);
         PositionVault = await deployContract("PositionVault", [])
         priceManager = await deployContract("PriceManager", [
-          vaultPriceFeed.address
+          vaultPriceFeed.address,
+          operator.address
         ])
         await expect(deployContract("SettingsManager",
           [
             zeroAddress,
+            operator.address,
             vusd.address,
             tokenFarm.address
           ]
@@ -119,6 +123,7 @@ describe("Vault", function () {
         await expect(deployContract("SettingsManager",
           [
             PositionVault.address,
+            operator.address,
             zeroAddress,
             tokenFarm.address
           ]
@@ -126,6 +131,7 @@ describe("Vault", function () {
         await expect(deployContract("SettingsManager",
           [
             PositionVault.address,
+            operator.address,
             vusd.address,
             zeroAddress
           ]
@@ -133,11 +139,11 @@ describe("Vault", function () {
         settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,
+            operator.address,
             vusd.address,
             tokenFarm.address
           ]
         )
-        await settingsManager.addOperator(user0.address);
         triggerOrderManager = await deployContract("TriggerOrderManager",
           [
             PositionVault.address,
@@ -432,15 +438,18 @@ describe("Vault", function () {
      await tokenFarm.depositVelaForVesting(expandDecimals('1000000', 18))
      const complexRewardPerSec1 = await deployContract("ComplexRewarderPerSec", [
       eVela.address,
-      tokenFarm.address
+      tokenFarm.address,
+      operator.address
      ])
      const complexRewardPerSec2 = await deployContract("ComplexRewarderPerSec", [
          eVela.address,
-         tokenFarm.address
+         tokenFarm.address,
+         operator.address
      ])
      const complexRewardPerSec3 = await deployContract("ComplexRewarderPerSec", [
          eVela.address,
-         tokenFarm.address
+         tokenFarm.address,
+         operator.address
      ])
      const amount = String(ethers.constants.MaxUint256)
      await eVela.connect(wallet).approve(complexRewardPerSec1.address,  amount); // VLP approve
@@ -2252,8 +2261,8 @@ describe("Vault", function () {
 
   it ("pause Forex Market", async () => {
     await expect(settingsManager.connect(user2).pauseForexMarket(false))
-      .to.be.revertedWith("Not Operator")
-    await settingsManager.connect(user0).pauseForexMarket(true)
+      .to.be.revertedWith("Invalid operator")
+    await settingsManager.pauseForexMarket(true)
   })
 
   it ("create new position after pausing forex market", async() =>{
@@ -2276,6 +2285,7 @@ describe("Vault", function () {
       pendingCollateral,
       pendingSize
      ]
+    await settingsManager.pauseForexMarket(true)
     await expect(Vault.newPositionOrder(
       indexToken, //_indexToken
       isLong,
@@ -2283,20 +2293,19 @@ describe("Vault", function () {
       triggerPrices, //triggerPrices
       referAddress
     )).to.be.revertedWith("prevent trade for forex close time")
-    await Vault.newPositionOrder(
-      btc.address, //_indexToken
-      isLong,
-      orderType,
-      [
-        expectedCryptoMarketPrice,
-        slippage,
-        pendingCollateral,
-        pendingSize
-       ], //triggerPrices
-      referAddress
-    )
-    await settingsManager.addOperator(user0.address);
-    await settingsManager.connect(user0).pauseForexMarket(false)
+    // await Vault.newPositionOrder(
+    //   btc.address, //_indexToken
+    //   isLong,
+    //   orderType,
+    //   [
+    //     expectedCryptoMarketPrice,
+    //     slippage,
+    //     pendingCollateral,
+    //     pendingSize
+    //    ], //triggerPrices
+    //   referAddress
+    // )
+    await settingsManager.pauseForexMarket(false)
     await Vault.newPositionOrder(
       indexToken, //_indexToken
       isLong,

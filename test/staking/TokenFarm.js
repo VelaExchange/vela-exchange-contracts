@@ -19,6 +19,7 @@ describe("TokenFarm", function () {
     let vela;
     let eVela;
     let tokenFarm;
+    let operator;
     let vestingDuration
     let complexRewardPerSec1;
     let complexRewardPerSec2;
@@ -36,7 +37,8 @@ describe("TokenFarm", function () {
         vlp = await deployContract('VLP', [])
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
-        tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address])
+        operator = await deployContract('ExchangeOperators', [])
+        tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
         await eVela.transferOwnership(tokenFarm.address)
         await vela.transferOwnership(wallet.address);
         const owner = await vela.owner()
@@ -55,6 +57,7 @@ describe("TokenFarm", function () {
         let settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,
+            operator.address,
             vusd.address,
             tokenFarm.address
           ]
@@ -78,28 +81,34 @@ describe("TokenFarm", function () {
         await vela.connect(wallet).mint(user1.address, expandDecimals(100, 18)); // mint vela Token
         await expect(deployContract("ComplexRewarderPerSec", [
             zeroAddress,
-            tokenFarm.address
+            tokenFarm.address,
+            operator.address
         ])).to.be.revertedWith("constructor: reward token must be a valid contract")
         await expect(deployContract("ComplexRewarderPerSec", [
             eVela.address,
-            zeroAddress
+            zeroAddress,
+            operator.address
         ])).to.be.revertedWith("constructor: FarmDistributor must be a valid contract")
         const vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
         await expect(deployContract("ComplexRewarderPerSec", [
             vusd.address,
-            tokenFarm.address
+            tokenFarm.address,
+            operator.address
         ])).to.be.revertedWith("constructor: reward token decimals must be inferior to 30")        
         complexRewardPerSec1 = await deployContract("ComplexRewarderPerSec", [
             eVela.address,
-            tokenFarm.address
+            tokenFarm.address,
+            operator.address
         ])
         complexRewardPerSec2 = await deployContract("ComplexRewarderPerSec", [
             eVela.address,
-            tokenFarm.address
+            tokenFarm.address,
+            operator.address
         ])
         complexRewardPerSec3 = await deployContract("ComplexRewarderPerSec", [
             eVela.address,
-            tokenFarm.address
+            tokenFarm.address,
+            operator.address
         ])
         const amount = String(ethers.constants.MaxUint256)
         await eVela.connect(wallet).approve(complexRewardPerSec1.address,  amount); // VLP approve
@@ -597,7 +606,8 @@ describe("TokenFarm", function () {
         const pId = 4
         const complexRewardPerSec4 = await deployContract("ComplexRewarderPerSec", [
             eVela.address,
-            tokenFarm.address
+            tokenFarm.address,
+            operator.address
         ])
         const amount = String(ethers.constants.MaxUint256)
         await eVela.connect(wallet).approve(complexRewardPerSec4.address,  amount); // VLP approve
