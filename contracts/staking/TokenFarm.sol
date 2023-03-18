@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IComplexRewarder.sol";
 import "./interfaces/ITokenFarm.sol";
 import "./libraries/BoringERC20.sol";
+import "../core/interfaces/IOperators.sol";
 import {Constants} from "../access/Constants.sol";
 import "../tokens/interfaces/IMintable.sol";
 
@@ -32,6 +33,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     uint256 private immutable ACC_TOKEN_PRECISION = 1e12;
     IBoringERC20 public immutable esToken;
     IBoringERC20 public immutable claimableToken;
+    IOperators public immutable operators;
 
     uint256 public cooldownDuration = 1 weeks;
     uint256 public totalLockedVestingAmount;
@@ -46,15 +48,9 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     mapping(address => uint256) public lastVestingUpdateTimes;
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
     mapping(address => uint256) public lockedVestingAmounts;
-    mapping(address => bool) isOperator;
 
     modifier validatePoolByPid(uint256 _pid) {
         require(_pid < poolInfo.length, "Pool does not exist");
-        _;
-    }
-
-    modifier onlyOperator{
-        require(isOperator[msg.sender] || msg.sender == owner(), "Not Operator");
         _;
     }
 
@@ -81,20 +77,13 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     event VestingWithdraw(address account, uint256 claimedAmount, uint256 balance);
     event FarmWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
-    constructor(uint256 _vestingDuration, IBoringERC20 _esToken, IBoringERC20 _claimableToken) {
+    constructor(uint256 _vestingDuration, IBoringERC20 _esToken, IBoringERC20 _claimableToken, address _operators) {
         //StartBlock always many years later from contract const ruct, will be set later in StartFarming function
-        isOperator[owner()] = true;
+        require(Address.isContract(_operators), "operators address is invalid");
+        operators = IOperators(_operators);
         claimableToken = _claimableToken;
         esToken = _esToken;
         vestingDuration = _vestingDuration;
-    }
-
-    function addOperator(address op) external onlyOwner {
-        isOperator[op] = true;
-    }
-
-    function removeOperator(address op) external onlyOwner {
-        isOperator[op] = false;
     }
 
     // Add a new lp to the pool. Can only be called by the owner.
@@ -103,7 +92,8 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         IBoringERC20 _lpToken,
         IComplexRewarder[] calldata _rewarders,
         bool _enableCooldown
-    ) external onlyOperator {
+    ) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         require(_rewarders.length <= 10, "add: too many rewarders");
         require(Address.isContract(address(_lpToken)), "add: LP token must be a valid contract");
 
@@ -190,7 +180,8 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     }
 
     // Update the given pool's Vela allocation point and deposit fee. Can only be called by the owner.
-    function set(uint256 _pid, IComplexRewarder[] calldata _rewarders) external onlyOperator validatePoolByPid(_pid) {
+    function set(uint256 _pid, IComplexRewarder[] calldata _rewarders) external validatePoolByPid(_pid) {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         require(_rewarders.length <= 10, "set: too many rewarders");
 
         for (uint256 rewarderId = 0; rewarderId < _rewarders.length; ++rewarderId) {
@@ -202,13 +193,15 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit Set(_pid, _rewarders);
     }
 
-    function updateCooldownDuration(uint256 _newCooldownDuration) external onlyOperator {
+    function updateCooldownDuration(uint256 _newCooldownDuration) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         require(_newCooldownDuration <= MAX_TOKENFARM_COOLDOWN_DURATION, "cooldown duration exceeds max");
         cooldownDuration = _newCooldownDuration;
         emit UpdateCooldownDuration(_newCooldownDuration);
     }
 
-    function updateRewardTierInfo(uint256[] memory _levels, uint256[] memory _percents) external onlyOperator {
+    function updateRewardTierInfo(uint256[] memory _levels, uint256[] memory _percents) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         uint256 totalLength = tierLevels.length;
         require(_levels.length == _percents.length, "the length should the same");
         require(_validateLevels(_levels), "levels not sorted");
@@ -224,7 +217,8 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit UpdateRewardTierInfo(_levels, _percents);
     }
 
-    function updateVestingDuration(uint256 _vestingDuration) external onlyOperator {
+    function updateVestingDuration(uint256 _vestingDuration) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         require(_vestingDuration <= MAX_VESTING_DURATION, "vesting duration exceeds max");
         vestingDuration = _vestingDuration;
         emit UpdateVestingPeriod(_vestingDuration);
