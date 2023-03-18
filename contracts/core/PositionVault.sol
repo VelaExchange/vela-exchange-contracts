@@ -311,6 +311,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         _decreasePoolAmount(_indexToken, _isLong, marginFees);
         vaultUtils.emitLiquidatePositionEvent(_account, _indexToken, _isLong, _posId);
         delete positions[key];
+        delete orders[key];
         delete confirms[key];
         // pay the fee receive using the pool, we assume that in general the liquidated amount should be sufficient to cover
         // the liquidation fees
@@ -511,6 +512,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         } else {
             vaultUtils.emitClosePositionEvent(_account, _indexToken, _isLong, _posId);
             delete positions[key];
+            delete orders[key];
             delete confirms[key];
         }
         if (usdOutFee <= usdOut) {

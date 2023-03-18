@@ -682,44 +682,35 @@ describe("Vault", function () {
      await ethers.provider.send('evm_mine');
    })
 
-   it ("updateTriggerOrders", async () => {
+   it ("addTriggerOrders", async () => {
       const indexToken = btc.address;
       const isLong = true
       const posId = 0
-      const tpPrices = [
+      const isTPs = [
+        true,
+        true,
+        true,
+        false
+      ]
+      const prices = [
         expandDecimals('57500', 30),
         expandDecimals('58200', 30),
-        expandDecimals('59000', 30)
-      ]
-      const tpAmountPercents = [
-        50000,
-        30000,
-        20000
-      ]
-      const tpTriggeredAmounts = [
-        0,
-        0,
-        0
-      ]
-      const slPrices = [
+        expandDecimals('59000', 30),
         expandDecimals('54000', 30)
       ]
-      const slAmountPercents = [
+      const amountPercents = [
+        50000,
+        30000,
+        20000,
         100000
       ]
-      const slTriggeredAmounts = [
-        0
-      ]
-      await triggerOrderManager.updateTriggerOrders(
+      await triggerOrderManager.addTriggerOrders(
         indexToken,
         isLong,
         posId,
-        tpPrices,
-        slPrices,
-        tpAmountPercents,
-        slAmountPercents,
-        tpTriggeredAmounts,
-        slTriggeredAmounts,
+        isTPs,
+        prices,
+        amountPercents,
         {from: wallet.address, value: 0}
       )
    })
@@ -810,51 +801,42 @@ describe("Vault", function () {
       account,
       indexToken,
       isLong,
-      posId)).to.be.revertedWith("trigger not ready")
+      posId)).to.be.revertedWith("TriggerOrder not Open")
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
    })
 
-   it ("updateTriggerOrders for triggerPosition", async () => {
+   it ("addTriggerOrders for triggerPosition", async () => {
       const indexToken = btc.address;
       const isLong = true
       const lastPosId = await PositionVault.lastPosId()
       const posId = lastPosId.toNumber() - 1
-      const tpPrices = [
+      const isTPs = [
+        true,
+        true,
+        true,
+        false
+      ]
+      const prices = [
         expandDecimals('57500', 30),
         expandDecimals('58200', 30),
-        expandDecimals('59000', 30)
-      ]
-      const tpAmountPercents = [
-        50000,
-        30000,
-        20000
-      ]
-      const tpTriggeredAmounts = [
-        0,
-        0,
-        0
-      ]
-      const slPrices = [
+        expandDecimals('59000', 30),
         expandDecimals('54000', 30)
       ]
-      const slAmountPercents = [
+      const amountPercents = [
+        50000,
+        30000,
+        20000,
         100000
       ]
-      const slTriggeredAmounts = [
-        0
-      ]
-      await triggerOrderManager.updateTriggerOrders(
+      await triggerOrderManager.addTriggerOrders(
         indexToken,
         isLong,
         posId,
-        tpPrices,
-        slPrices,
-        tpAmountPercents,
-        slAmountPercents,
-        tpTriggeredAmounts,
-        slTriggeredAmounts,
+        isTPs,
+        prices,
+        amountPercents,
         {from: wallet.address, value: 0}
       )
    })
@@ -1001,7 +983,7 @@ describe("Vault", function () {
         indexToken,
         isLong,
         posId, {from: wallet.address, value: 0})
-      ).to.be.revertedWith("trigger not ready")
+      ).to.be.revertedWith("TriggerOrder not Open")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56400'))
     await PositionVault.triggerPosition(
@@ -1143,7 +1125,7 @@ describe("Vault", function () {
         indexToken,
         isLong,
         posId, {from: wallet.address, value: 0})
-      ).to.be.revertedWith("trigger not ready")
+      ).to.be.revertedWith("TriggerOrder not Open")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56500'))
     await PositionVault.triggerPosition(
@@ -1291,7 +1273,7 @@ describe("Vault", function () {
         indexToken,
         isLong,
         posId, {from: wallet.address, value: 0})
-      ).to.be.revertedWith("trigger not ready")
+      ).to.be.revertedWith("TriggerOrder not Open")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
     await PositionVault.triggerPosition(
