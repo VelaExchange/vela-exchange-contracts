@@ -122,7 +122,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             );
         }
         _transferIn(msg.sender, _token, _amount);
-        uint256 fee = (collateralDeltaUsd * settingsManager.depositFee()) / BASIS_POINTS_DIVISOR;
+        uint256 fee = (collateralDeltaUsd * settingsManager.depositFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = collateralDeltaUsd - fee;
         _accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
         IVUSDC(vUSDC).mint(_account, afterFeeAmount);
@@ -176,7 +176,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             );
         }
         _transferIn(msg.sender, _token, _amount);
-        uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee()) / BASIS_POINTS_DIVISOR;
+        uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
         uint256 mintAmount;
         if (totalVLP == 0) {
@@ -218,7 +218,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         IMintable(vlp).burn(msg.sender, _vlpAmount);
         uint256 usdAmount = (_vlpAmount * totalUSDC) / totalVLP;
         totalVLP -= _vlpAmount;
-        uint256 usdAmountFee = (usdAmount * settingsManager.unstakingFee()) / BASIS_POINTS_DIVISOR;
+        uint256 usdAmountFee = (usdAmount * settingsManager.unstakingFee(_tokenOut)) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
         totalUSDC -= usdAmount;
         uint256 amountOut = priceManager.usdToToken(_tokenOut, usdAmountAfterFee);
@@ -229,7 +229,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     function withdraw(address _token, address _account, uint256 _amount) external nonReentrant {
-        uint256 fee = (_amount * settingsManager.withdrawFee()) / BASIS_POINTS_DIVISOR;
+        uint256 fee = (_amount * settingsManager.withdrawFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = _amount - fee;
         uint256 collateralDelta = priceManager.usdToToken(_token, afterFeeAmount);
         require(settingsManager.isWithdraw(_token), "withdraw not allowed");

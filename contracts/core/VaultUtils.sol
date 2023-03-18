@@ -34,7 +34,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256[7] posData
     );
     event LiquidatePosition(bytes32 key, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
-    event SetDepositFee(uint256 indexed fee);
+    event SetDepositFee(address indexed token, uint256 indexed fee);
 
     modifier onlyVault() {
         require(msg.sender == address(positionVault), "Only vault has access");
