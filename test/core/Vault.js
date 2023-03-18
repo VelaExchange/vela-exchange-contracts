@@ -2293,18 +2293,6 @@ describe("Vault", function () {
       triggerPrices, //triggerPrices
       referAddress
     )).to.be.revertedWith("prevent trade for forex close time")
-    // await Vault.newPositionOrder(
-    //   btc.address, //_indexToken
-    //   isLong,
-    //   orderType,
-    //   [
-    //     expectedCryptoMarketPrice,
-    //     slippage,
-    //     pendingCollateral,
-    //     pendingSize
-    //    ], //triggerPrices
-    //   referAddress
-    // )
     await settingsManager.pauseForexMarket(false)
     await Vault.newPositionOrder(
       indexToken, //_indexToken
