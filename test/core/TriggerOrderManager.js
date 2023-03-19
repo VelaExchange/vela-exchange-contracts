@@ -505,13 +505,13 @@ describe("TriggerOrderManager", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
      await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -636,13 +636,13 @@ describe("TriggerOrderManager", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
      await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -738,13 +738,13 @@ describe("TriggerOrderManager", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
      await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -834,7 +834,7 @@ describe("TriggerOrderManager", function () {
         indexToken,
         isLong,
         posId))
-        .to.be.revertedWith("TriggerOrder not Open")
+        .to.be.revertedWith("trigger not ready")
    })
 
    it ("validateTPSLTriggers for Long", async () => {
@@ -977,7 +977,7 @@ describe("TriggerOrderManager", function () {
       token,
       isLong,
       posId
-    )).to.be.revertedWith("TriggerOrder not Open")
+    )).to.be.revertedWith("trigger not ready")
    })
 
    it ("setLatestAnswer for BTC", async () => {
@@ -993,13 +993,13 @@ describe("TriggerOrderManager", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
      await Vault.newPositionOrder(
       indexToken, //_indexToken

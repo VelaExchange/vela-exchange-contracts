@@ -8,7 +8,7 @@ import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
 import "./interfaces/IVaultUtils.sol";
 import {Constants} from "../access/Constants.sol";
-import {Position, OrderInfo, ConfirmInfo, OrderStatus} from "./structs.sol";
+import {Position, Order, ConfirmInfo, OrderStatus} from "./structs.sol";
 
 contract VaultUtils is IVaultUtils, Constants {
     IPositionVault private immutable positionVault;
@@ -326,7 +326,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _posId,
         bool _raise
     ) external view override returns (bool) {
-        (, OrderInfo memory order, ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (, Order memory order, ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         uint256 stopPrice;
         if (_isLong) {
@@ -370,7 +370,7 @@ contract VaultUtils is IVaultUtils, Constants {
         bool _isLong,
         uint256 _posId
     ) external view override returns (uint8) {
-        (, OrderInfo memory order, ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (, Order memory order, ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         uint8 statusFlag;
         if (order.status == OrderStatus.PENDING) {

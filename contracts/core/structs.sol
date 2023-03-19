@@ -38,11 +38,11 @@ struct ConfirmInfo {
     uint256 delayStartTime;
 }
 
-struct OrderInfo {
+struct Order {
     OrderStatus status;
     uint256 lmtPrice;
-    uint256 pendingSize;
-    uint256 pendingCollateral;
+    uint256 size;
+    uint256 collateral;
     uint256 positionType;
     uint256 stepAmount;
     uint256 stepType;

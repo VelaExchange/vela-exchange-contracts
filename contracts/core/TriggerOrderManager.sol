@@ -79,7 +79,9 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         bytes32 key = _getPositionKey(_account, _token, _isLong, _posId);
         PositionTrigger storage order = triggerOrders[key];
         (Position memory position, , ) = positionVault.getPosition(_account, _token, _isLong, _posId);
-        require(order.status == TriggerStatus.OPEN, "TriggerOrder not Open");
+        if (order.status != TriggerStatus.OPEN) {
+            return (false, 0);
+        }
         uint256 price = priceManager.getLastPrice(_token);
         for (uint256 i = 0; i < order.triggers.length; i++) {
             bool pricesAreUpperBounds = order.triggers[i].isTP ? _isLong : !_isLong;

@@ -653,13 +653,13 @@ describe("Vault", function () {
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
     const orderType = 0 // M
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('59000'))
     await expect(Vault.connect(wallet).newPositionOrder(
@@ -780,13 +780,13 @@ describe("Vault", function () {
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
     const orderType = 0 // M
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
      await Vault.connect(wallet).newPositionOrder(
       indexToken, //_indexToken
@@ -801,7 +801,7 @@ describe("Vault", function () {
       account,
       indexToken,
       isLong,
-      posId)).to.be.revertedWith("TriggerOrder not Open")
+      posId)).to.be.revertedWith("trigger not ready")
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
@@ -866,13 +866,13 @@ describe("Vault", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -894,22 +894,22 @@ describe("Vault", function () {
       stepAmount
     ]
     const triggerData1 = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       expandDecimals('57500', 30),
       stepAmount
     ]
     const triggerData2 = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       stpPrice1,
       150000
     ]
     const triggerData = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       stpPrice1,
       stepAmount
@@ -983,7 +983,7 @@ describe("Vault", function () {
         indexToken,
         isLong,
         posId, {from: wallet.address, value: 0})
-      ).to.be.revertedWith("TriggerOrder not Open")
+      ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56400'))
     await PositionVault.triggerPosition(
@@ -1008,13 +1008,13 @@ describe("Vault", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1036,22 +1036,22 @@ describe("Vault", function () {
       stepAmount
     ]
     const triggerData1 = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       expandDecimals('57500', 30),
       stepAmount
     ]
     const triggerData2 = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       stpPrice1,
       expandDecimals('57200', 30)
     ]
     const triggerData = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       stpPrice1,
       stepAmount
@@ -1125,7 +1125,7 @@ describe("Vault", function () {
         indexToken,
         isLong,
         posId, {from: wallet.address, value: 0})
-      ).to.be.revertedWith("TriggerOrder not Open")
+      ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56500'))
     await PositionVault.triggerPosition(
@@ -1149,13 +1149,13 @@ describe("Vault", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
      await btcPriceFeed.setLatestAnswer(toChainlinkPrice('55000'))
      await expect(Vault.newPositionOrder(
@@ -1179,8 +1179,8 @@ describe("Vault", function () {
     const stpPrice1 = expandDecimals('57500', 30)
     const stepAmount = 1000 // 1%
     const triggerData = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       stpPrice1,
       stepAmount
@@ -1193,15 +1193,15 @@ describe("Vault", function () {
       stepAmount
     ]
     const triggerData1 = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       expandDecimals('56500', 30),
       stepAmount
     ]
     const triggerData2 = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       stpPrice1,
       150000
@@ -1273,7 +1273,7 @@ describe("Vault", function () {
         indexToken,
         isLong,
         posId, {from: wallet.address, value: 0})
-      ).to.be.revertedWith("TriggerOrder not Open")
+      ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
     await PositionVault.triggerPosition(
@@ -1294,13 +1294,13 @@ describe("Vault", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1322,15 +1322,15 @@ describe("Vault", function () {
       stepAmount
     ]
     const triggerData1 = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       expandDecimals('56500', 30),
       stepAmount
     ]
     const triggerData = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       stpPrice1,
       stepAmount
@@ -1416,13 +1416,13 @@ describe("Vault", function () {
     const orderType = 1 // M
     const lmtPrice = expandDecimals('57500', 30)
     const stpPrice = 0
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices0 = [
       0,
       stpPrice,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
      const validatePosData = await VaultUtils.validatePosData(
       isLong,
@@ -1453,8 +1453,8 @@ describe("Vault", function () {
     const triggerPrices = [
       lmtPrice,
       stpPrice,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     const newTriggerGasFee = expandDecimals('1', 16)
     const feeManagerBalanceBefore = await ethers.provider.getBalance(feeManagerAddress)
@@ -1497,13 +1497,13 @@ describe("Vault", function () {
     const orderType = 1 // M
     const lmtPrice = expandDecimals('56500', 30)
     const stpPrice = 0
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices0 = [
       0,
       stpPrice,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
      const validatePosData = await VaultUtils.validatePosData(
       isLong,
@@ -1534,8 +1534,8 @@ describe("Vault", function () {
     const triggerPrices = [
       lmtPrice,
       stpPrice,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1564,13 +1564,13 @@ describe("Vault", function () {
     const orderType = 2 // Stop Market
     const lmtPrice = 0
     const stpPrice = expandDecimals('56500', 30)
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       lmtPrice,
       stpPrice,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1599,13 +1599,13 @@ describe("Vault", function () {
     const orderType = 2 // Stop Market
     const lmtPrice = 0
     const stpPrice = expandDecimals('57500', 30)
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       lmtPrice,
       stpPrice,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1634,13 +1634,13 @@ describe("Vault", function () {
     const orderType = 3 // Stop Market
     const lmtPrice = expandDecimals('57200', 30)
     const stpPrice = expandDecimals('56500', 30)
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices0 = [
       0,
       0,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await expect(Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1653,8 +1653,8 @@ describe("Vault", function () {
     const triggerPrices = [
       lmtPrice,
       stpPrice,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1683,13 +1683,13 @@ describe("Vault", function () {
     const orderType = 3 // Stop Limit
     const lmtPrice = expandDecimals('56500', 30)
     const stpPrice = expandDecimals('57500', 30)
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices0 = [
       0,
       0,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await expect(Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1702,8 +1702,8 @@ describe("Vault", function () {
     const triggerPrices = [
       lmtPrice,
       stpPrice,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1742,13 +1742,13 @@ describe("Vault", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1763,8 +1763,8 @@ describe("Vault", function () {
     const stpPrice1 = expandDecimals('56500', 30)
     const stepAmount = 1000 // 1 %
     const triggerData = [
-      pendingCollateral,
-      pendingSize,
+      collateral,
+      size,
       stepType,
       stpPrice1,
       stepAmount
@@ -1814,13 +1814,13 @@ describe("Vault", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -1972,7 +1972,7 @@ describe("Vault", function () {
       isLong,
       posId,
       true
-    )).to.be.revertedWith("Vault: fees exceed collateral")
+    )).to.be.revertedWith("Vault: maxThreshold exceeded")
     if (validateLiquidation[0].toNumber() == 2) { // Liquidate Max Threshold
       await PositionVault.liquidatePosition(account, indexToken, isLong, posId)
     }
@@ -1992,13 +1992,13 @@ describe("Vault", function () {
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
     const orderType = 0 // M
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
      await Vault.connect(wallet).newPositionOrder(
       indexToken, //_indexToken
@@ -2050,13 +2050,13 @@ describe("Vault", function () {
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
     const orderType = 0 // M
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
      await Vault.connect(wallet).newPositionOrder(
       indexToken, //_indexToken
@@ -2125,13 +2125,13 @@ describe("Vault", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -2165,13 +2165,13 @@ describe("Vault", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -2205,13 +2205,13 @@ describe("Vault", function () {
     const orderType = 0 // M
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -2250,13 +2250,13 @@ describe("Vault", function () {
     const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
     const expectedCryptoMarketPrice = await vaultPriceFeed.getLastPrice(btc.address);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     const triggerPrices = [
       expectedMarketPrice,
       slippage,
-      pendingCollateral,
-      pendingSize
+      collateral,
+      size
      ]
     await expect(Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -2272,8 +2272,8 @@ describe("Vault", function () {
       [
         expectedCryptoMarketPrice,
         slippage,
-        pendingCollateral,
-        pendingSize
+        collateral,
+        size
        ], //triggerPrices
       referAddress
     )

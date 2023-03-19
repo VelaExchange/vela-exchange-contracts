@@ -31,7 +31,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     mapping(address => mapping(bool => uint256)) public override reservedAmounts;
     mapping(bytes32 => Position) public positions;
     mapping(bytes32 => ConfirmInfo) public confirms;
-    mapping(bytes32 => OrderInfo) public orders;
+    mapping(bytes32 => Order) public orders;
     mapping(bytes32 => address) public liquidateRegistrant;
     mapping(bytes32 => uint256) public liquidateRegisterTime;
 
@@ -131,10 +131,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256[] memory _params
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
-        OrderInfo storage order = orders[key];
+        Order storage order = orders[key];
         vaultUtils.validateTrailingStopInputData(_account, _indexToken, _isLong, _posId, _params);
-        order.pendingCollateral = _params[0];
-        order.pendingSize = _params[1];
+        order.collateral = _params[0];
+        order.size = _params[1];
         order.status = OrderStatus.PENDING;
         order.positionType = POSITION_TRAILING_STOP;
         order.stepType = _params[2];
@@ -150,7 +150,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 _posId
     ) external override onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
-        OrderInfo storage order = orders[key];
+        Order storage order = orders[key];
         require(order.status == OrderStatus.PENDING, "Not in Pending");
         if (order.positionType == POSITION_TRAILING_STOP) {
             order.status = OrderStatus.FILLED;
@@ -158,8 +158,8 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         } else {
             order.status = OrderStatus.CANCELED;
         }
-        order.pendingCollateral = 0;
-        order.pendingSize = 0;
+        order.collateral = 0;
+        order.size = 0;
         order.lmtPrice = 0;
         order.stpPrice = 0;
         emit UpdateOrder(key, order.positionType, order.status);
@@ -326,11 +326,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         address _refer
     ) external nonReentrant onlyVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, lastPosId);
-        OrderInfo storage order = orders[key];
+        Order storage order = orders[key];
         Position storage position = positions[key];
         vaultUtils.validatePosData(_isLong, _indexToken, _orderType, _params, true);
-        order.pendingCollateral = _params[2];
-        order.pendingSize = _params[3];
+        order.collateral = _params[2];
+        order.size = _params[3];
         position.owner = _account;
         position.refer = _refer;
         if (_orderType == OrderType.MARKET) {
@@ -340,13 +340,13 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 _account,
                 _indexToken,
                 _isLong,
-                order.pendingSize,
+                order.size,
                 position.size,
                 position.entryFundingRate
             );
-            _increasePosition(_account, _indexToken, _params[2] + fee, order.pendingSize, lastPosId, _isLong, _refer);
-            order.pendingCollateral = 0;
-            order.pendingSize = 0;
+            _increasePosition(_account, _indexToken, _params[2] + fee, order.size, lastPosId, _isLong, _refer);
+            order.collateral = 0;
+            order.size = 0;
             order.status = OrderStatus.FILLED;
         } else if (_orderType == OrderType.LIMIT) {
             order.status = OrderStatus.PENDING;
@@ -375,7 +375,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         settingsManager.updateCumulativeFundingRate(_indexToken, _isLong);
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         Position memory position = positions[key];
-        OrderInfo storage order = orders[key];
+        Order storage order = orders[key];
         uint8 statusFlag = vaultUtils.validateTrigger(_account, _indexToken, _isLong, _posId);
         (bool hitTrigger, uint256 triggerAmountPercent) = triggerOrderManager.executeTriggerOrders(
             _account,
@@ -403,49 +403,50 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     _account,
                     _indexToken,
                     _isLong,
-                    order.pendingSize,
+                    order.size,
                     position.size,
                     position.entryFundingRate
                 );
                 _increasePosition(
                     _account,
                     _indexToken,
-                    order.pendingCollateral + fee,
-                    order.pendingSize,
+                    order.collateral + fee,
+                    order.size,
                     _posId,
                     _isLong,
                     position.refer
                 );
-                order.pendingCollateral = 0;
-                order.pendingSize = 0;
+                order.collateral = 0;
+                order.size = 0;
                 order.status = OrderStatus.FILLED;
             } else if (order.positionType == POSITION_STOP_MARKET) {
                 uint256 fee = settingsManager.collectMarginFees(
                     _account,
                     _indexToken,
                     _isLong,
-                    order.pendingSize,
+                    order.size,
                     position.size,
                     position.entryFundingRate
                 );
                 _increasePosition(
                     _account,
                     _indexToken,
-                    order.pendingCollateral + fee,
-                    order.pendingSize,
+                    order.collateral + fee,
+                    order.size,
                     _posId,
                     _isLong,
                     position.refer
                 );
-                order.pendingCollateral = 0;
-                order.pendingSize = 0;
+                order.collateral = 0;
+                order.size = 0;
                 order.status = OrderStatus.FILLED;
             } else if (order.positionType == POSITION_STOP_LIMIT) {
                 order.positionType = POSITION_LIMIT;
             } else if (order.positionType == POSITION_TRAILING_STOP) {
+                _decreasePosition(_account, _indexToken, order.size, _isLong, _posId);
                 order.positionType = POSITION_MARKET;
-                order.pendingCollateral = 0;
-                order.pendingSize = 0;
+                order.collateral = 0;
+                order.size = 0;
                 order.status = OrderStatus.FILLED;
             }
         }
@@ -460,7 +461,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     ) external nonReentrant {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         Position storage position = positions[key];
-        OrderInfo storage order = orders[key];
+        Order storage order = orders[key];
         uint256 price = priceManager.getLastPrice(_indexToken);
         require(position.owner == msg.sender || settingsManager.isManager(msg.sender), "updateTStop not allowed");
         vaultUtils.validateTrailingStopPrice(_account, _indexToken, _isLong, _posId, true);
@@ -663,10 +664,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         address _indexToken,
         bool _isLong,
         uint256 _posId
-    ) external view override returns (Position memory, OrderInfo memory, ConfirmInfo memory) {
+    ) external view override returns (Position memory, Order memory, ConfirmInfo memory) {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         Position memory position = positions[key];
-        OrderInfo memory order = orders[key];
+        Order memory order = orders[key];
         ConfirmInfo memory confirm = confirms[key];
         return (position, order, confirm);
     }

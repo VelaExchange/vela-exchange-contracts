@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import {OrderInfo, OrderType} from "../structs.sol";
+import {Order, OrderType} from "../structs.sol";
 
 interface IVaultUtils {
     function emitClosePositionEvent(address _account, address _indexToken, bool _isLong, uint256 _posId) external;
