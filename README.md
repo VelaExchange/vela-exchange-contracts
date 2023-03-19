@@ -1040,12 +1040,12 @@ Example Output
 ```
 ```
 
-### enableForexMarket
+### pauseForexMarket
 assetManagerWallet Function
 
 This is a function for enable or disable forex trade at forex close time
 ```
-settingsManager.enableForexMarket(bool _enable)
+settingsManager.pauseForexMarket(bool _enable)
 ```
 
 Example Input
