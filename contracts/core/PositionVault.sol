@@ -366,7 +366,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit NewOrder(key, _account, _indexToken, _isLong, lastPosId - 1, order.positionType, order.status, _params);
     }
 
-    function triggerPosition(
+    function triggerForOpenOrders(
         address _account,
         address _indexToken,
         bool _isLong,
@@ -376,27 +376,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         Position memory position = positions[key];
         Order storage order = orders[key];
+        require(position.owner == msg.sender || settingsManager.isManager(msg.sender), "You are not allowed to trigger");
         uint8 statusFlag = vaultUtils.validateTrigger(_account, _indexToken, _isLong, _posId);
-        (bool hitTrigger, uint256 triggerAmountPercent) = triggerOrderManager.executeTriggerOrders(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId
-        );
-        require(
-            (statusFlag == ORDER_FILLED || hitTrigger) &&
-                (position.owner == msg.sender || settingsManager.isManager(msg.sender)),
-            "trigger not ready"
-        );
-        if (hitTrigger) {
-            _decreasePosition(
-                _account,
-                _indexToken,
-                (position.size * (triggerAmountPercent)) / BASIS_POINTS_DIVISOR,
-                _isLong,
-                _posId
-            );
-        }
+        require(statusFlag == ORDER_FILLED, "trigger not ready");
         if (statusFlag == ORDER_FILLED) {
             if (order.positionType == POSITION_LIMIT) {
                 uint256 fee = settingsManager.collectMarginFees(
@@ -449,6 +431,37 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 order.size = 0;
                 order.status = OrderStatus.FILLED;
             }
+        }
+        emit UpdateOrder(key, order.positionType, order.status);
+    }
+
+
+    function triggerForTPSL(
+        address _account,
+        address _indexToken,
+        bool _isLong,
+        uint256 _posId
+    ) external nonReentrant {
+        settingsManager.updateCumulativeFundingRate(_indexToken, _isLong);
+        bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
+        Position memory position = positions[key];
+        Order storage order = orders[key];
+        require(position.owner == msg.sender || settingsManager.isManager(msg.sender), "You are not allowed to trigger");
+        (bool hitTrigger, uint256 triggerAmountPercent) = triggerOrderManager.executeTriggerOrders(
+            _account,
+            _indexToken,
+            _isLong,
+            _posId
+        );
+        require(hitTrigger, "trigger not ready");
+        if (hitTrigger) {
+            _decreasePosition(
+                _account,
+                _indexToken,
+                (position.size * (triggerAmountPercent)) / BASIS_POINTS_DIVISOR,
+                _isLong,
+                _posId
+            );
         }
         emit UpdateOrder(key, order.positionType, order.status);
     }

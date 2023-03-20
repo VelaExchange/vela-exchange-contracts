@@ -600,7 +600,7 @@ describe("TriggerOrderManager", function () {
     const indexToken = btc.address;
     const isLong = true
     const posId = 0
-    await PositionVault.triggerPosition(
+    await PositionVault.triggerForTPSL(
       account,
       indexToken,
       isLong,
@@ -704,7 +704,7 @@ describe("TriggerOrderManager", function () {
     const indexToken = btc.address;
     const isLong = true
     const posId = 1
-    await PositionVault.triggerPosition(
+    await PositionVault.triggerForTPSL(
       account,
       indexToken,
       isLong,
@@ -829,12 +829,12 @@ describe("TriggerOrderManager", function () {
       const indexToken = btc.address;
       const isLong = true
       const posId = 1
-      await expect(PositionVault.triggerPosition(
+      await expect(PositionVault.triggerForTPSL(
         account,
         indexToken,
         isLong,
         posId))
-        .to.be.revertedWith("trigger not ready")
+        .to.be.revertedWith("Trigger Not Open")
    })
 
    it ("validateTPSLTriggers for Long", async () => {
@@ -967,17 +967,17 @@ describe("TriggerOrderManager", function () {
     )
    })
 
-   it ("triggerPosition trigger not ready for Long", async () => {
+   it ("triggerPosition Trigger Not Open for Long", async () => {
     const account = wallet.address
     const token = btc.address
     const isLong = true
     const posId = 2
-    await expect(PositionVault.triggerPosition(
+    await expect(PositionVault.triggerForTPSL(
       account,
       token,
       isLong,
       posId
-    )).to.be.revertedWith("trigger not ready")
+    )).to.be.revertedWith("Trigger Not Open")
    })
 
    it ("setLatestAnswer for BTC", async () => {
@@ -1125,7 +1125,7 @@ describe("TriggerOrderManager", function () {
     const indexToken = btc.address
     const isLong = false
     const pId = 3
-    await expect(PositionVault.triggerPosition(
+    await expect(PositionVault.triggerForTPSL(
       account,
       indexToken,
       isLong,
@@ -1154,7 +1154,7 @@ describe("TriggerOrderManager", function () {
     const passTime = 60 * 60 * 2
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
-    await PositionVault.triggerPosition(
+    await PositionVault.triggerForTPSL(
       account,
       indexToken,
       isLong,
