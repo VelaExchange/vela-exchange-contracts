@@ -25,6 +25,7 @@ enum PositionStatus {
 }
 
 enum TriggerStatus {
+    NONE,
     OPEN,
     TRIGGERED,
     CANCELLED
@@ -37,11 +38,11 @@ struct ConfirmInfo {
     uint256 delayStartTime;
 }
 
-struct OrderInfo {
+struct Order {
     OrderStatus status;
     uint256 lmtPrice;
-    uint256 pendingSize;
-    uint256 pendingCollateral;
+    uint256 size;
+    uint256 collateral;
     uint256 positionType;
     uint256 stepAmount;
     uint256 stepType;
@@ -61,13 +62,19 @@ struct Position {
     uint256 size;
 }
 
-struct TriggerOrder {
-    bytes32 key;
-    uint256[] slPrices;
-    uint256[] slAmountPercents;
-    uint256[] slTriggeredAmounts;
-    uint256[] tpPrices;
-    uint256[] tpAmountPercents;
-    uint256[] tpTriggeredAmounts;
+struct TriggerInfo {
+    bool isTP;
+    uint256 amountPercent;
+    uint256 createdAt;
+    uint256 price;
+    uint256 triggeredAmount;
+    uint256 triggeredAt;
+    uint256 triggeredPrice;
+    TriggerStatus status;
+}
+
+struct PositionTrigger {
+    TriggerInfo[] triggers;
+    uint256 triggerCount;
     TriggerStatus status;
 }

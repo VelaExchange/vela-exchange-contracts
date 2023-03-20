@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import {Position, OrderInfo, OrderType, ConfirmInfo} from "../structs.sol";
+import {Position, Order, OrderType, ConfirmInfo} from "../structs.sol";
 
 interface IPositionVault {
     function addOrRemoveCollateral(
@@ -55,7 +55,7 @@ interface IPositionVault {
         address _indexToken,
         bool _isLong,
         uint256 _posId
-    ) external view returns (Position memory, OrderInfo memory, ConfirmInfo memory);
+    ) external view returns (Position memory, Order memory, ConfirmInfo memory);
 
     function poolAmounts(address _token, bool _isLong) external view returns (uint256);
 
