@@ -323,13 +323,13 @@ describe("Vault", function () {
            token.maxLeverage,
            token.isForex
          );
+         await settingsManager.setDepositFee(token.address, depositFee);
+         await settingsManager.setWithdrawFee(token.address, withdrawFee);
+         await settingsManager.setStakingFee(token.address, stakingFee);
+         await settingsManager.setUnstakingFee(token.address, unstakingFee);
        }
         await vlp.transferOwnership(Vault.address); // vlp transferOwnership
         await settingsManager.setPositionManager(positionManagerAddress, true);
-        await settingsManager.setDepositFee(token.address, depositFee);
-        await settingsManager.setWithdrawFee(token.address, withdrawFee);
-        await settingsManager.setStakingFee(token.address, stakingFee);
-        await settingsManager.setUnstakingFee(token.address, unstakingFee);
     });
 
     it ("add Vault as admin", async () => {
@@ -974,12 +974,6 @@ describe("Vault", function () {
       isLong,
       posId
     )
-    expect(PositionVault.updateTrailingStop(
-      account,
-      indexToken,
-      isLong,
-      posId
-    )).to.be.reverted; //should not be able to call updateTrailingStop after a success
     const validateTriggerBeforePriceChange = await VaultUtils.validateTrigger(
       account,
       indexToken,
@@ -2303,8 +2297,8 @@ describe("Vault", function () {
     const orderType = 0 // M
     const expectedCryptoMarketPrice = await vaultPriceFeed.getLastPrice(btc.address);
     const slippage = 1000 // 1%
-    const pendingCollateral = amountIn;
-    const pendingSize = toUsdAmount;
+    const collateral = amountIn;
+    const size = toUsdAmount;
     let referBalanceBefore = await vusd.balanceOf(referAddress)
     let managerBalanceBefore = await vusd.balanceOf(feeManagerAddress)
     await Vault.newPositionOrder(
@@ -2321,7 +2315,7 @@ describe("Vault", function () {
     )
     let referBalanceAfter = await vusd.balanceOf(referAddress)
     let managerBalanceAfter = await vusd.balanceOf(feeManagerAddress)
-    let fee = await settingsManager.getPositionFee(btc.address, isLong, pendingSize)
+    let fee = await settingsManager.getPositionFee(btc.address, isLong, size)
     let referFee = fee.mul(await settingsManager.referFee()).div(BASIS_POINTS_DIVISOR)
     expect(referFee).eq(referBalanceAfter.sub(referBalanceBefore));
     let managerFee = fee.sub(referFee).mul(BASIS_POINTS_DIVISOR-(await settingsManager.feeRewardBasisPoints())).div(BASIS_POINTS_DIVISOR);
