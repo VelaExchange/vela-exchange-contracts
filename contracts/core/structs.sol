@@ -52,6 +52,8 @@ struct Order {
 struct Position {
     address owner;
     address refer;
+    address indexToken;
+    bool isLong;
     int256 realisedPnl;
     uint256 averagePrice;
     uint256 collateral;
