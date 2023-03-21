@@ -806,11 +806,11 @@ describe("Vault", function () {
      )
      const lastPosId = await PositionVault.lastPosId()
      const posId = lastPosId.toNumber() - 1
-    await expect(PositionVault.triggerPosition(
+    await expect(PositionVault.triggerForTPSL(
       account,
       indexToken,
       isLong,
-      posId)).to.be.revertedWith("trigger not ready")
+      posId)).to.be.revertedWith("Trigger Not Open")
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
@@ -850,14 +850,14 @@ describe("Vault", function () {
       )
    })
 
-  it ("triggerPosition", async () => {
+  it ("triggerForTPSL", async () => {
     const account = wallet.address
     const indexToken = btc.address;
     const isLong = true
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58000'))
-    await PositionVault.triggerPosition(
+    await PositionVault.triggerForTPSL(
       account,
       indexToken,
       isLong,
@@ -981,13 +981,13 @@ describe("Vault", function () {
       posId
     )
     if (validateTriggerBeforePriceChange) {
-      await PositionVault.triggerPosition(
+      await PositionVault.triggerForOpenOrders(
         account,
         indexToken,
         isLong,
         posId, {from: wallet.address, value: 0})
     } else {
-      await expect(PositionVault.triggerPosition(
+      await expect(PositionVault.triggerForOpenOrders(
         account,
         indexToken,
         isLong,
@@ -995,7 +995,7 @@ describe("Vault", function () {
       ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56400'))
-    await PositionVault.triggerPosition(
+    await PositionVault.triggerForOpenOrders(
       account,
       indexToken,
       isLong,
@@ -1123,13 +1123,13 @@ describe("Vault", function () {
       posId
     )
     if (validateTriggerBeforePriceChange) {
-      await PositionVault.triggerPosition(
+      await PositionVault.triggerForOpenOrders(
         account,
         indexToken,
         isLong,
         posId, {from: wallet.address, value: 0})
     } else {
-      await expect(PositionVault.triggerPosition(
+      await expect(PositionVault.triggerForOpenOrders(
         account,
         indexToken,
         isLong,
@@ -1137,7 +1137,7 @@ describe("Vault", function () {
       ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56500'))
-    await PositionVault.triggerPosition(
+    await PositionVault.triggerForOpenOrders(
       account,
       indexToken,
       isLong,
@@ -1271,13 +1271,13 @@ describe("Vault", function () {
       posId
     )
     if (validateTriggerBeforePriceChange) {
-      await PositionVault.triggerPosition(
+      await PositionVault.triggerForOpenOrders(
         account,
         indexToken,
         isLong,
         posId, {from: wallet.address, value: 0})
     } else {
-      await expect(PositionVault.triggerPosition(
+      await expect(PositionVault.triggerForOpenOrders(
         account,
         indexToken,
         isLong,
@@ -1285,7 +1285,7 @@ describe("Vault", function () {
       ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
-    await PositionVault.triggerPosition(
+    await PositionVault.triggerForOpenOrders(
       account,
       indexToken,
       isLong,
@@ -1394,13 +1394,13 @@ describe("Vault", function () {
       posId
     )
     if (validateTriggerBeforePriceChange) {
-      await PositionVault.triggerPosition(
+      await PositionVault.triggerForOpenOrders(
         account,
         indexToken,
         isLong,
         posId, {from: wallet.address, value: 0})
     } else {
-      await expect(PositionVault.triggerPosition(
+      await expect(PositionVault.triggerForOpenOrders(
         account,
         indexToken,
         isLong,
@@ -1408,7 +1408,7 @@ describe("Vault", function () {
       ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58000'))
-    await PositionVault.triggerPosition(
+    await PositionVault.triggerForOpenOrders(
       account,
       indexToken,
       isLong,
@@ -1490,7 +1490,7 @@ describe("Vault", function () {
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const account = wallet.address
-    await PositionVault.connect(user1).triggerPosition(account, indexToken, isLong, posId, {from: user1.address, value: 0})
+    await PositionVault.connect(user1).triggerForOpenOrders(account, indexToken, isLong, posId, {from: user1.address, value: 0})
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
@@ -1557,7 +1557,7 @@ describe("Vault", function () {
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const account = wallet.address
-    await PositionVault.connect(user1).triggerPosition(account, indexToken, isLong, posId, {from: user1.address, value: 0})
+    await PositionVault.connect(user1).triggerForOpenOrders(account, indexToken, isLong, posId, {from: user1.address, value: 0})
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
@@ -1592,7 +1592,7 @@ describe("Vault", function () {
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const account = wallet.address
-    await PositionVault.connect(user1).triggerPosition(account, indexToken, isLong, posId, {from: user1.address, value: 0})
+    await PositionVault.connect(user1).triggerForOpenOrders(account, indexToken, isLong, posId, {from: user1.address, value: 0})
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
@@ -1627,7 +1627,7 @@ describe("Vault", function () {
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const account = wallet.address
-    await PositionVault.connect(user1).triggerPosition(account, indexToken, isLong, posId, {from: user1.address, value: 0})
+    await PositionVault.connect(user1).triggerForOpenOrders(account, indexToken, isLong, posId, {from: user1.address, value: 0})
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
@@ -1676,7 +1676,7 @@ describe("Vault", function () {
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const account = wallet.address
-    await PositionVault.connect(user1).triggerPosition(account, indexToken, isLong, posId, {from: user1.address, value: 0})
+    await PositionVault.connect(user1).triggerForOpenOrders(account, indexToken, isLong, posId, {from: user1.address, value: 0})
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
@@ -1725,7 +1725,7 @@ describe("Vault", function () {
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const account = wallet.address
-    await PositionVault.connect(user1).triggerPosition(account, indexToken, isLong, posId, {from: user1.address, value: 0})
+    await PositionVault.connect(user1).triggerForOpenOrders(account, indexToken, isLong, posId, {from: user1.address, value: 0})
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
