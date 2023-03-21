@@ -29,18 +29,14 @@ interface IVaultUtils {
     function emitLiquidatePositionEvent(address _account, address _indexToken, bool _isLong, uint256 _posId) external;
 
     function validateConfirmDelay(
-        address _account,
-        address _indexToken,
-        bool _isLong,
         uint256 _posId,
         bool _raise
     ) external view returns (bool);
 
     function validateDecreasePosition(
-        address _account,
-        address _indexToken,
         bool _isLong,
         uint256 _posId,
+        uint256 _price,
         bool _raise
     ) external view returns (bool);
 
@@ -63,7 +59,6 @@ interface IVaultUtils {
     function validateSizeCollateralAmount(uint256 _size, uint256 _collateral) external view;
 
     function validateTrailingStopInputData(
-        address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId,
@@ -71,7 +66,6 @@ interface IVaultUtils {
     ) external view returns (bool);
 
     function validateTrailingStopPrice(
-        address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId,
@@ -79,7 +73,6 @@ interface IVaultUtils {
     ) external view returns (bool);
 
     function validateTrigger(
-        address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId

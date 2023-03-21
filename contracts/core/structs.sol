@@ -69,7 +69,6 @@ struct TriggerInfo {
     uint256 price;
     uint256 triggeredAmount;
     uint256 triggeredAt;
-    uint256 triggeredPrice;
     TriggerStatus status;
 }
 

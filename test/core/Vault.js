@@ -324,6 +324,7 @@ describe("Vault", function () {
         await settingsManager.setWithdrawFee(withdrawFee);
         await settingsManager.setStakingFee(stakingFee);
         await settingsManager.setUnstakingFee(unstakingFee);
+        await settingsManager.setPriceMovementPercent(500);
     });
 
     it ("add Vault as admin", async () => {
@@ -727,7 +728,7 @@ describe("Vault", function () {
       indexToken,
       isLong,
       posId)).to.be.revertedWith("order is still in delay pending")
-     await Vault.addPosition(indexToken, isLong, posId, amountIn, toUsdAmount)
+     await Vault.addPosition(indexToken, posId, amountIn, toUsdAmount)
    })
 
    it ("confirmDelayTransaction", async () => {
@@ -736,7 +737,7 @@ describe("Vault", function () {
     const isLong = true
     const posId = 0
     const raise = false
-    const positionInfo = await PositionVault.getPosition(wallet.address, indexToken, isLong, posId)
+    const positionInfo = await PositionVault.getPosition(posId)
     const position = positionInfo[0]
     const order = positionInfo[1]
     const confirm = positionInfo[2]
@@ -753,9 +754,6 @@ describe("Vault", function () {
       await ethers.provider.send('evm_increaseTime', [passTime]);
       await ethers.provider.send('evm_mine');
       const validateConfirmDelay = await VaultUtils.validateConfirmDelay(
-        account,
-        indexToken,
-        isLong,
         posId,
         raise
       )
@@ -946,27 +944,23 @@ describe("Vault", function () {
       {from: wallet.address, value: 0}
       )
     await expect(PositionVault.connect(user0).updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )).to.be.revertedWith("updateTStop not allowed")
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56950'))
     await expect(PositionVault.updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )).to.be.revertedWith("price incorrect")
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57600'))
     await PositionVault.updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )
     const validateTriggerBeforePriceChange = await VaultUtils.validateTrigger(
-      account,
       indexToken,
       isLong,
       posId
@@ -986,6 +980,9 @@ describe("Vault", function () {
       ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56400'))
+    const closeDeltaTime = await settingsManager.closeDeltaTime()
+    await ethers.provider.send('evm_increaseTime', [closeDeltaTime.toNumber()]);
+    await ethers.provider.send('evm_mine');
     await PositionVault.triggerForOpenOrders(
       account,
       indexToken,
@@ -1088,27 +1085,23 @@ describe("Vault", function () {
       {from: wallet.address, value: 0}
       )
     await expect(PositionVault.connect(user0).updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )).to.be.revertedWith("updateTStop not allowed")
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56950'))
     await expect(PositionVault.updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )).to.be.revertedWith("price incorrect")
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57200'))
     await PositionVault.updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )
     const validateTriggerBeforePriceChange = await VaultUtils.validateTrigger(
-      account,
       indexToken,
       isLong,
       posId
@@ -1236,27 +1229,23 @@ describe("Vault", function () {
       {from: wallet.address, value: 0}
       )
     await expect(PositionVault.connect(user0).updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )).to.be.revertedWith("updateTStop not allowed")
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57050'))
     await expect(PositionVault.updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )).to.be.revertedWith("price incorrect")
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('55200'))
     await PositionVault.updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )
     const validateTriggerBeforePriceChange = await VaultUtils.validateTrigger(
-      account,
       indexToken,
       isLong,
       posId
@@ -1276,11 +1265,11 @@ describe("Vault", function () {
       ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
-    await PositionVault.triggerForOpenOrders(
+    await expect(PositionVault.triggerForOpenOrders(
       account,
       indexToken,
       isLong,
-      posId, {from: wallet.address, value: 0})
+      posId, {from: wallet.address, value: 0})).to.be.revertedWith("Vault: poolAmount exceeded")
   })
 
   it ("addTrailingStop for Short with trailing type = Amount", async () => {
@@ -1359,27 +1348,23 @@ describe("Vault", function () {
       {from: wallet.address, value: 0}
       )
     await expect(PositionVault.connect(user0).updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )).to.be.revertedWith("updateTStop not allowed")
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57050'))
     await expect(PositionVault.updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )).to.be.revertedWith("price incorrect")
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56500'))
     await PositionVault.updateTrailingStop(
-      account,
       indexToken,
       isLong,
       posId
     )
     const validateTriggerBeforePriceChange = await VaultUtils.validateTrigger(
-      account,
       indexToken,
       isLong,
       posId
@@ -1399,6 +1384,9 @@ describe("Vault", function () {
       ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58000'))
+    const closeDeltaTime = await settingsManager.closeDeltaTime()
+    await ethers.provider.send('evm_increaseTime', [closeDeltaTime.toNumber()]);
+    await ethers.provider.send('evm_mine');
     await PositionVault.triggerForOpenOrders(
       account,
       indexToken,
@@ -1727,8 +1715,8 @@ describe("Vault", function () {
     const indexToken = btc.address;
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
-    await expect(Vault.cancelPendingOrder(indexToken, true, 0)).to.be.revertedWith("Not in Pending")
-    await Vault.cancelPendingOrder(indexToken, false, posId)
+    await expect(Vault.cancelPendingOrder(0)).to.be.revertedWith("Not in Pending")
+    await Vault.cancelPendingOrder(posId)
   })
 
   it ("cancel for Trailing Stop", async () => {
@@ -1776,7 +1764,7 @@ describe("Vault", function () {
       triggerData,
       {from: wallet.address, value: 0}
       )
-      await Vault.cancelPendingOrder(indexToken, isLong, posId)
+      await Vault.cancelPendingOrder(posId)
   })
 
   it ("addCollateral", async () => {
@@ -1796,7 +1784,7 @@ describe("Vault", function () {
     const posId = 0
     const isPlus = false
     const amount = expandDecimals('5', 30)
-    const positionInfo = await PositionVault.getPosition(wallet.address, indexToken, isLong, posId)
+    const positionInfo = await PositionVault.getPosition(posId)
     const position = positionInfo[0]
     await expect(Vault.addOrRemoveCollateral(indexToken, isLong, posId, isPlus, position.collateral))
       .to.be.revertedWith("Vault: maxLeverage exceeded")
@@ -1838,6 +1826,12 @@ describe("Vault", function () {
     //   isLong,
     //   posId
     // )).to.be.revertedWith("position size should be greather than zero")
+    await expect(Vault.connect(user0).decreasePosition(
+      indexToken,
+      expandDecimals('1000', 30),
+      isLong,
+      posId
+    )).to.be.revertedWith("you are not allowed to decrease position")
     await expect(Vault.decreasePosition(
       indexToken,
       expandDecimals('1000', 30),
@@ -1972,9 +1966,9 @@ describe("Vault", function () {
       isLong,
       posId,
       true
-    )).to.be.revertedWith("Vault: maxThreshold exceeded")
+    )).to.be.revertedWith("Vault: fees exceed collateral")
     if (validateLiquidation[0].toNumber() == 2) { // Liquidate Max Threshold
-      await PositionVault.liquidatePosition(account, indexToken, isLong, posId)
+      await expect(PositionVault.liquidatePosition(account, indexToken, isLong, posId)).to.be.revertedWith("Vault: fees exceed collateral")
     }
   })
 

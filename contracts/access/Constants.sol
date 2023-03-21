@@ -42,15 +42,6 @@ contract Constants {
     uint256 public constant TRAILING_STOP_TYPE_PERCENT = 1;
     uint256 public constant VLP_DECIMALS = 18;
 
-    function _getPositionKey(
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_account, _indexToken, _isLong, _posId));
-    }
-
     function checkSlippage(
         bool isLong,
         uint256 expectedMarketPrice,

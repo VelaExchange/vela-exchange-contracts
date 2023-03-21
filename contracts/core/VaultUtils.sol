@@ -15,9 +15,8 @@ contract VaultUtils is IVaultUtils, Constants {
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
 
-    event ClosePosition(bytes32 key, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
+    event ClosePosition(uint256 posId, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
     event DecreasePosition(
-        bytes32 key,
         address indexed account,
         address indexed indexToken,
         bool isLong,
@@ -26,14 +25,13 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256[7] posData
     );
     event IncreasePosition(
-        bytes32 key,
         address indexed account,
         address indexed indexToken,
         bool isLong,
         uint256 posId,
         uint256[7] posData
     );
-    event LiquidatePosition(bytes32 key, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
+    event LiquidatePosition(uint256 posId, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
     event SetDepositFee(uint256 indexed fee);
 
     modifier onlyVault() {
@@ -54,9 +52,8 @@ contract VaultUtils is IVaultUtils, Constants {
         bool _isLong,
         uint256 _posId
     ) external override onlyVault {
-        bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (Position memory position, , ) = positionVault.getPosition(_posId);
         uint256 migrateFeeUsd = settingsManager.collectMarginFees(
             _account,
             _indexToken,
@@ -65,7 +62,7 @@ contract VaultUtils is IVaultUtils, Constants {
             position.size,
             position.entryFundingRate
         );
-        emit ClosePosition(key, position.realisedPnl, price, migrateFeeUsd);
+        emit ClosePosition(_posId, position.realisedPnl, price, migrateFeeUsd);
     }
 
     function emitDecreasePositionEvent(
@@ -76,12 +73,10 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _sizeDelta,
         uint256 _fee
     ) external override onlyVault {
-        bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (Position memory position, , ) = positionVault.getPosition(_posId);
         uint256 _collateralDelta = (position.collateral * _sizeDelta) / position.size;
         emit DecreasePosition(
-            key,
             _account,
             _indexToken,
             _isLong,
@@ -108,11 +103,9 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _sizeDelta,
         uint256 _fee
     ) external override onlyVault {
-        bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (Position memory position, , ) = positionVault.getPosition(_posId);
         emit IncreasePosition(
-            key,
             _account,
             _indexToken,
             _isLong,
@@ -135,9 +128,8 @@ contract VaultUtils is IVaultUtils, Constants {
         bool _isLong,
         uint256 _posId
     ) external override onlyVault {
-        bytes32 key = _getPositionKey(_account, _indexToken, _isLong, _posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (Position memory position, , ) = positionVault.getPosition(_posId);
         uint256 migrateFeeUsd = settingsManager.collectMarginFees(
             _account,
             _indexToken,
@@ -146,17 +138,14 @@ contract VaultUtils is IVaultUtils, Constants {
             position.size,
             position.entryFundingRate
         );
-        emit LiquidatePosition(key, position.realisedPnl, price, migrateFeeUsd);
+        emit LiquidatePosition(_posId, position.realisedPnl, price, migrateFeeUsd);
     }
 
     function validateConfirmDelay(
-        address _account,
-        address _indexToken,
-        bool _isLong,
         uint256 _posId,
         bool _raise
     ) external view override returns (bool) {
-        (, , ConfirmInfo memory confirm) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (, , ConfirmInfo memory confirm) = positionVault.getPosition(_posId);
         bool validateFlag;
         if (confirm.confirmDelayStatus) {
             if (
@@ -172,15 +161,14 @@ contract VaultUtils is IVaultUtils, Constants {
     }
 
     function validateDecreasePosition(
-        address _account,
-        address _indexToken,
         bool _isLong,
         uint256 _posId,
+        uint256 _price,
         bool _raise
     ) external view override returns (bool) {
-        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (Position memory position, , ) = positionVault.getPosition(_posId);
         bool validateFlag;
-        (bool hasProfit, ) = priceManager.getDelta(_indexToken, position.size, position.averagePrice, _isLong);
+        (bool hasProfit, ) = priceManager.getDelta(position.size, position.averagePrice, _price, _isLong);
         if (hasProfit) {
             if (
                 position.lastIncreasedTime > 0 &&
@@ -188,13 +176,12 @@ contract VaultUtils is IVaultUtils, Constants {
             ) {
                 validateFlag = true;
             } else {
-                uint256 price = priceManager.getLastPrice(_indexToken);
                 if (
                     (_isLong &&
-                        price * BASIS_POINTS_DIVISOR >=
+                        _price * BASIS_POINTS_DIVISOR >=
                         (BASIS_POINTS_DIVISOR + settingsManager.priceMovementPercent()) * position.lastPrice) ||
                     (!_isLong &&
-                        price * BASIS_POINTS_DIVISOR <=
+                        _price * BASIS_POINTS_DIVISOR <=
                         (BASIS_POINTS_DIVISOR - settingsManager.priceMovementPercent()) * position.lastPrice)
                 ) {
                     validateFlag = true;
@@ -216,12 +203,13 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _posId,
         bool _raise
     ) external view override returns (uint256, uint256) {
-        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (Position memory position, , ) = positionVault.getPosition(_posId);
+        uint256 price = priceManager.getLastPrice(_indexToken);
         if (position.averagePrice > 0) {
             (bool hasProfit, uint256 delta) = priceManager.getDelta(
-                _indexToken,
                 position.size,
                 position.averagePrice,
+                price,
                 _isLong
             );
             uint256 migrateFeeUsd = settingsManager.collectMarginFees(
@@ -295,13 +283,12 @@ contract VaultUtils is IVaultUtils, Constants {
     }
 
     function validateTrailingStopInputData(
-        address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId,
         uint256[] memory _params
     ) external view override returns (bool) {
-        (Position memory position, , ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (Position memory position, , ) = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         require(_params[1] > 0 && _params[1] <= position.size, "trailing size should be smaller than position size");
         if (_isLong) {
@@ -320,13 +307,12 @@ contract VaultUtils is IVaultUtils, Constants {
     }
 
     function validateTrailingStopPrice(
-        address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId,
         bool _raise
     ) external view override returns (bool) {
-        (, Order memory order, ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (, Order memory order, ) = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         uint256 stopPrice;
         if (_isLong) {
@@ -365,12 +351,11 @@ contract VaultUtils is IVaultUtils, Constants {
     }
 
     function validateTrigger(
-        address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId
     ) external view override returns (uint8) {
-        (, Order memory order, ) = positionVault.getPosition(_account, _indexToken, _isLong, _posId);
+        (, Order memory order, ) = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         uint8 statusFlag;
         if (order.status == OrderStatus.PENDING) {

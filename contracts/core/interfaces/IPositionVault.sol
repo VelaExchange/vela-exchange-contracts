@@ -16,8 +16,6 @@ interface IPositionVault {
 
     function addPosition(
         address _account,
-        address _indexToken,
-        bool _isLong,
         uint256 _posId,
         uint256 _collateralDelta,
         uint256 _sizeDelta
@@ -31,7 +29,7 @@ interface IPositionVault {
         uint256[] memory _params
     ) external;
 
-    function cancelPendingOrder(address _account, address _indexToken, bool _isLong, uint256 _posId) external;
+    function cancelPendingOrder(address _account, uint256 _posId) external;
 
     function decreasePosition(
         address _account,
@@ -51,9 +49,6 @@ interface IPositionVault {
     ) external;
 
     function getPosition(
-        address _account,
-        address _indexToken,
-        bool _isLong,
         uint256 _posId
     ) external view returns (Position memory, Order memory, ConfirmInfo memory);
 

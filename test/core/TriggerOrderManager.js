@@ -576,9 +576,6 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 0
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account,
-      indexToken,
-      isLong,
       posId)
     console.log('triggerOrderInfo: ', triggerOrderInfo.status.toString())
     const triggers = triggerOrderInfo.triggers
@@ -613,9 +610,6 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 0
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account,
-      indexToken,
-      isLong,
       posId)
   })
 
@@ -689,9 +683,6 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 1
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account,
-      indexToken,
-      isLong,
       posId)
    })
 
@@ -717,9 +708,6 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 1
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account,
-      indexToken,
-      isLong,
       posId)
   })
 
@@ -791,8 +779,6 @@ describe("TriggerOrderManager", function () {
     const posId = 2
     const orderId = 1
     await triggerOrderManager.cancelTriggerOrder (
-      indexToken,
-      isLong,
       posId,
       orderId
       )
@@ -803,8 +789,6 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 2
     const triggerOrderInfo = await triggerOrderManager.cancelPositionTrigger (
-      indexToken,
-      isLong,
       posId)
    })
 
@@ -814,9 +798,6 @@ describe("TriggerOrderManager", function () {
     const isLong = true
     const posId = 2
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo (
-      account,
-      indexToken,
-      isLong,
       posId)
    })
 
@@ -842,7 +823,7 @@ describe("TriggerOrderManager", function () {
     const token = btc.address
     const isLong = true
     const posId = 2
-    expect(await triggerOrderManager.validateTPSLTriggers(account, token, isLong, posId))
+    expect(await triggerOrderManager.validateTPSLTriggers(token, isLong, posId))
       .eq(false)
    })
 
@@ -851,7 +832,7 @@ describe("TriggerOrderManager", function () {
     const token = btc.address
     const isLong = false
     const posId = 4
-     expect(await triggerOrderManager.validateTPSLTriggers(account, token, isLong, posId))
+     expect(await triggerOrderManager.validateTPSLTriggers(token, isLong, posId))
         .eq(false)
    })
 
@@ -960,9 +941,6 @@ describe("TriggerOrderManager", function () {
       {from: wallet.address, value: 0}
     )
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(
-      account,
-      indexToken,
-      isLong,
       pId
     )
    })
@@ -1113,9 +1091,6 @@ describe("TriggerOrderManager", function () {
       {from: wallet.address, value: 0}
     )
     const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(
-      account,
-      indexToken,
-      isLong,
       pId
     )
    })
@@ -1141,7 +1116,7 @@ describe("TriggerOrderManager", function () {
     const indexToken = btc.address
     const isLong = false
     const pId = 3
-    expect(await triggerOrderManager.validateTPSLTriggers(account, indexToken, isLong, pId))
+    expect(await triggerOrderManager.validateTPSLTriggers(indexToken, isLong, pId))
       .eq(true)
    })
 

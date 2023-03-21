@@ -75,14 +75,13 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function addPosition(
         address _indexToken,
-        bool _isLong,
         uint256 _posId,
         uint256 _collateralDelta,
         uint256 _sizeDelta
     ) external payable nonReentrant preventTradeForForexCloseTime(_indexToken) {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         payable(settingsManager.feeManager()).transfer(msg.value);
-        positionVault.addPosition(msg.sender, _indexToken, _isLong, _posId, _collateralDelta, _sizeDelta);
+        positionVault.addPosition(msg.sender, _posId, _collateralDelta, _sizeDelta);
     }
 
     function addTrailingStop(
@@ -96,8 +95,8 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         positionVault.addTrailingStop(msg.sender, _indexToken, _isLong, _posId, _params);
     }
 
-    function cancelPendingOrder(address _indexToken, bool _isLong, uint256 _posId) external nonReentrant {
-        positionVault.cancelPendingOrder(msg.sender, _indexToken, _isLong, _posId);
+    function cancelPendingOrder(uint256 _posId) external nonReentrant {
+        positionVault.cancelPendingOrder(msg.sender, _posId);
     }
 
     function decreasePosition(
