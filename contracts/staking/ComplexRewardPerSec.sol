@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IComplexRewarder.sol";
 import "./interfaces/IFarmDistributor.sol";
+import "../core/interfaces/IOperators.sol";
 import "./libraries/BoringERC20.sol";
 
 contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
@@ -14,6 +15,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
 
     IBoringERC20 public immutable override rewardToken;
     IFarmDistributor public immutable distributor;
+    IOperators public immutable operators;
 
     struct UserInfo {
         uint256 amount; /// `amount` LP token amount the user has provided.
@@ -40,7 +42,6 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
     mapping(uint256 => PoolInfo) public poolInfo;
     mapping(uint256 => RewardInfo[]) public poolRewardInfo;
-    mapping(address => bool) isOperator;
 
     event AddPool(uint256 indexed pid);
     event AddRewardInfo(uint256 indexed pid, uint256 indexed phase, uint256 endTimestamp, uint256 rewardPerSec);
@@ -53,15 +54,11 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
         _;
     }
 
-    modifier onlyOperator{
-        require(isOperator[msg.sender] || msg.sender == owner(), "Not Operator");
-        _;
-    }
-
-    constructor(IBoringERC20 _rewardToken, IFarmDistributor _distributor) {
+    constructor(IBoringERC20 _rewardToken, IFarmDistributor _distributor, address _operators) {
         require(Address.isContract(address(_rewardToken)), "constructor: reward token must be a valid contract");
         require(Address.isContract(address(_distributor)), "constructor: FarmDistributor must be a valid contract");
-        isOperator[owner()] = true;
+        require(Address.isContract(_operators), "operators address is invalid");
+        operators = IOperators(_operators);
         rewardToken = _rewardToken;
         distributor = _distributor;
 
@@ -71,17 +68,10 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
         ACC_TOKEN_PRECISION = uint256(10 ** (uint256(30) - (decimalsRewardToken)));
     }
 
-    function addOperator(address op) external onlyOwner {
-        isOperator[op] = true;
-    }
-
-    function removeOperator(address op) external onlyOwner {
-        isOperator[op] = false;
-    }
-
     /// @notice Add a new pool. Can only be called by the owner.
     /// @param _pid pool id on DistributorV2
-    function add(uint256 _pid, uint256 _startTimestamp) public onlyOperator {
+    function add(uint256 _pid, uint256 _startTimestamp) public {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         require(poolInfo[_pid].lastRewardTimestamp == 0, "pool already exists");
 
         poolInfo[_pid] = PoolInfo({
@@ -96,7 +86,8 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     }
 
     /// @notice if the new reward info is added, the reward & its end timestamp will be extended by the newly pushed reward info.
-    function addRewardInfo(uint256 _pid, uint256 _endTimestamp, uint256 _rewardPerSec) external payable onlyOperator {
+    function addRewardInfo(uint256 _pid, uint256 _endTimestamp, uint256 _rewardPerSec) external payable {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         RewardInfo[] storage rewardInfo = poolRewardInfo[_pid];
         PoolInfo storage pool = poolInfo[_pid];
         require(rewardInfo.length < rewardInfoLimit, "add reward info: reward info length exceeds the limit");
@@ -131,7 +122,8 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
         uint256 _pid,
         uint256 _amount,
         address _beneficiary
-    ) external onlyOperator nonReentrant {
+    ) external nonReentrant {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
         PoolInfo storage pool = poolInfo[_pid];
         uint256 lpSupply = distributor.poolTotalLp(_pid);
 
@@ -147,7 +139,8 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     }
 
     /// @notice Withdraw reward. EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _amount, address _beneficiary) external onlyOperator nonReentrant {
+    function emergencyWithdraw(uint256 _amount, address _beneficiary) external nonReentrant {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
         rewardToken.safeTransfer(_beneficiary, _amount);
     }
 

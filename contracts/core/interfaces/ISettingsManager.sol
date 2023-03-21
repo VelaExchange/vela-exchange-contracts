@@ -37,9 +37,9 @@ interface ISettingsManager {
 
     function delayDeltaTime() external view returns (uint256);
 
-    function depositFee() external view returns (uint256);
+    function depositFee(address token) external view returns (uint256);
 
-    function withdrawFee() external view returns (uint256);
+    function withdrawFee(address token) external view returns (uint256);
 
     function feeManager() external view returns (address);
 
@@ -87,9 +87,9 @@ interface ISettingsManager {
 
     function referEnabled() external view returns (bool);
 
-    function stakingFee() external view returns (uint256);
+    function stakingFee(address token) external view returns (uint256);
 
-    function unstakingFee() external view returns (uint256);
+    function unstakingFee(address token) external view returns (uint256);
 
     function triggerGasFee() external view returns (uint256);
 
