@@ -53,7 +53,7 @@ describe("SettingsManager", function () {
     let withdrawFee
     let stakingFee
     let unstakingFee
-
+    let operator
     before(async function () {
         btc = await deployContract("BaseToken", ["Bitcoin", "BTC", 0])
         btcPriceFeed = await deployContract("FastPriceFeed", [])
@@ -75,7 +75,7 @@ describe("SettingsManager", function () {
 
         usdt = await deployContract("BaseToken", ["Tether USD", "USDT", expandDecimals('10000000', 18)])
         usdtPriceFeed = await deployContract("FastPriceFeed", [])
-
+        operator = await deployContract('ExchangeOperators', [])
         usdc = await deployContract("BaseToken", ["USD Coin", "USDC", expandDecimals('10000000', 18)])
         usdcPriceFeed = await deployContract("FastPriceFeed", [])
         vlpPriceFeed = await deployContract("FastPriceFeed", [])
@@ -96,7 +96,7 @@ describe("SettingsManager", function () {
         unstakingFee = 3000
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
-        tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address])
+        tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
            vlp.address,
@@ -104,11 +104,13 @@ describe("SettingsManager", function () {
         ]);
         PositionVault = await deployContract("PositionVault", [])
         priceManager = await deployContract("PriceManager", [
-          vaultPriceFeed.address
+          vaultPriceFeed.address,
+          operator.address
         ])
         settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,
+            operator.address,
             vusd.address,
             tokenFarm.address
           ]
@@ -370,22 +372,15 @@ describe("SettingsManager", function () {
       await settingsManager.setPriceMovementPercent(priceMovementPercent2)
     })
 
-    it ("pauseForexMarket", async () => {
-      await settingsManager.addOperator(user0.address);
-      await expect(settingsManager.connect(user2).pauseForexMarket(false))
-        .to.be.revertedWith("Not Operator")
-      await settingsManager.connect(user0).pauseForexMarket(true)
-    })
-
     it ("setFeeManager", async () => {
       await expect(settingsManager.connect(user2).setFeeManager(user0.address))
-        .to.be.revertedWith("Not Operator")
+        .to.be.revertedWith("Invalid operator")
       await settingsManager.setFeeManager(user0.address)
     })
 
     it ("setBountyPercent", async () => {
       await expect(settingsManager.connect(user2).setBountyPercent(25000, 25000, 25000))
-        .to.be.revertedWith("Not Operator")
+        .to.be.revertedWith("Invalid operator")
         await expect(settingsManager.setBountyPercent(50000, 50000, 1000))
         .to.be.revertedWith("invalid bountyPercent")
       await settingsManager.setBountyPercent(25000, 25000, 25000)
@@ -393,7 +388,7 @@ describe("SettingsManager", function () {
 
     it ("enableMarketOrder", async () => {
       await expect(settingsManager.connect(user2).enableMarketOrder(true))
-        .to.be.revertedWith("Not Operator")
+        .to.be.revertedWith("Invalid operator")
       await settingsManager.enableMarketOrder(true)
     })
 

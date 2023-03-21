@@ -26,6 +26,7 @@ describe("TriggerOrderManager", function () {
     let settingsManager;
     let triggerOrderManager;
     let tokenFarm;
+    let operator
     let vestingDuration
     let btc
     let eth
@@ -74,6 +75,7 @@ describe("TriggerOrderManager", function () {
         vlpPriceFeed = await deployContract("FastPriceFeed", [])
         vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
         vlp = await deployContract('VLP', [])
+        operator = await deployContract('ExchangeOperators', [])
         vestingDuration = 6 * 30 * 24 * 60 * 60
         unbondingPeriod = 14 * 24 * 60 * 60
         cooldownDuration = 86400
@@ -87,7 +89,7 @@ describe("TriggerOrderManager", function () {
         unstakingFee = 3000
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
-        tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address])
+        tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
            vlp.address,
@@ -95,11 +97,13 @@ describe("TriggerOrderManager", function () {
         ]);
         PositionVault = await deployContract("PositionVault", [])
         priceManager = await deployContract("PriceManager", [
-          vaultPriceFeed.address
+          vaultPriceFeed.address,
+          operator.address
         ])
         settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,
+            operator.address,
             vusd.address,
             tokenFarm.address
           ]
@@ -295,15 +299,18 @@ describe("TriggerOrderManager", function () {
      await tokenFarm.depositVelaForVesting(expandDecimals('1000000', 18))
      const complexRewardPerSec1 = await deployContract("ComplexRewarderPerSec", [
          eVela.address,
-         tokenFarm.address
+         tokenFarm.address,
+         operator.address
      ])
      const complexRewardPerSec2 = await deployContract("ComplexRewarderPerSec", [
          eVela.address,
-         tokenFarm.address
+         tokenFarm.address,
+         operator.address
      ])
      const complexRewardPerSec3 = await deployContract("ComplexRewarderPerSec", [
          eVela.address,
-         tokenFarm.address
+         tokenFarm.address,
+         operator.address
      ])
      const amount = String(ethers.constants.MaxUint256)
      await eVela.connect(wallet).approve(complexRewardPerSec1.address,  amount); // VLP approve

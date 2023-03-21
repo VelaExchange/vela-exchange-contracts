@@ -25,6 +25,7 @@ describe("PriceManager", function () {
     let jpy
     let usdc
     let usdt
+    let operator
     let btcPriceFeed
     let ethPriceFeed
     let dogePriceFeed
@@ -65,6 +66,7 @@ describe("PriceManager", function () {
         vlpPriceFeed = await deployContract("FastPriceFeed", [])
         vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
         vlp = await deployContract('VLP', [])
+        operator = await deployContract('ExchangeOperators', [])
         vestingDuration = 6 * 30 * 24 * 60 * 60
         unbondingPeriod = 14 * 24 * 60 * 60
         cooldownDuration = 86400
@@ -78,7 +80,8 @@ describe("PriceManager", function () {
         unstakingFee = 3000
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         priceManager = await deployContract("PriceManager", [
-          vaultPriceFeed.address
+          vaultPriceFeed.address,
+          operator.address // operator
         ])
         //================= PriceFeed Prices Initialization ==================
         await btcPriceFeed.setLatestAnswer(toChainlinkPrice(60000))

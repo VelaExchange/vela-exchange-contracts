@@ -121,7 +121,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             );
         }
         _transferIn(msg.sender, _token, _amount);
-        uint256 fee = (collateralDeltaUsd * settingsManager.depositFee()) / BASIS_POINTS_DIVISOR;
+        uint256 fee = (collateralDeltaUsd * settingsManager.depositFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = collateralDeltaUsd - fee;
         _accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
         IVUSDC(vUSDC).mint(_account, afterFeeAmount);
@@ -175,7 +175,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             );
         }
         _transferIn(msg.sender, _token, _amount);
-        uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee()) / BASIS_POINTS_DIVISOR;
+        uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
         uint256 mintAmount;
         if (totalVLP == 0) {
@@ -217,7 +217,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         IMintable(vlp).burn(msg.sender, _vlpAmount);
         uint256 usdAmount = (_vlpAmount * totalUSDC) / totalVLP;
         totalVLP -= _vlpAmount;
-        uint256 usdAmountFee = (usdAmount * settingsManager.unstakingFee()) / BASIS_POINTS_DIVISOR;
+        uint256 usdAmountFee = (usdAmount * settingsManager.unstakingFee(_tokenOut)) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
         totalUSDC -= usdAmount;
         uint256 amountOut = priceManager.usdToToken(_tokenOut, usdAmountAfterFee);
@@ -228,7 +228,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     function withdraw(address _token, address _account, uint256 _amount) external nonReentrant {
-        uint256 fee = (_amount * settingsManager.withdrawFee()) / BASIS_POINTS_DIVISOR;
+        uint256 fee = (_amount * settingsManager.withdrawFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = _amount - fee;
         uint256 collateralDelta = priceManager.usdToToken(_token, afterFeeAmount);
         require(settingsManager.isWithdraw(_token), "withdraw not allowed");
@@ -279,6 +279,16 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     function _mintOrBurnVUSDForVault(bool _mint, uint256 _amount, uint256 _fee, address _refer) internal {
+        if (_fee != 0 && _refer != ZERO_ADDRESS && settingsManager.referEnabled()) {
+            uint256 referFee = (_fee * settingsManager.referFee()) / BASIS_POINTS_DIVISOR;
+            IVUSDC(vUSDC).mint(_refer, referFee);
+            if (_mint) {
+                _amount -= referFee;
+            } else {
+                _amount += referFee;
+            }
+            _fee -= referFee;
+        }
         address _feeManager = settingsManager.feeManager();
         if (_fee != 0 && _feeManager != ZERO_ADDRESS) {
             uint256 feeReward = (_fee * settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
@@ -288,16 +298,6 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
                 _amount -= feeMinusFeeReward;
             } else {
                 _amount += feeMinusFeeReward;
-            }
-            _fee = feeReward;
-        }
-        if (_refer != ZERO_ADDRESS && settingsManager.referEnabled()) {
-            uint256 referFee = (_fee * settingsManager.referFee()) / BASIS_POINTS_DIVISOR;
-            IVUSDC(vUSDC).mint(_refer, referFee);
-            if (_mint) {
-                _amount -= referFee;
-            } else {
-                _amount += referFee;
             }
         }
         if (_mint) {
