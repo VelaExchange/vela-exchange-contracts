@@ -48,6 +48,8 @@ interface IVaultUtils {
         bool _raise
     ) external view returns (uint256, uint256);
 
+    function validateMaxLeverage(address _indexToken, uint256 _size, uint256 _collateral) external view;
+
     function validatePosData(
         bool _isLong,
         address _indexToken,

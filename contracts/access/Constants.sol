@@ -15,6 +15,7 @@ contract Constants {
     uint256 public constant LIQUIDATE_NONE_EXCEED = 0;
     uint256 public constant LIQUIDATE_FEE_EXCEED = 1;
     uint256 public constant LIQUIDATE_THRESHOLD_EXCEED = 2;
+    uint256 public constant LEVERAGE_SLIPPAGE = 100;
     uint256 public constant MAX_DEPOSIT_WITHDRAW_FEE = 10000; // 10%
     uint256 public constant MAX_DELTA_TIME = 24 hours;
     uint256 public constant MAX_COOLDOWN_DURATION = 30 days;
