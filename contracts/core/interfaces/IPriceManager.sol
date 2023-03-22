@@ -4,16 +4,15 @@ pragma solidity 0.8.9;
 
 interface IPriceManager {
     function getDelta(
-        address _indexToken,
         uint256 _size,
         uint256 _averagePrice,
+        uint256 _lastPrice,
         bool _isLong
     ) external view returns (bool, uint256);
 
     function getLastPrice(address _token) external view returns (uint256);
 
     function getNextAveragePrice(
-        address _indexToken,
         uint256 _size,
         uint256 _averagePrice,
         bool _isLong,

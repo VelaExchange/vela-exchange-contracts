@@ -8,7 +8,6 @@ interface IPositionVault {
     function addOrRemoveCollateral(
         address _account,
         address _indexToken,
-        bool _isLong,
         uint256 _posId,
         bool isPlus,
         uint256 _amount
@@ -17,7 +16,6 @@ interface IPositionVault {
     function addPosition(
         address _account,
         address _indexToken,
-        bool _isLong,
         uint256 _posId,
         uint256 _collateralDelta,
         uint256 _sizeDelta
@@ -26,18 +24,16 @@ interface IPositionVault {
     function addTrailingStop(
         address _account,
         address _indexToken,
-        bool _isLong,
         uint256 _posId,
         uint256[] memory _params
     ) external;
 
-    function cancelPendingOrder(address _account, address _indexToken, bool _isLong, uint256 _posId) external;
+    function cancelPendingOrder(address _account, uint256 _posId) external;
 
     function decreasePosition(
         address _account,
         address _indexToken,
         uint256 _sizeDelta,
-        bool _isLong,
         uint256 _posId
     ) external;
 
@@ -51,9 +47,6 @@ interface IPositionVault {
     ) external;
 
     function getPosition(
-        address _account,
-        address _indexToken,
-        bool _isLong,
         uint256 _posId
     ) external view returns (Position memory, Order memory, ConfirmInfo memory);
 

@@ -52,6 +52,8 @@ struct Order {
 struct Position {
     address owner;
     address refer;
+    address indexToken;
+    bool isLong;
     int256 realisedPnl;
     uint256 averagePrice;
     uint256 collateral;
@@ -69,7 +71,6 @@ struct TriggerInfo {
     uint256 price;
     uint256 triggeredAmount;
     uint256 triggeredAt;
-    uint256 triggeredPrice;
     TriggerStatus status;
 }
 

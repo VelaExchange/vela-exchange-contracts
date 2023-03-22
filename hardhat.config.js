@@ -71,12 +71,12 @@ module.exports = {
       accounts: [`${process.env.METIS_MAINNET_KEY}`],
     },
   },
-  // contractSizer: {
-  //   alphaSort: true,
-  //   disambiguatePaths: false,
-  //   runOnCompile: true,
-  //   strict: true,
-  // },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: true,
+  },
   solidity: {
     version: "0.8.9",
     settings: {

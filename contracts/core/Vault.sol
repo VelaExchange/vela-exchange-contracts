@@ -65,50 +65,46 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function addOrRemoveCollateral(
         address _indexToken,
-        bool _isLong,
         uint256 _posId,
         bool isPlus,
         uint256 _amount
     ) external nonReentrant preventTradeForForexCloseTime(_indexToken) {
-        positionVault.addOrRemoveCollateral(msg.sender, _indexToken, _isLong, _posId, isPlus, _amount);
+        positionVault.addOrRemoveCollateral(msg.sender, _indexToken, _posId, isPlus, _amount);
     }
 
     function addPosition(
         address _indexToken,
-        bool _isLong,
         uint256 _posId,
         uint256 _collateralDelta,
         uint256 _sizeDelta
     ) external payable nonReentrant preventTradeForForexCloseTime(_indexToken) {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         payable(settingsManager.feeManager()).transfer(msg.value);
-        positionVault.addPosition(msg.sender, _indexToken, _isLong, _posId, _collateralDelta, _sizeDelta);
+        positionVault.addPosition(msg.sender, _indexToken, _posId, _collateralDelta, _sizeDelta);
     }
 
     function addTrailingStop(
         address _indexToken,
-        bool _isLong,
         uint256 _posId,
         uint256[] memory _params
     ) external payable nonReentrant {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         payable(settingsManager.feeManager()).transfer(msg.value);
-        positionVault.addTrailingStop(msg.sender, _indexToken, _isLong, _posId, _params);
+        positionVault.addTrailingStop(msg.sender, _indexToken, _posId, _params);
     }
 
-    function cancelPendingOrder(address _indexToken, bool _isLong, uint256 _posId) external nonReentrant {
-        positionVault.cancelPendingOrder(msg.sender, _indexToken, _isLong, _posId);
+    function cancelPendingOrder(uint256 _posId) external nonReentrant {
+        positionVault.cancelPendingOrder(msg.sender, _posId);
     }
 
     function decreasePosition(
         address _indexToken,
         uint256 _sizeDelta,
-        bool _isLong,
         uint256 _posId
     ) payable external nonReentrant preventTradeForForexCloseTime(_indexToken) {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
         payable(settingsManager.feeManager()).transfer(msg.value);
-        positionVault.decreasePosition(msg.sender, _indexToken, _sizeDelta, _isLong, _posId);
+        positionVault.decreasePosition(msg.sender, _indexToken, _sizeDelta, _posId);
     }
 
     function deposit(address _account, address _token, uint256 _amount) external nonReentrant {

@@ -489,9 +489,6 @@ This is a function for fetching user's position info
 
 ```
 positionVault.getPosition(
-        address _account,
-        address _indexToken,
-        bool _isLong,
         uint256 _posId
     )
 ```
@@ -754,9 +751,6 @@ Function
 this is a function for checking confirmDelay status, so if it is available to execute confirmDelayTransaction, then it returns true.
 ```
 vaultUtils.validateConfirmDelay(
-        address _account,
-        address _indexToken,
-        bool _isLong,
         uint256 _posId,
         bool _raise
     )
@@ -859,7 +853,6 @@ This is a function for checking user trailing stop input data.
 if user doesn't input the data correctly, then it will revert that.
 ```
 vaultUtils.validateTrailingStopInputData(
-        address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId,
@@ -889,7 +882,6 @@ Function
 This is a function to check whether a user's trailing stop price can be updated or not.
 ```
 vaultUtils.validateTrailingStopPrice(
-        address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId,
@@ -914,7 +906,6 @@ Function
 This is a function to check whether trigger can be executed or not.
 ```
 vaultUtils.validateTrigger(
-        address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId
