@@ -230,6 +230,8 @@ contract VaultUtils is IVaultUtils, Constants {
             uint256 remainingCollateral = position.collateral;
             if (!hasProfit) {
                 remainingCollateral = position.collateral - delta;
+            } else {
+                remainingCollateral = position.collateral + delta;
             }
 
             if (position.collateral * priceManager.maxLeverage(_indexToken) < position.size * MIN_LEVERAGE) {
