@@ -106,13 +106,13 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         address _indexToken,
         uint256 _sizeDelta,
         uint256 _posId
-    ) payable external nonReentrant preventTradeForForexCloseTime(_indexToken) preventBanners (msg.sender) {
+    ) payable external nonReentrant preventTradeForForexCloseTime(_indexToken) preventBanners(msg.sender) {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
         payable(settingsManager.feeManager()).transfer(msg.value);
         positionVault.decreasePosition(msg.sender, _indexToken, _sizeDelta, _posId);
     }
 
-    function deposit(address _account, address _token, uint256 _amount) external nonReentrant preventBanners (msg.sender) {
+    function deposit(address _account, address _token, uint256 _amount) external nonReentrant preventBanners(msg.sender) {
         uint256 collateralDeltaUsd = priceManager.tokenToUsd(_token, _amount);
         require(settingsManager.isDeposit(_token), "deposit not allowed");
         require(_amount > 0, "zero amount");
@@ -141,7 +141,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         OrderType _orderType,
         uint256[] memory _params,
         address _refer
-    ) external payable nonReentrant preventBanners (msg.sender) preventTradeForForexCloseTime(_indexToken) {
+    ) external payable nonReentrant preventBanners(msg.sender) preventTradeForForexCloseTime(_indexToken) {
         if (_orderType != OrderType.MARKET) {
             require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
             payable(settingsManager.feeManager()).transfer(msg.value);

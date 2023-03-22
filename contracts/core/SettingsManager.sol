@@ -122,13 +122,13 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         }
     }
 
-    function addDelegatesToBlackList(address[] memory _delegates) external {
+    function addDelegatesToBanList(address[] memory _delegates) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         for (uint256 i = 0; i < _delegates.length; ++i) {
             EnumerableSet.add(banWalletList, _delegates[i]);
         }
     }
-    function removeDelegatesFromBlackList(address[] memory _delegates) external {
+    function removeDelegatesFromBanList(address[] memory _delegates) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         for (uint256 i = 0; i < _delegates.length; ++i) {
             EnumerableSet.remove(banWalletList, _delegates[i]);
@@ -486,6 +486,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function checkDelegation(address _master, address _delegate) public view override returns (bool) {
+        require(!checkBanList(_master), "prevent banners from delegation");
         return _master == _delegate || EnumerableSet.contains(_delegatesByMaster[_master], _delegate);
     }
 
