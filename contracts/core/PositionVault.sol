@@ -94,7 +94,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         } else {
             position.collateral -= _amount;
             vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
-            vaultUtils.validateLiquidation(_account, _indexToken, position.isLong, _posId, true);
+            vaultUtils.validateMaxLeverage(_indexToken, position.size, position.collateral);
             position.reserveAmount -= _amount;
             position.lastIncreasedTime = block.timestamp;
             vault.takeVUSDOut(_account, position.refer, 0, _amount);
@@ -340,7 +340,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 position.entryFundingRate
             );
             uint256 price = priceManager.getLastPrice(_indexToken);
-            _increasePosition(_account, _indexToken, _params[2] + fee, order.size, lastPosId, price, _isLong);
+            _increasePosition(_account, _indexToken, order.collateral + fee, order.size, lastPosId, price, _isLong);
             order.collateral = 0;
             order.size = 0;
             order.status = OrderStatus.FILLED;
@@ -506,7 +506,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.entryFundingRate = settingsManager.cumulativeFundingRates(_indexToken, _isLong);
             position.size -= _sizeDelta;
             vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
-            vaultUtils.validateLiquidation(_account, _indexToken, _isLong, _posId, true);
+            vaultUtils.validateMaxLeverage(_indexToken, position.size, position.collateral);
             vaultUtils.emitDecreasePositionEvent(_account, _indexToken, _isLong, _posId, _sizeDelta, usdOutFee);
         } else {
             vaultUtils.emitClosePositionEvent(_account, _indexToken, _isLong, _posId);
@@ -577,7 +577,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
         vault.takeVUSDIn(_account, position.refer, _amountIn, fee);
         settingsManager.validatePosition(_account, _indexToken, _isLong, position.size, position.collateral);
-        vaultUtils.validateLiquidation(_account, _indexToken, _isLong, _posId, true);
+        vaultUtils.validateMaxLeverage(_indexToken, position.size, position.collateral);
         settingsManager.increaseOpenInterest(_indexToken, _account, _isLong, _sizeDelta);
         _increaseReservedAmount(_indexToken, _isLong, _sizeDelta);
         _increasePoolAmount(_indexToken, _isLong, _amountInAfterFee);

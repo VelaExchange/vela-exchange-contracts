@@ -234,15 +234,15 @@ contract VaultUtils is IVaultUtils, Constants {
                 remainingCollateral = position.collateral + delta;
             }
 
-            if (position.collateral * priceManager.maxLeverage(_indexToken) < position.size * MIN_LEVERAGE) {
-                if (_raise) {
-                    revert("Vault: maxLeverage exceeded");
-                }
-            }
             return _checkMaxThreshold(remainingCollateral, position.size, migrateFeeUsd, _indexToken, _raise);
         } else {
             return (LIQUIDATE_NONE_EXCEED, 0);
         }
+    }
+
+    function validateMaxLeverage(address _indexToken, 
+        uint256 _size, uint256 _collateral) external view override {
+        require(_collateral * (priceManager.maxLeverage(_indexToken) + LEVERAGE_SLIPPAGE) >= _size * MIN_LEVERAGE, "Vault: maxLeverage exceeded");
     }
 
     function validatePosData(
