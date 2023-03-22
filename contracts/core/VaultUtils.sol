@@ -31,7 +31,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 posId,
         uint256[7] posData
     );
-    event LiquidatePosition(bytes32 key, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
+    event LiquidatePosition(uint256 posId, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
     event SetDepositFee(address indexed token, uint256 indexed fee);
 
     modifier onlyVault() {
