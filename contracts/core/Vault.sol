@@ -44,7 +44,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     modifier preventBanners(address _account) {
-        require(!settingsManager.checkBlackList(_account) , "prevent banners from trade, stake, deposit");
+        require(!settingsManager.checkBanList(_account) , "prevent banners from trade, stake, deposit");
         _;
     }
 

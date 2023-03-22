@@ -2256,7 +2256,7 @@ describe("Vault", function () {
        ], //triggerPrices
       referAddress
     )).to.be.revertedWith("prevent banners from trade, stake, deposit")
-    await settingsManager.removeDelegatesToBlackList([wallet.address])
+    await settingsManager.removeDelegatesFromBlackList([wallet.address])
     await Vault.connect(wallet).newPositionOrder(
       btc.address, //_indexToken
       isLong,

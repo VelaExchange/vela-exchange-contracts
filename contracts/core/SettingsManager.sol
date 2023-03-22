@@ -128,7 +128,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
             EnumerableSet.add(banWalletList, _delegates[i]);
         }
     }
-    function removeDelegatesToBlackList(address[] memory _delegates) external {
+    function removeDelegatesFromBlackList(address[] memory _delegates) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         for (uint256 i = 0; i < _delegates.length; ++i) {
             EnumerableSet.remove(banWalletList, _delegates[i]);
@@ -481,7 +481,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
             ) / positionVault.poolAmounts(_token, _isLong);
     }
 
-    function checkBlackList(address _delegate) public view override returns (bool) {
+    function checkBanList(address _delegate) public view override returns (bool) {
         return EnumerableSet.contains(banWalletList, _delegate);
     }
 
