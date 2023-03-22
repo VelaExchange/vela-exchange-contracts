@@ -606,8 +606,6 @@ describe("TriggerOrderManager", function () {
     const posId = 0
     await PositionVault.triggerForTPSL(
       account,
-      indexToken,
-      isLong,
       posId)
   })
 
@@ -704,8 +702,6 @@ describe("TriggerOrderManager", function () {
     const posId = 1
     await PositionVault.triggerForTPSL(
       account,
-      indexToken,
-      isLong,
       posId)
   })
 
@@ -819,8 +815,6 @@ describe("TriggerOrderManager", function () {
       const posId = 1
       await expect(PositionVault.triggerForTPSL(
         account,
-        indexToken,
-        isLong,
         posId))
         .to.be.revertedWith("Trigger Not Open")
    })
@@ -959,8 +953,6 @@ describe("TriggerOrderManager", function () {
     const posId = 2
     await expect(PositionVault.triggerForTPSL(
       account,
-      token,
-      isLong,
       posId
     )).to.be.revertedWith("Trigger Not Open")
    })
@@ -1109,8 +1101,6 @@ describe("TriggerOrderManager", function () {
     const pId = 3
     await expect(PositionVault.triggerForTPSL(
       account,
-      indexToken,
-      isLong,
       pId
     )).to.be.revertedWith("trigger not ready")
    })
@@ -1138,8 +1128,6 @@ describe("TriggerOrderManager", function () {
     await ethers.provider.send('evm_mine');
     await PositionVault.triggerForTPSL(
       account,
-      indexToken,
-      isLong,
       pId
     )
    })

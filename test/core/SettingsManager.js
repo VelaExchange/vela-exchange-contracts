@@ -145,15 +145,15 @@ describe("SettingsManager", function () {
     })
 
     it ("setDepositFee", async () => {
-      await expect(settingsManager.setDepositFee(15000))
+      await expect(settingsManager.setDepositFee(btc.address, 15000))
         .to.be.revertedWith("deposit fee is bigger than max")
-      await settingsManager.setDepositFee(depositFee)
+      await settingsManager.setDepositFee(btc.address, depositFee)
     })
 
     it ("setWithdrawFee", async () => {
-      await expect(settingsManager.setWithdrawFee(15000))
+      await expect(settingsManager.setWithdrawFee(btc.address, 15000))
         .to.be.revertedWith("withdraw fee is bigger than max")
-      await settingsManager.setWithdrawFee(withdrawFee)
+      await settingsManager.setWithdrawFee(btc.address, withdrawFee)
     })
 
     it ("setEnableDeposit", async () => {
@@ -344,9 +344,10 @@ describe("SettingsManager", function () {
 
     it ("setStakingFee", async () => {
       const fee = 100
-      await expect(settingsManager.setStakingFee(15000))
+      await expect(settingsManager.setStakingFee(btc.address, 15000))
         .to.be.revertedWith("staking fee is bigger than max")
       await settingsManager.setStakingFee(
+        btc.address, 
         fee
       )
     })
