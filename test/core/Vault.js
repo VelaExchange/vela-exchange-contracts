@@ -2243,7 +2243,7 @@ describe("Vault", function () {
     const slippage = 1000 // 1%
     const collateral = amountIn;
     const size = toUsdAmount;
-    await settingsManager.addDelegatesToBlackList([wallet.address])
+    await settingsManager.addDelegatesToBanList([wallet.address])
     await expect(Vault.connect(wallet).newPositionOrder(
       btc.address, //_indexToken
       isLong,
@@ -2256,7 +2256,7 @@ describe("Vault", function () {
        ], //triggerPrices
       referAddress
     )).to.be.revertedWith("prevent banners from trade, stake, deposit")
-    await settingsManager.removeDelegatesFromBlackList([wallet.address])
+    await settingsManager.removeDelegatesFromBanList([wallet.address])
     await Vault.connect(wallet).newPositionOrder(
       btc.address, //_indexToken
       isLong,
@@ -2269,5 +2269,17 @@ describe("Vault", function () {
        ], //triggerPrices
       referAddress
     )
+  })
+
+  it ("checkBanWallet delegation", async() =>{
+    const amount = expandDecimals('1000', 18)
+    await settingsManager.addDelegatesToBanList([wallet.address])
+    await expect(Vault.connect(wallet).stake(
+      wallet.address, usdc.address, amount
+    )).to.be.revertedWith("prevent banners from trade, stake, deposit")
+    await settingsManager.connect(wallet).delegate([user2.address])
+    await expect(Vault.connect(user2).stake(
+      wallet.address, usdc.address, amount
+    )).to.be.revertedWith("prevent banners from delegation")
   })
 });
