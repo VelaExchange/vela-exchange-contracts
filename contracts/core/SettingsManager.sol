@@ -23,6 +23,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     bool public override marketOrderEnabled = true;
     bool public override pauseForexForCloseTime;
     bool public override referEnabled = true;
+    EnumerableSet.AddressSet private banWalletList;
     uint256 public maxOpenInterestPerUser;
     uint256 public priceMovementPercent = 500; // 0.5%
 
@@ -65,7 +66,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => uint256) public override openInterestPerUser;
     mapping(address => uint256) public maxOpenInterestPerWallet;
     mapping(address => EnumerableSet.AddressSet) private _delegatesByMaster;
-
     event ChangedReferEnabled(bool referEnabled);
     event ChangedReferFee(uint256 referFee);
     event PauseForexMarket(bool _paused);
@@ -119,6 +119,19 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     function delegate(address[] memory _delegates) external {
         for (uint256 i = 0; i < _delegates.length; ++i) {
             EnumerableSet.add(_delegatesByMaster[msg.sender], _delegates[i]);
+        }
+    }
+
+    function addDelegatesToBlackList(address[] memory _delegates) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        for (uint256 i = 0; i < _delegates.length; ++i) {
+            EnumerableSet.add(banWalletList, _delegates[i]);
+        }
+    }
+    function removeDelegatesToBlackList(address[] memory _delegates) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        for (uint256 i = 0; i < _delegates.length; ++i) {
+            EnumerableSet.remove(banWalletList, _delegates[i]);
         }
     }
 
@@ -466,6 +479,10 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
                 positionVault.reservedAmounts(_token, _isLong) *
                 intervals
             ) / positionVault.poolAmounts(_token, _isLong);
+    }
+
+    function checkBlackList(address _delegate) public view override returns (bool) {
+        return EnumerableSet.contains(banWalletList, _delegate);
     }
 
     function checkDelegation(address _master, address _delegate) public view override returns (bool) {
