@@ -31,7 +31,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 posId,
         uint256[7] posData
     );
-    event LiquidatePosition(bytes32 key, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
+    event LiquidatePosition(uint256 posId, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
     event SetDepositFee(address indexed token, uint256 indexed fee);
 
     modifier onlyVault() {
@@ -230,17 +230,19 @@ contract VaultUtils is IVaultUtils, Constants {
             uint256 remainingCollateral = position.collateral;
             if (!hasProfit) {
                 remainingCollateral = position.collateral - delta;
+            } else {
+                remainingCollateral = position.collateral + delta;
             }
 
-            if (position.collateral * priceManager.maxLeverage(_indexToken) < position.size * MIN_LEVERAGE) {
-                if (_raise) {
-                    revert("Vault: maxLeverage exceeded");
-                }
-            }
             return _checkMaxThreshold(remainingCollateral, position.size, migrateFeeUsd, _indexToken, _raise);
         } else {
             return (LIQUIDATE_NONE_EXCEED, 0);
         }
+    }
+
+    function validateMaxLeverage(address _indexToken, 
+        uint256 _size, uint256 _collateral) external view override {
+        require(_collateral * (priceManager.maxLeverage(_indexToken) + LEVERAGE_SLIPPAGE) >= _size * MIN_LEVERAGE, "Vault: maxLeverage exceeded");
     }
 
     function validatePosData(
