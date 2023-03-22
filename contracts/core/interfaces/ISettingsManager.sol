@@ -16,6 +16,8 @@ interface ISettingsManager {
 
     function bountyPercent() external view returns (uint32, uint32, uint32);
 
+    function checkBanList(address _delegate) external view returns (bool);
+    
     function checkDelegation(address _master, address _delegate) external view returns (bool);
 
     function closeDeltaTime() external view returns (uint256);

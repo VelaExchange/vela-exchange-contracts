@@ -2232,4 +2232,42 @@ describe("Vault", function () {
     let managerFee = fee.sub(referFee).mul(BASIS_POINTS_DIVISOR-(await settingsManager.feeRewardBasisPoints())).div(BASIS_POINTS_DIVISOR);
     expect(managerFee).eq(managerBalanceAfter.sub(managerBalanceBefore));
   })
+
+  it ("checkBanWallet", async() =>{
+    const amountIn = expandDecimals('10', 30)
+    const toUsdAmount = expandDecimals('100', 30)
+    const isLong = false
+    const referAddress = user0.address;
+    const orderType = 0 // M
+    const expectedCryptoMarketPrice = await vaultPriceFeed.getLastPrice(btc.address);
+    const slippage = 1000 // 1%
+    const collateral = amountIn;
+    const size = toUsdAmount;
+    await settingsManager.addDelegatesToBlackList([wallet.address])
+    await expect(Vault.connect(wallet).newPositionOrder(
+      btc.address, //_indexToken
+      isLong,
+      orderType,
+      [
+        expectedCryptoMarketPrice,
+        slippage,
+        collateral,
+        size
+       ], //triggerPrices
+      referAddress
+    )).to.be.revertedWith("prevent banners from trade, stake, deposit")
+    await settingsManager.removeDelegatesFromBlackList([wallet.address])
+    await Vault.connect(wallet).newPositionOrder(
+      btc.address, //_indexToken
+      isLong,
+      orderType,
+      [
+        expectedCryptoMarketPrice,
+        slippage,
+        collateral,
+        size
+       ], //triggerPrices
+      referAddress
+    )
+  })
 });
