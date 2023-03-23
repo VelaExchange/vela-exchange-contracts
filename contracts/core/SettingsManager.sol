@@ -458,10 +458,8 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         uint256 _lastPrice,
         int256 _fundingIndex,
         bool _isLong
-    ) public pure override returns (bool, uint256) {
+    ) public view override returns (bool, uint256) {
         require(_averagePrice > 0, "average price should be greater than zero");
-        uint256 priceDelta = _averagePrice >= _lastPrice ? _averagePrice - _lastPrice : _lastPrice - _averagePrice;
-        uint256 delta = (_size * priceDelta) / _averagePrice;
         int256 pnl;
 
         if (_isLong) {

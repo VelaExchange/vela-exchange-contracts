@@ -264,7 +264,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     function liquidatePosition(address _account, uint256 _posId) external nonReentrant {
         Position memory position = positions[_posId];
-        settingsManager.updateFunding(_indexToken);
+        settingsManager.updateFunding(position.indexToken);
         require(
             settingsManager.isManager(msg.sender) ||
                 (msg.sender == liquidateRegistrant[_posId] &&
@@ -362,7 +362,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     function triggerForOpenOrders(address _account, uint256 _posId) external nonReentrant {
         Position memory position = positions[_posId];
-        settingsManager.updateFunding(_indexToken);
+        settingsManager.updateFunding(position.indexToken);
         Order storage order = orders[_posId];
         require(
             position.owner == msg.sender || settingsManager.isManager(msg.sender),
@@ -424,7 +424,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     function triggerForTPSL(address _account, uint256 _posId) external nonReentrant {
         Position memory position = positions[_posId];
-        settingsManager.updateFunding(_indexToken);
+        settingsManager.updateFunding(position.indexToken);
         Order storage order = orders[_posId];
         require(
             position.owner == msg.sender || settingsManager.isManager(msg.sender),

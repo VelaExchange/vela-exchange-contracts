@@ -33,19 +33,19 @@ interface ISettingsManager {
 
     function feeRewardBasisPoints() external view returns (uint256);
 
-    function maxFundingRate(address _token) external view returns (uint256);
+    function maxFundingRate() external view returns (uint256);
 
-    function basisFundingRateFactor(address _token) external view returns (uint256);
+    function basisFundingRateFactor() external view returns (uint256);
 
     function fundingIndex(address _token) external view returns (int256);
 
-    function fundingRateFactor(address _token, bool _isLong) external view returns (uint256);
+    function fundingRateFactor(address _token) external view returns (uint256);
 
     function getFundingFee(
         address _indexToken,
         bool _isLong,
         uint256 _size,
-        uint256 _entryFundingRate
+        int256 _fundingIndex
     ) external view returns (int256);
 
     function getFundingRate(address _indexToken) external view returns (int256);
@@ -82,7 +82,7 @@ interface ISettingsManager {
 
     function isUnstakingEnabled(address _token) external view returns (bool);
 
-    function lastFundingTimes(address _token, bool _isLong) external view returns (uint256);
+    function lastFundingTimes(address _token) external view returns (uint256);
 
     function liquidationFeeUsd() external view returns (uint256);
 
