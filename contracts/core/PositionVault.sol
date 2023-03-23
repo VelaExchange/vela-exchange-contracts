@@ -27,8 +27,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     IVaultUtils private vaultUtils;
 
     bool private isInitialized;
-    mapping(address => mapping(bool => uint256)) public override poolAmounts;
-    mapping(address => mapping(bool => uint256)) public override reservedAmounts;
     mapping(uint256 => Position) public positions;
     mapping(uint256 => ConfirmInfo) public confirms;
     mapping(uint256 => Order) public orders;
@@ -52,10 +50,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 size,
         uint256 feeUsd
     );
-    event DecreasePoolAmount(address indexed token, bool isLong, uint256 amount);
-    event DecreaseReservedAmount(address indexed token, bool isLong, uint256 amount);
-    event IncreasePoolAmount(address indexed token, bool isLong, uint256 amount);
-    event IncreaseReservedAmount(address indexed token, bool isLong, uint256 amount);
     event NewOrder(
         address indexed account,
         address indexToken,
@@ -66,8 +60,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256[] triggerData
     );
     event UpdateOrder(uint256 posId, uint256 positionType, OrderStatus orderStatus);
-    event UpdatePoolAmount(address indexed token, bool isLong, uint256 amount);
-    event UpdateReservedAmount(address indexed token, bool isLong, uint256 amount);
     event UpdateTrailingStop(uint256 posId, uint256 stpPrice);
     event RegisterLiquidation(
         address account,
@@ -97,7 +89,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
             position.reserveAmount += _amount;
             vault.takeVUSDIn(_account, position.refer, _amount, 0);
-            _increasePoolAmount(_indexToken, position.isLong, _amount);
         } else {
             position.collateral -= _amount;
             vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
@@ -105,7 +96,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.reserveAmount -= _amount;
             position.lastIncreasedTime = block.timestamp;
             vault.takeVUSDOut(_account, position.refer, 0, _amount);
-            _decreasePoolAmount(_indexToken, position.isLong, _amount);
         }
         emit AddOrRemoveCollateral(_posId, isPlus, _amount, position.reserveAmount, position.collateral, position.size);
     }
@@ -306,8 +296,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         }
         vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, marginFees);
         settingsManager.decreaseOpenInterest(position.indexToken, _account, position.isLong, position.size);
-        _decreaseReservedAmount(position.indexToken, position.isLong, position.size);
-        _decreasePoolAmount(position.indexToken, position.isLong, marginFees);
         vaultUtils.emitLiquidatePositionEvent(_account, position.indexToken, position.isLong, _posId);
         delete positions[_posId];
         delete orders[_posId];
@@ -464,12 +452,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit UpdateTrailingStop(_posId, order.stpPrice);
     }
 
-    function _decreasePoolAmount(address _indexToken, bool _isLong, uint256 _amount) internal {
-        require(poolAmounts[_indexToken][_isLong] >= _amount, "Vault: poolAmount exceeded");
-        poolAmounts[_indexToken][_isLong] -= _amount;
-        emit DecreasePoolAmount(_indexToken, _isLong, poolAmounts[_indexToken][_isLong]);
-    }
-
     function _decreasePosition(
         address _account,
         address _indexToken,
@@ -482,7 +464,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         Position storage position = positions[_posId];
         require(position.size > 0, "position size is zero");
         settingsManager.decreaseOpenInterest(_indexToken, _account, _isLong, _sizeDelta);
-        _decreaseReservedAmount(_indexToken, _isLong, _sizeDelta);
         position.reserveAmount -= (position.reserveAmount * _sizeDelta) / position.size;
         (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(
             _account,
@@ -504,24 +485,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             delete confirms[_posId];
         }
         if (usdOutFee <= usdOut) {
-            if (usdOutFee != usdOut) {
-                _decreasePoolAmount(_indexToken, _isLong, usdOut - usdOutFee);
-            }
             vault.takeVUSDOut(_account, position.refer, usdOutFee, usdOut);
         } else if (usdOutFee != 0) {
             vault.distributeFee(_account, position.refer, usdOutFee);
         }
-    }
-
-    function _decreaseReservedAmount(address _token, bool _isLong, uint256 _amount) internal {
-        require(reservedAmounts[_token][_isLong] >= _amount, "Vault: reservedAmounts exceeded");
-        reservedAmounts[_token][_isLong] -= _amount;
-        emit DecreaseReservedAmount(_token, _isLong, reservedAmounts[_token][_isLong]);
-    }
-
-    function _increasePoolAmount(address _indexToken, bool _isLong, uint256 _amount) internal {
-        poolAmounts[_indexToken][_isLong] += _amount;
-        emit IncreasePoolAmount(_indexToken, _isLong, poolAmounts[_indexToken][_isLong]);
     }
 
     function _increasePosition(
@@ -563,15 +530,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         settingsManager.validatePosition(_account, _indexToken, _isLong, position.size, position.collateral);
         vaultUtils.validateMaxLeverage(_indexToken, position.size, position.collateral);
         settingsManager.increaseOpenInterest(_indexToken, _account, _isLong, _sizeDelta);
-        _increaseReservedAmount(_indexToken, _isLong, _sizeDelta);
-        _increasePoolAmount(_indexToken, _isLong, _amountInAfterFee);
         vaultUtils.emitIncreasePositionEvent(_account, _indexToken, _isLong, _posId, _amountIn, _sizeDelta, fee);
     }
 
-    function _increaseReservedAmount(address _token, bool _isLong, uint256 _amount) internal {
-        reservedAmounts[_token][_isLong] += _amount;
-        emit IncreaseReservedAmount(_token, _isLong, reservedAmounts[_token][_isLong]);
-    }
 
     function _reduceCollateral(
         address _account,

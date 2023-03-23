@@ -38,9 +38,5 @@ interface IPositionVault {
 
     function getPosition(uint256 _posId) external view returns (Position memory, Order memory, ConfirmInfo memory);
 
-    function poolAmounts(address _token, bool _isLong) external view returns (uint256);
-
-    function reservedAmounts(address _token, bool _isLong) external view returns (uint256);
-
     function getVaultUSDBalance() external view returns (uint256);
 }

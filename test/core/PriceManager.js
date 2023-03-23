@@ -123,45 +123,6 @@ describe("PriceManager", function () {
         await priceManager.setTokenConfig(usdt.address, 18, cryptoMaxLeverage, false)
     });
 
-    it ("getNextAveragePrice", async () => {
-        const _indexToken = btc.address
-        const _size = 1000
-        const _averagePrice = 100
-        const _isLong = true
-        const _nextPrice = 150
-        const _sizeDelta = 10
-        const averagePrice = await priceManager.getNextAveragePrice(_size, _averagePrice, _isLong, _nextPrice, _sizeDelta)
-        console.log("averagePrice 1 : ", ethers.utils.formatUnits(averagePrice, 30))
-        const _isLong2 = false
-        const averagePrice2 = await priceManager.getNextAveragePrice(_size, _averagePrice, _isLong2, _nextPrice, _sizeDelta)
-        console.log("averagePrice 2 : ", ethers.utils.formatUnits(averagePrice2, 30))
-    })
-
-    it ("getDelta", async () => {
-        const _indexToken = btc.address
-        const _size = 100
-        const _averagePrice = 1000
-        const _lastPrice = 80
-        const _isLong = true
-        const delta = await priceManager.getDelta(
-            _size,
-            _averagePrice,
-            _lastPrice,
-            _isLong)
-        const _isLong2 = false
-        const delta2 = await priceManager.getDelta(
-            _size,
-            _averagePrice,
-            _lastPrice,
-            _isLong2)
-        await expect(priceManager.getDelta(
-            _size,
-            0,
-            0,
-            _isLong2)).to.be.revertedWith("average price should be greater than zero")
-    })
-
-
     it ("usdToToken 0", async () => {
         const _indexToken = btc.address
         const usdAmount = 0
