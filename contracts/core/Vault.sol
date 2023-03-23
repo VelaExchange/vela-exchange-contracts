@@ -44,13 +44,13 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     modifier preventBanners(address _account) {
-        require(!settingsManager.checkBanList(_account) , "prevent banners from trade, stake, deposit");
+        require(!settingsManager.checkBanList(_account), "prevent banners from trade, stake, deposit");
         _;
     }
 
     modifier preventTradeForForexCloseTime(address _token) {
         if (priceManager.isForex(_token)) {
-            require(!settingsManager.pauseForexForCloseTime() , "prevent trade for forex close time");
+            require(!settingsManager.pauseForexForCloseTime(), "prevent trade for forex close time");
         }
         _;
     }
@@ -106,21 +106,22 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         address _indexToken,
         uint256 _sizeDelta,
         uint256 _posId
-    ) payable external nonReentrant preventTradeForForexCloseTime(_indexToken) preventBanners(msg.sender) {
+    ) external payable nonReentrant preventTradeForForexCloseTime(_indexToken) preventBanners(msg.sender) {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
         payable(settingsManager.feeManager()).transfer(msg.value);
         positionVault.decreasePosition(msg.sender, _indexToken, _sizeDelta, _posId);
     }
 
-    function deposit(address _account, address _token, uint256 _amount) external nonReentrant preventBanners(msg.sender) {
+    function deposit(
+        address _account,
+        address _token,
+        uint256 _amount
+    ) external nonReentrant preventBanners(msg.sender) {
         uint256 collateralDeltaUsd = priceManager.tokenToUsd(_token, _amount);
         require(settingsManager.isDeposit(_token), "deposit not allowed");
         require(_amount > 0, "zero amount");
-        if(_account != msg.sender) {
-            require(
-                settingsManager.checkDelegation(_account, msg.sender),
-                "not allowed for depositFor"
-            );
+        if (_account != msg.sender) {
+            require(settingsManager.checkDelegation(_account, msg.sender), "not allowed for depositFor");
         }
         _transferIn(msg.sender, _token, _amount);
         uint256 fee = (collateralDeltaUsd * settingsManager.depositFee(_token)) / BASIS_POINTS_DIVISOR;
@@ -146,8 +147,8 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
             payable(settingsManager.feeManager()).transfer(msg.value);
         } else {
-          require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
-          payable(settingsManager.feeManager()).transfer(msg.value);
+            require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
+            payable(settingsManager.feeManager()).transfer(msg.value);
         }
         positionVault.newPositionOrder(msg.sender, _indexToken, _isLong, _orderType, _params, _refer);
     }
@@ -167,14 +168,12 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         isInitialized = true;
     }
 
-    function stake(address _account, address _token, uint256 _amount) external nonReentrant preventBanners (msg.sender) {
+    function stake(address _account, address _token, uint256 _amount) external nonReentrant preventBanners(msg.sender) {
         require(settingsManager.isStakingEnabled(_token), "stake not allowed");
         require(_amount > 0, "zero amount");
         uint256 usdAmount = priceManager.tokenToUsd(_token, _amount);
-        if(_account != msg.sender){
-            require(settingsManager.checkDelegation(_account, msg.sender),
-                "not allowed for stakeFor"
-            );
+        if (_account != msg.sender) {
+            require(settingsManager.checkDelegation(_account, msg.sender), "not allowed for stakeFor");
         }
         _transferIn(msg.sender, _token, _amount);
         uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee(_token)) / BASIS_POINTS_DIVISOR;
@@ -209,7 +208,11 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit TakeVUSDOut(_account, _refer, _usdOut, _fee);
     }
 
-    function unstake(address _tokenOut, uint256 _vlpAmount, address _receiver) external nonReentrant preventBanners (msg.sender) {
+    function unstake(
+        address _tokenOut,
+        uint256 _vlpAmount,
+        address _receiver
+    ) external nonReentrant preventBanners(msg.sender) {
         require(settingsManager.isUnstakingEnabled(_tokenOut), "unstake not allowed");
         require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "zero amount not allowed and cant exceed totalVLP");
         require(
@@ -229,16 +232,17 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit Unstake(msg.sender, _tokenOut, _vlpAmount, amountOut);
     }
 
-    function withdraw(address _token, address _account, uint256 _amount) external nonReentrant preventBanners (msg.sender) {
+    function withdraw(
+        address _token,
+        address _account,
+        uint256 _amount
+    ) external nonReentrant preventBanners(msg.sender) {
         uint256 fee = (_amount * settingsManager.withdrawFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = _amount - fee;
         uint256 collateralDelta = priceManager.usdToToken(_token, afterFeeAmount);
         require(settingsManager.isWithdraw(_token), "withdraw not allowed");
-        if(_account != msg.sender) {
-            require(
-                settingsManager.checkDelegation(_account, msg.sender),
-                "not allowed for withdrawFor"
-            );
+        if (_account != msg.sender) {
+            require(settingsManager.checkDelegation(_account, msg.sender), "not allowed for withdrawFor");
         }
         _accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
         IVUSDC(vUSDC).burn(address(_account), _amount);
@@ -315,5 +319,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         } else {
             return (BASIS_POINTS_DIVISOR * (10 ** VLP_DECIMALS) * totalUSDC) / (totalVLP * PRICE_PRECISION);
         }
+    }
+
+    function getVaultUSDBalance() external view override returns (uint256) {
+        return totalUSDC;
     }
 }

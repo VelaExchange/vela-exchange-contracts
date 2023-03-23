@@ -57,7 +57,7 @@ struct Position {
     int256 realisedPnl;
     uint256 averagePrice;
     uint256 collateral;
-    uint256 entryFundingRate;
+    int256 fundingIndex;
     uint256 lastIncreasedTime;
     uint256 lastPrice;
     uint256 reserveAmount;

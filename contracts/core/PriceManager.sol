@@ -44,24 +44,6 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         maxLeverage[_token] = _maxLeverage;
     }
 
-    function getNextAveragePrice(
-        uint256 _size,
-        uint256 _averagePrice,
-        bool _isLong,
-        uint256 _nextPrice,
-        uint256 _sizeDelta
-    ) external pure override returns (uint256) {
-        (bool hasProfit, uint256 delta) = getDelta(_size, _averagePrice, _nextPrice, _isLong);
-        uint256 nextSize = _size + _sizeDelta;
-        uint256 divisor;
-        if (_isLong) {
-            divisor = hasProfit ? nextSize + delta : nextSize - delta;
-        } else {
-            divisor = hasProfit ? nextSize - delta : nextSize + delta;
-        }
-        return (_nextPrice * nextSize) / divisor;
-    }
-
     function tokenToUsd(address _token, uint256 _tokenAmount) external view override returns (uint256) {
         if (_tokenAmount == 0) {
             return 0;
@@ -78,26 +60,6 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         }
         uint256 decimals = tokenDecimals[_token];
         return (_usdAmount * (10 ** decimals)) / _price;
-    }
-
-    function getDelta(
-        uint256 _size,
-        uint256 _averagePrice,
-        uint256 _lastPrice,
-        bool _isLong
-    ) public pure override returns (bool, uint256) {
-        require(_averagePrice > 0, "average price should be greater than zero");
-        uint256 priceDelta = _averagePrice >= _lastPrice ? _averagePrice - _lastPrice : _lastPrice - _averagePrice;
-        uint256 delta = (_size * priceDelta) / _averagePrice;
-
-        bool hasProfit;
-
-        if (_isLong) {
-            hasProfit = _lastPrice >= _averagePrice;
-        } else {
-            hasProfit = _averagePrice >= _lastPrice;
-        }
-        return (hasProfit, delta);
     }
 
     function getLastPrice(address _token) public view override returns (uint256) {

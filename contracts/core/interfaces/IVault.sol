@@ -14,4 +14,6 @@ interface IVault {
     function transferBounty(address _account, uint256 _amount) external;
 
     function lastStakedAt(address _account) external view returns (uint256);
+
+    function getVaultUSDBalance() external view returns (uint256);
 }
