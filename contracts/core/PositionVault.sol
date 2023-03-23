@@ -69,7 +69,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     event UpdatePoolAmount(address indexed token, bool isLong, uint256 amount);
     event UpdateReservedAmount(address indexed token, bool isLong, uint256 amount);
     event UpdateTrailingStop(uint256 posId, uint256 stpPrice);
-    event RegisterLiquidation(address account, address token, bool isLong, uint256 posId, address caller, uint256 marginFees);
+    event RegisterLiquidation(
+        address account,
+        address token,
+        bool isLong,
+        uint256 posId,
+        address caller,
+        uint256 marginFees
+    );
     modifier onlyVault() {
         require(msg.sender == address(vault), "Only vault has access");
         _;
@@ -113,7 +120,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         ConfirmInfo storage confirm = confirms[_posId];
         Position storage position = positions[_posId];
         require(position.size > 0, "Position not Open");
-        require(_account == position.owner && _indexToken == position.indexToken, "you are not allowed to add position");
+        require(
+            _account == position.owner && _indexToken == position.indexToken,
+            "you are not allowed to add position"
+        );
         confirm.delayStartTime = block.timestamp;
         confirm.confirmDelayStatus = true;
         confirm.pendingDelayCollateral = _collateralDelta;
@@ -129,7 +139,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     ) external override onlyVault {
         Order storage order = orders[_posId];
         Position storage position = positions[_posId];
-        require(_account == position.owner && _indexToken == position.indexToken, "you are not allowed to add trailing stop");
+        require(
+            _account == position.owner && _indexToken == position.indexToken,
+            "you are not allowed to add trailing stop"
+        );
         vaultUtils.validateTrailingStopInputData(_indexToken, position.isLong, _posId, _params);
         order.collateral = _params[0];
         order.size = _params[1];
@@ -141,10 +154,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit AddTrailingStop(_posId, _params);
     }
 
-    function cancelPendingOrder(
-        address _account,
-        uint256 _posId
-    ) external override onlyVault {
+    function cancelPendingOrder(address _account, uint256 _posId) external override onlyVault {
         Order storage order = orders[_posId];
         Position storage position = positions[_posId];
         require(_account == position.owner, "You are not allowed to cancel");
@@ -162,10 +172,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
 
-    function confirmDelayTransaction(
-        address _account,
-        uint256 _posId
-    ) external nonReentrant {
+    function confirmDelayTransaction(address _account, uint256 _posId) external nonReentrant {
         Position storage position = positions[_posId];
         require(position.owner == msg.sender || settingsManager.isManager(msg.sender), "not allowed");
         ConfirmInfo storage confirm = confirms[_posId];
@@ -175,9 +182,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             _account,
             position.indexToken,
             position.isLong,
-            confirm.pendingDelaySize,
-            position.size,
-            position.entryFundingRate
+            confirm.pendingDelaySize
         );
         _increasePosition(
             _account,
@@ -208,7 +213,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     ) external override onlyVault {
         Position memory position = positions[_posId];
         uint256 price = priceManager.getLastPrice(_indexToken);
-        require(_account == position.owner && _indexToken == position.indexToken, 'you are not allowed to decrease position');
+        require(
+            _account == position.owner && _indexToken == position.indexToken,
+            "you are not allowed to decrease position"
+        );
         _decreasePosition(_account, _indexToken, _sizeDelta, price, position.isLong, _posId);
     }
 
@@ -239,7 +247,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         bool _isLong,
         uint256 _posId
     ) external nonReentrant {
-        settingsManager.updateCumulativeFundingRate(_indexToken, _isLong);
+        settingsManager.updateFunding(_indexToken);
         require(liquidateRegistrant[_posId] == address(0), "not the firstCaller");
         (uint256 liquidationState, uint256 marginFees) = vaultUtils.validateLiquidation(
             _account,
@@ -254,16 +262,13 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit RegisterLiquidation(_account, _indexToken, _isLong, _posId, msg.sender, marginFees);
     }
 
-    function liquidatePosition(
-        address _account,
-        uint256 _posId
-    ) external nonReentrant {
+    function liquidatePosition(address _account, uint256 _posId) external nonReentrant {
         Position memory position = positions[_posId];
-        settingsManager.updateCumulativeFundingRate(position.indexToken, position.isLong);
+        settingsManager.updateFunding(_indexToken);
         require(
             settingsManager.isManager(msg.sender) ||
-                ( msg.sender == liquidateRegistrant[_posId] &&
-                liquidateRegisterTime[_posId] + settingsManager.liquidationPendingTime() <= block.timestamp ),
+                (msg.sender == liquidateRegistrant[_posId] &&
+                    liquidateRegisterTime[_posId] + settingsManager.liquidationPendingTime() <= block.timestamp),
             "not manager or not allowed before pendingTime"
         );
         (uint256 liquidationState, uint256 marginFees) = vaultUtils.validateLiquidation(
@@ -279,12 +284,12 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 bountyTeam = (marginFees * teamPercent) / BASIS_POINTS_DIVISOR;
         //uint256 bounty = bountyTeam; //this can be used in log, leave to future
         vault.transferBounty(settingsManager.feeManager(), bountyTeam);
-        if ( msg.sender == liquidateRegistrant[_posId] || liquidateRegistrant[_posId] == address(0)){ 
+        if (msg.sender == liquidateRegistrant[_posId] || liquidateRegistrant[_posId] == address(0)) {
             // same address to receive firstCaller bounty and resolver bounty
-            uint256 bountyCaller = (marginFees * (firstCallerPercent+resolverPercent)) / BASIS_POINTS_DIVISOR;
+            uint256 bountyCaller = (marginFees * (firstCallerPercent + resolverPercent)) / BASIS_POINTS_DIVISOR;
             vault.transferBounty(msg.sender, bountyCaller);
             //bounty += bountyCaller;
-        }else{
+        } else {
             uint256 bountyCaller = (marginFees * firstCallerPercent) / BASIS_POINTS_DIVISOR;
             vault.transferBounty(liquidateRegistrant[_posId], bountyCaller);
             //bounty += bountyCaller;
@@ -331,14 +336,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         if (_orderType == OrderType.MARKET) {
             require(settingsManager.marketOrderEnabled(), "market order was disabled");
             order.positionType = POSITION_MARKET;
-            uint256 fee = settingsManager.collectMarginFees(
-                _account,
-                _indexToken,
-                _isLong,
-                order.size,
-                position.size,
-                position.entryFundingRate
-            );
+            uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, order.size);
             uint256 price = priceManager.getLastPrice(_indexToken);
             _increasePosition(_account, _indexToken, order.collateral + fee, order.size, lastPosId, price, _isLong);
             order.collateral = 0;
@@ -362,14 +360,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit NewOrder(_account, _indexToken, _isLong, lastPosId - 1, order.positionType, order.status, _params);
     }
 
-    function triggerForOpenOrders(
-        address _account,
-        uint256 _posId
-    ) external nonReentrant {
+    function triggerForOpenOrders(address _account, uint256 _posId) external nonReentrant {
         Position memory position = positions[_posId];
-        settingsManager.updateCumulativeFundingRate(position.indexToken, position.isLong);
+        settingsManager.updateFunding(_indexToken);
         Order storage order = orders[_posId];
-        require(position.owner == msg.sender || settingsManager.isManager(msg.sender), "You are not allowed to trigger");
+        require(
+            position.owner == msg.sender || settingsManager.isManager(msg.sender),
+            "You are not allowed to trigger"
+        );
         uint8 statusFlag = vaultUtils.validateTrigger(position.indexToken, position.isLong, _posId);
         require(statusFlag == ORDER_FILLED, "trigger not ready");
         if (statusFlag == ORDER_FILLED) {
@@ -378,9 +376,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     _account,
                     position.indexToken,
                     position.isLong,
-                    order.size,
-                    position.size,
-                    position.entryFundingRate
+                    order.size
                 );
                 _increasePosition(
                     _account,
@@ -399,9 +395,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     _account,
                     position.indexToken,
                     position.isLong,
-                    order.size,
-                    position.size,
-                    position.entryFundingRate
+                    order.size
                 );
                 _increasePosition(
                     _account,
@@ -428,20 +422,16 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
 
-
-    function triggerForTPSL(
-        address _account,
-        uint256 _posId
-    ) external nonReentrant {
+    function triggerForTPSL(address _account, uint256 _posId) external nonReentrant {
         Position memory position = positions[_posId];
-        settingsManager.updateCumulativeFundingRate(position.indexToken, position.isLong);
+        settingsManager.updateFunding(_indexToken);
         Order storage order = orders[_posId];
-        require(position.owner == msg.sender || settingsManager.isManager(msg.sender), "You are not allowed to trigger");
-        (bool hitTrigger, uint256 triggerAmountPercent, uint256 triggerPrice) = triggerOrderManager.executeTriggerOrders(
-            position.indexToken,
-            position.isLong,
-            _posId
+        require(
+            position.owner == msg.sender || settingsManager.isManager(msg.sender),
+            "You are not allowed to trigger"
         );
+        (bool hitTrigger, uint256 triggerAmountPercent, uint256 triggerPrice) = triggerOrderManager
+            .executeTriggerOrders(position.indexToken, position.isLong, _posId);
         require(hitTrigger, "trigger not ready");
         if (hitTrigger) {
             _decreasePosition(
@@ -456,9 +446,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
 
-    function updateTrailingStop(
-        uint256 _posId
-    ) external nonReentrant {
+    function updateTrailingStop(uint256 _posId) external nonReentrant {
         Position storage position = positions[_posId];
         Order storage order = orders[_posId];
         uint256 price = priceManager.getLastPrice(position.indexToken);
@@ -490,20 +478,21 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         bool _isLong,
         uint256 _posId
     ) internal {
-        settingsManager.updateCumulativeFundingRate(_indexToken, _isLong);
+        settingsManager.updateFunding(_indexToken);
         Position storage position = positions[_posId];
         require(position.size > 0, "position size is zero");
-        settingsManager.decreaseOpenInterest(
-            _indexToken,
-            _account,
-            _isLong,
-            _sizeDelta
-        );
+        settingsManager.decreaseOpenInterest(_indexToken, _account, _isLong, _sizeDelta);
         _decreaseReservedAmount(_indexToken, _isLong, _sizeDelta);
         position.reserveAmount -= (position.reserveAmount * _sizeDelta) / position.size;
-        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(_account, _indexToken, _sizeDelta, _price, _isLong, _posId);
+        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(
+            _account,
+            _indexToken,
+            _sizeDelta,
+            _price,
+            _isLong,
+            _posId
+        );
         if (position.size != _sizeDelta) {
-            position.entryFundingRate = settingsManager.cumulativeFundingRates(_indexToken, _isLong);
             position.size -= _sizeDelta;
             vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
             vaultUtils.validateMaxLeverage(_indexToken, position.size, position.collateral);
@@ -544,33 +533,28 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 _price,
         bool _isLong
     ) internal {
-        settingsManager.updateCumulativeFundingRate(_indexToken, _isLong);
+        settingsManager.updateFunding(_indexToken);
         Position storage position = positions[_posId];
         if (position.size == 0) {
             position.averagePrice = _price;
+            position.fundingIndex = settingsManager.fundingIndex(_indexToken);
         }
 
         if (position.size > 0 && _sizeDelta > 0) {
-            position.averagePrice = priceManager.getNextAveragePrice(
-                position.size,
-                position.averagePrice,
-                _isLong,
-                _price,
-                _sizeDelta
-            );
+            position.averagePrice =
+                (position.size * position.averagePrice + _sizeDelta * _price) /
+                (position.size + _sizeDelta);
+            position.fundingIndex =
+                (int256(position.size) *
+                    position.fundingIndex +
+                    int256(_sizeDelta) *
+                    settingsManager.fundingIndex(_indexToken)) /
+                int256(position.size + _sizeDelta);
         }
-        uint256 fee = settingsManager.collectMarginFees(
-            _account,
-            _indexToken,
-            _isLong,
-            _sizeDelta,
-            position.size,
-            position.entryFundingRate
-        );
+        uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
         uint256 _amountInAfterFee = _amountIn - fee;
         position.collateral += _amountInAfterFee;
         position.reserveAmount += _amountIn;
-        position.entryFundingRate = settingsManager.cumulativeFundingRates(_indexToken, _isLong);
         position.size += _sizeDelta;
         position.lastIncreasedTime = block.timestamp;
         position.lastPrice = _price;
@@ -602,10 +586,12 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 adjustedDelta;
         // scope variables to avoid stack too deep errors
         {
-            (bool _hasProfit, uint256 delta) = priceManager.getDelta(
+            (bool _hasProfit, uint256 delta) = settingsManager.getPnl(
+                _indexToken,
                 position.size,
                 position.averagePrice,
                 _price,
+                position.fundingIndex,
                 _isLong
             );
             hasProfit = _hasProfit;
@@ -615,14 +601,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
         uint256 usdOut;
         // transfer profits
-        uint256 fee = settingsManager.collectMarginFees(
-            _account,
-            _indexToken,
-            _isLong,
-            _sizeDelta,
-            position.size,
-            position.entryFundingRate
-        );
+        uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
         if (adjustedDelta > 0) {
             if (hasProfit) {
                 usdOut = adjustedDelta;
@@ -661,5 +640,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         Order memory order = orders[_posId];
         ConfirmInfo memory confirm = confirms[_posId];
         return (position, order, confirm);
+    }
+
+    function getVaultUSDBalance() external view override returns (uint256) {
+        return vault.getVaultUSDBalance();
     }
 }

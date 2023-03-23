@@ -54,14 +54,7 @@ contract VaultUtils is IVaultUtils, Constants {
     ) external override onlyVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
         (Position memory position, , ) = positionVault.getPosition(_posId);
-        uint256 migrateFeeUsd = settingsManager.collectMarginFees(
-            _account,
-            _indexToken,
-            _isLong,
-            position.size,
-            position.size,
-            position.entryFundingRate
-        );
+        uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
         emit ClosePosition(_posId, position.realisedPnl, price, migrateFeeUsd);
     }
 
@@ -86,7 +79,7 @@ contract VaultUtils is IVaultUtils, Constants {
                 _collateralDelta,
                 _sizeDelta,
                 position.reserveAmount,
-                position.entryFundingRate,
+                position.fundingIndex,
                 position.averagePrice,
                 price,
                 _fee
@@ -114,7 +107,7 @@ contract VaultUtils is IVaultUtils, Constants {
                 _collateralDelta,
                 _sizeDelta,
                 position.reserveAmount,
-                position.entryFundingRate,
+                position.fundingIndex,
                 position.averagePrice,
                 price,
                 _fee
@@ -130,21 +123,11 @@ contract VaultUtils is IVaultUtils, Constants {
     ) external override onlyVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
         (Position memory position, , ) = positionVault.getPosition(_posId);
-        uint256 migrateFeeUsd = settingsManager.collectMarginFees(
-            _account,
-            _indexToken,
-            _isLong,
-            position.size,
-            position.size,
-            position.entryFundingRate
-        );
+        uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
         emit LiquidatePosition(_posId, position.realisedPnl, price, migrateFeeUsd);
     }
 
-    function validateConfirmDelay(
-        uint256 _posId,
-        bool _raise
-    ) external view override returns (bool) {
+    function validateConfirmDelay(uint256 _posId, bool _raise) external view override returns (bool) {
         (, , ConfirmInfo memory confirm) = positionVault.getPosition(_posId);
         bool validateFlag;
         if (confirm.confirmDelayStatus) {
@@ -168,7 +151,14 @@ contract VaultUtils is IVaultUtils, Constants {
     ) external view override returns (bool) {
         (Position memory position, , ) = positionVault.getPosition(_posId);
         bool validateFlag;
-        (bool hasProfit, ) = priceManager.getDelta(position.size, position.averagePrice, _price, _isLong);
+        (bool hasProfit, ) = settingsManager.getPnl(
+            position.indexToken,
+            position.size,
+            position.averagePrice,
+            _price,
+            position.fundingIndex,
+            _isLong
+        );
         if (hasProfit) {
             if (
                 position.lastIncreasedTime > 0 &&
@@ -206,20 +196,15 @@ contract VaultUtils is IVaultUtils, Constants {
         (Position memory position, , ) = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         if (position.averagePrice > 0) {
-            (bool hasProfit, uint256 delta) = priceManager.getDelta(
+            (bool hasProfit, uint256 delta) = settingsManager.getPnl(
+                _indexToken,
                 position.size,
                 position.averagePrice,
                 price,
+                position.fundingIndex,
                 _isLong
             );
-            uint256 migrateFeeUsd = settingsManager.collectMarginFees(
-                _account,
-                _indexToken,
-                _isLong,
-                position.size,
-                position.size,
-                position.entryFundingRate
-            );
+            uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
             if (!hasProfit && position.collateral < delta) {
                 if (_raise) {
                     revert("Vault: losses exceed collateral");
@@ -240,9 +225,11 @@ contract VaultUtils is IVaultUtils, Constants {
         }
     }
 
-    function validateMaxLeverage(address _indexToken, 
-        uint256 _size, uint256 _collateral) external view override {
-        require(_collateral * (priceManager.maxLeverage(_indexToken) + LEVERAGE_SLIPPAGE) >= _size * MIN_LEVERAGE, "Vault: maxLeverage exceeded");
+    function validateMaxLeverage(address _indexToken, uint256 _size, uint256 _collateral) external view override {
+        require(
+            _collateral * (priceManager.maxLeverage(_indexToken) + LEVERAGE_SLIPPAGE) >= _size * MIN_LEVERAGE,
+            "Vault: maxLeverage exceeded"
+        );
     }
 
     function validatePosData(
@@ -352,11 +339,7 @@ contract VaultUtils is IVaultUtils, Constants {
         return flag;
     }
 
-    function validateTrigger(
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    ) external view override returns (uint8) {
+    function validateTrigger(address _indexToken, bool _isLong, uint256 _posId) external view override returns (uint8) {
         (, Order memory order, ) = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         uint8 statusFlag;
@@ -412,7 +395,8 @@ contract VaultUtils is IVaultUtils, Constants {
 
         if (
             _collateral - (_marginFees + settingsManager.liquidationFeeUsd()) <
-            (_size * (LIQUIDATE_THRESHOLD_DIVISOR - settingsManager.liquidateThreshold(_indexToken))) / LIQUIDATE_THRESHOLD_DIVISOR
+            (_size * (LIQUIDATE_THRESHOLD_DIVISOR - settingsManager.liquidateThreshold(_indexToken))) /
+                LIQUIDATE_THRESHOLD_DIVISOR
         ) {
             if (_raise) {
                 revert("Vault: maxThreshold exceeded");

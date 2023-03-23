@@ -3,12 +3,9 @@
 pragma solidity 0.8.9;
 
 interface ISettingsManager {
-
     function decreaseOpenInterest(address _token, address _sender, bool _isLong, uint256 _amount) external;
 
     function increaseOpenInterest(address _token, address _sender, bool _isLong, uint256 _amount) external;
-
-    function updateCumulativeFundingRate(address _token, bool _isLong) external;
 
     function openInterestPerAssetPerSide(address _token, bool _isLong) external view returns (uint256);
 
@@ -17,23 +14,12 @@ interface ISettingsManager {
     function bountyPercent() external view returns (uint32, uint32, uint32);
 
     function checkBanList(address _delegate) external view returns (bool);
-    
+
     function checkDelegation(address _master, address _delegate) external view returns (bool);
 
     function closeDeltaTime() external view returns (uint256);
 
-    function collectMarginFees(
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _sizeDelta,
-        uint256 _size,
-        uint256 _entryFundingRate
-    ) external view returns (uint256);
-
     function cooldownDuration() external view returns (uint256);
-
-    function cumulativeFundingRates(address _token, bool _isLong) external view returns (uint256);
 
     function liquidationPendingTime() external view returns (uint256);
 
@@ -47,7 +33,11 @@ interface ISettingsManager {
 
     function feeRewardBasisPoints() external view returns (uint256);
 
-    function fundingInterval() external view returns (uint256);
+    function maxFundingRate(address _token) external view returns (uint256);
+
+    function basisFundingRateFactor(address _token) external view returns (uint256);
+
+    function fundingIndex(address _token) external view returns (int256);
 
     function fundingRateFactor(address _token, bool _isLong) external view returns (uint256);
 
@@ -56,7 +46,27 @@ interface ISettingsManager {
         bool _isLong,
         uint256 _size,
         uint256 _entryFundingRate
+    ) external view returns (int256);
+
+    function getFundingRate(address _indexToken) external view returns (int256);
+
+    function collectMarginFees(
+        address _account,
+        address _indexToken,
+        bool _isLong,
+        uint256 _sizeDelta
     ) external view returns (uint256);
+
+    function getPnl(
+        address _indexToken,
+        uint256 _size,
+        uint256 _averagePrice,
+        uint256 _lastPrice,
+        int256 _fundingIndex,
+        bool _isLong
+    ) external view returns (bool, uint256);
+
+    function updateFunding(address _indexToken) external;
 
     function getPositionFee(address _indexToken, bool _isLong, uint256 _sizeDelta) external view returns (uint256);
 
@@ -81,6 +91,7 @@ interface ISettingsManager {
     function marginFeeBasisPoints(address _token, bool _isLong) external view returns (uint256);
 
     function marketOrderEnabled() external view returns (bool);
+
     function pauseForexForCloseTime() external view returns (bool);
 
     function priceMovementPercent() external view returns (uint256);

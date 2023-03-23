@@ -21,8 +21,6 @@ contract Constants {
     uint256 public constant MAX_COOLDOWN_DURATION = 30 days;
     uint256 public constant MAX_FEE_BASIS_POINTS = 5000; // 5%
     uint256 public constant MAX_FEE_REWARD_BASIS_POINTS = BASIS_POINTS_DIVISOR; // 100%
-    uint256 public constant MAX_FUNDING_RATE_FACTOR = 10000; // 1%
-    uint256 public constant MAX_FUNDING_RATE_INTERVAL = 48 hours;
     uint256 public constant MAX_LIQUIDATION_FEE_USD = 100 * PRICE_PRECISION; // 100 USD
     uint256 public constant MAX_PRICE_MOVEMENT_PERCENT = 10000; // 10%
     uint256 public constant MAX_STAKING_UNSTAKING_FEE = 10000; // 10%
@@ -30,7 +28,6 @@ contract Constants {
     uint256 public constant MAX_TRIGGER_GAS_FEE = 1e8 gwei;
     uint256 public constant MAX_GLOBAL_GAS_FEE = 1e8 gwei;
     uint256 public constant MAX_VESTING_DURATION = 700 days;
-    uint256 public constant MIN_FUNDING_RATE_INTERVAL = 1 hours;
     uint256 public constant MIN_LEVERAGE = 10000; // 1x
     uint256 public constant MIN_FEE_REWARD_BASIS_POINTS = 50000; // 50%
     uint256 public constant POSITION_MARKET = 0;
