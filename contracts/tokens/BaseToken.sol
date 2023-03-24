@@ -38,7 +38,7 @@ contract BaseToken is IERC20, Ownable {
         return true;
     }
 
-    function transferFrom(address _sender, address _recipient, uint256 _amount) external override returns (bool) {
+    function transferFrom(address _sender, address _recipient, uint256 _amount) public virtual override returns (bool) {
         require(allowances[_sender][msg.sender] >= _amount, "BaseToken: transfer amount exceeds allowance");
         uint256 nextAllowance = allowances[_sender][msg.sender] - _amount;
         _approve(_sender, msg.sender, nextAllowance);

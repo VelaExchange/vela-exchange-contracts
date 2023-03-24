@@ -9,9 +9,10 @@ import "../core/interfaces/ISettingsManager.sol";
 contract VLP is MintableBaseToken {
     IVault public vault;
     ISettingsManager public settingsManager;
+
     constructor() MintableBaseToken("Vela LP", "VLP", 0) {}
 
-    function initialize(address _vault, address _settingsManager) external onlyOwner{
+    function initialize(address _vault, address _settingsManager) external onlyOwner {
         vault = IVault(_vault);
         settingsManager = ISettingsManager(_settingsManager);
     }
@@ -26,5 +27,13 @@ contract VLP is MintableBaseToken {
             "cooldown duration not yet passed"
         );
         return super.transfer(_recipient, _amount);
+    }
+
+    function transferFrom(address _sender, address _recipient, uint256 _amount) public override returns (bool) {
+        require(
+            vault.lastStakedAt(_sender) + settingsManager.cooldownDuration() <= block.timestamp,
+            "cooldown duration not yet passed"
+        );
+        return super.transferFrom(_sender, _recipient, _amount);
     }
 }
