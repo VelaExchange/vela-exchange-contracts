@@ -22,7 +22,7 @@ describe("VLP", function () {
     before(async function () {
         vlp = await deployContract('VLP', [])
         let usdc = await deployContract("BaseToken", ["USD Coin", "USDC", expandDecimals('10000000', 6)])
-        let vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0]);
+        let vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0]);
         let Vault = await deployContract("Vault", [
             vlp.address,
             vusd.address

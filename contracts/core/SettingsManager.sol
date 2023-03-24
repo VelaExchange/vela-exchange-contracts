@@ -496,6 +496,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function getFundingRate(address _indexToken) public view override returns (int256) {
+        if (positionVault.getVaultUSDBalance() == 0) { return 0; }
         uint256 assetLongOI = openInterestPerAssetPerSide[_indexToken][true];
         uint256 assetShortOI = openInterestPerAssetPerSide[_indexToken][false];
 
