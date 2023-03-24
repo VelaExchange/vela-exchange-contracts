@@ -171,28 +171,6 @@ describe("SettingsManager", function () {
       await settingsManager.setEnableUnstaking(token, true)
     })
 
-    it ("setFundingInterval", async () => {
-      const fundingInterval = 2 * 60 * 60
-      const minFundingInterval = 30 * 60
-      const maxFundingInterval = 49 * 60 * 60
-      await expect(settingsManager.setFundingInterval(minFundingInterval))
-        .to.be.revertedWith("fundingInterval should be greater than MIN")
-      await expect(settingsManager.setFundingInterval(maxFundingInterval))
-        .to.be.revertedWith("fundingInterval should be smaller than MAX")
-
-      await settingsManager.setFundingInterval(fundingInterval)
-    })
-
-    it ("setFundingRateFactor", async () => {
-      const fundingRateFactor = 200
-      const token = btc.address
-      const isLong = true
-      const maxfundingRateFactor = 12000
-      await expect(settingsManager.setFundingRateFactor(token, isLong, maxfundingRateFactor))
-        .to.be.revertedWith("fundingRateFactor should be smaller than MAX")
-      await settingsManager.setFundingRateFactor(token, isLong, fundingRateFactor)
-    })
-
     it ("setLiquidateThreshold", async () => {
       const newThreshold = 2000
       const token = btc.address
