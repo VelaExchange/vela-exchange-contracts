@@ -103,12 +103,13 @@ contract VaultUtils is IVaultUtils, Constants {
         address _account,
         address _indexToken,
         bool _isLong,
-        uint256 _posId
+        uint256 _posId,
+        uint256 _delta
     ) external override onlyVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
         (Position memory position, , ) = positionVault.getPosition(_posId);
         uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
-        emit LiquidatePosition(_posId, position.realisedPnl, price, migrateFeeUsd);
+        emit LiquidatePosition(_posId, (-1) * int256(_delta), price, migrateFeeUsd);
     }
 
     function validateConfirmDelay(uint256 _posId, bool _raise) external view override returns (bool) {

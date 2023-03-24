@@ -26,7 +26,7 @@ interface IVaultUtils {
         uint256 _fee
     ) external;
 
-    function emitLiquidatePositionEvent(address _account, address _indexToken, bool _isLong, uint256 _posId) external;
+    function emitLiquidatePositionEvent(address _account, address _indexToken, bool _isLong, uint256 _posId, uint256 _delta) external;
 
     function validateConfirmDelay(
         uint256 _posId,
