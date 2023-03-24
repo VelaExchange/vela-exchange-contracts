@@ -1119,6 +1119,7 @@ describe("TriggerOrderManager", function () {
     const pId = 3
     const passTime = 60 * 60 * 2
     await ethers.provider.send('evm_increaseTime', [passTime]);
+    const position = await PositionVault.getPosition(pId)
     await ethers.provider.send('evm_mine');
     await PositionVault.triggerForTPSL(
       account,

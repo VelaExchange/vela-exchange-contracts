@@ -487,8 +487,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     function updateFunding(address _indexToken) external override {
         if (lastFundingTimes[_indexToken] != 0) {
             int256 fundingRate = getFundingRate(_indexToken);
-            fundingIndex[_indexToken] += fundingRate * int256(block.timestamp - lastFundingTimes[_indexToken]);
-
+            fundingIndex[_indexToken] += fundingRate;
             emit UpdateFunding(_indexToken, fundingIndex[_indexToken]);
         }
 
@@ -496,13 +495,17 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function getFundingRate(address _indexToken) public view override returns (int256) {
+        if (lastFundingTimes[_indexToken] > block.timestamp) { return 0; }
+        uint256 totalUSDBalance = positionVault.getVaultUSDBalance();
+        if (totalUSDBalance == 0) { return 0; }
+        uint256 intervals = block.timestamp - lastFundingTimes[_indexToken];
         uint256 assetLongOI = openInterestPerAssetPerSide[_indexToken][true];
         uint256 assetShortOI = openInterestPerAssetPerSide[_indexToken][false];
 
         if (assetLongOI >= assetShortOI) {
             uint256 fundingRate = ((assetLongOI - assetShortOI) *
                 fundingRateFactor[_indexToken] *
-                basisFundingRateFactor) / positionVault.getVaultUSDBalance();
+                basisFundingRateFactor * intervals) / totalUSDBalance;
             if (fundingRate > maxFundingRate) {
                 return int256(maxFundingRate);
             } else {
@@ -511,7 +514,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         } else {
             uint256 fundingRate = ((assetShortOI - assetLongOI) *
                 fundingRateFactor[_indexToken] *
-                basisFundingRateFactor) / positionVault.getVaultUSDBalance();
+                basisFundingRateFactor * intervals) / totalUSDBalance;
             if (fundingRate > maxFundingRate) {
                 return -1 * int256(maxFundingRate);
             } else {
