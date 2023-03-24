@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../tokens/interfaces/IMintable.sol";
-import "../tokens/interfaces/IVUSDC.sol";
+import "../tokens/interfaces/IVUSD.sol";
 import "./interfaces/IPositionVault.sol";
 import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
@@ -20,15 +20,15 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     using SafeERC20 for IERC20;
 
     uint256 public totalVLP;
-    uint256 public totalUSDC;
+    uint256 public totalUSD;
     IPositionVault private positionVault;
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
     address private immutable vlp;
-    address private immutable vUSDC;
+    address private immutable vusd;
     bool private isInitialized;
 
-    mapping(address => uint256) public lastStakedAt;
+    mapping(address => uint256) public override lastStakedAt;
 
     event Deposit(address indexed account, address indexed token, uint256 amount);
     event Stake(address indexed account, address token, uint256 amount, uint256 mintAmount);
@@ -55,17 +55,17 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         _;
     }
 
-    constructor(address _vlp, address _vUSDC) {
+    constructor(address _vlp, address _vusd) {
         vlp = _vlp;
-        vUSDC = _vUSDC;
+        vusd = _vusd;
     }
 
-    function accountDeltaAndFeeIntoTotalUSDC(
+    function accountDeltaAndFeeIntoTotalUSD(
         bool _hasProfit,
         uint256 _adjustDelta,
         uint256 _fee
     ) external override onlyVault {
-        _accountDeltaAndFeeIntoTotalUSDC(_hasProfit, _adjustDelta, _fee);
+        _accountDeltaAndFeeIntoTotalUSD(_hasProfit, _adjustDelta, _fee);
     }
 
     function addOrRemoveCollateral(
@@ -126,8 +126,8 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         _transferIn(msg.sender, _token, _amount);
         uint256 fee = (collateralDeltaUsd * settingsManager.depositFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = collateralDeltaUsd - fee;
-        _accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
-        IVUSDC(vUSDC).mint(_account, afterFeeAmount);
+        _accountDeltaAndFeeIntoTotalUSD(true, 0, fee);
+        IVUSD(vusd).mint(_account, afterFeeAmount);
         _distributeFee(_account, ZERO_ADDRESS, fee);
         emit Deposit(_account, _token, _amount);
     }
@@ -184,26 +184,26 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
                 (usdAmountAfterFee * DEFAULT_VLP_PRICE * (10 ** VLP_DECIMALS)) /
                 (PRICE_PRECISION * BASIS_POINTS_DIVISOR);
         } else {
-            mintAmount = (usdAmountAfterFee * totalVLP) / totalUSDC;
+            mintAmount = (usdAmountAfterFee * totalVLP) / totalUSD;
         }
-        _accountDeltaAndFeeIntoTotalUSDC(true, 0, usdAmountFee);
+        _accountDeltaAndFeeIntoTotalUSD(true, 0, usdAmountFee);
         _distributeFee(_account, ZERO_ADDRESS, usdAmountFee);
         IMintable(vlp).mint(_account, mintAmount);
         lastStakedAt[_account] = block.timestamp;
         totalVLP += mintAmount;
-        totalUSDC += usdAmountAfterFee;
+        totalUSD += usdAmountAfterFee;
         emit Stake(_account, _token, _amount, mintAmount);
     }
 
     function takeVUSDIn(address _account, address _refer, uint256 _amount, uint256 _fee) external override onlyVault {
-        IVUSDC(vUSDC).burn(_account, _amount);
+        IVUSD(vusd).burn(_account, _amount);
         _mintOrBurnVUSDForVault(true, _amount, _fee, _refer);
         emit TakeVUSDIn(_account, _refer, _amount, _fee);
     }
 
     function takeVUSDOut(address _account, address _refer, uint256 _fee, uint256 _usdOut) external override onlyVault {
         uint256 _usdOutAfterFee = _usdOut - _fee;
-        IVUSDC(vUSDC).mint(_account, _usdOutAfterFee);
+        IVUSD(vusd).mint(_account, _usdOutAfterFee);
         _mintOrBurnVUSDForVault(false, _usdOutAfterFee, _fee, _refer);
         emit TakeVUSDOut(_account, _refer, _usdOut, _fee);
     }
@@ -220,13 +220,13 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             "cooldown duration not yet passed"
         );
         IMintable(vlp).burn(msg.sender, _vlpAmount);
-        uint256 usdAmount = (_vlpAmount * totalUSDC) / totalVLP;
+        uint256 usdAmount = (_vlpAmount * totalUSD) / totalVLP;
         totalVLP -= _vlpAmount;
         uint256 usdAmountFee = (usdAmount * settingsManager.unstakingFee(_tokenOut)) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
-        totalUSDC -= usdAmount;
+        totalUSD -= usdAmount;
         uint256 amountOut = priceManager.usdToToken(_tokenOut, usdAmountAfterFee);
-        _accountDeltaAndFeeIntoTotalUSDC(true, 0, usdAmountFee);
+        _accountDeltaAndFeeIntoTotalUSD(true, 0, usdAmountFee);
         _distributeFee(msg.sender, ZERO_ADDRESS, usdAmountFee);
         _transferOut(_tokenOut, amountOut, _receiver);
         emit Unstake(msg.sender, _tokenOut, _vlpAmount, amountOut);
@@ -244,31 +244,31 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         if (_account != msg.sender) {
             require(settingsManager.checkDelegation(_account, msg.sender), "not allowed for withdrawFor");
         }
-        _accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
-        IVUSDC(vUSDC).burn(address(_account), _amount);
+        _accountDeltaAndFeeIntoTotalUSD(true, 0, fee);
+        IVUSD(vusd).burn(address(_account), _amount);
         _distributeFee(_account, ZERO_ADDRESS, fee);
         _transferOut(_token, collateralDelta, _account);
         emit Withdraw(address(_account), _token, collateralDelta);
     }
 
     function transferBounty(address _account, uint256 _amount) external override onlyVault {
-        IVUSDC(vUSDC).burn(address(this), _amount);
-        IVUSDC(vUSDC).mint(_account, _amount);
-        totalUSDC -= _amount;
+        IVUSD(vusd).burn(address(this), _amount);
+        IVUSD(vusd).mint(_account, _amount);
+        totalUSD -= _amount;
         emit TransferBounty(_account, _amount);
     }
 
-    function _accountDeltaAndFeeIntoTotalUSDC(bool _hasProfit, uint256 _adjustDelta, uint256 _fee) internal {
+    function _accountDeltaAndFeeIntoTotalUSD(bool _hasProfit, uint256 _adjustDelta, uint256 _fee) internal {
         if (_adjustDelta != 0) {
             uint256 _feeRewardOnDelta = (_adjustDelta * settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
             if (_hasProfit) {
-                totalUSDC += _feeRewardOnDelta;
+                totalUSD += _feeRewardOnDelta;
             } else {
-                require(totalUSDC >= _feeRewardOnDelta, "exceeded VLP bottom");
-                totalUSDC -= _feeRewardOnDelta;
+                require(totalUSD >= _feeRewardOnDelta, "exceeded VLP bottom");
+                totalUSD -= _feeRewardOnDelta;
             }
         }
-        totalUSDC += (_fee * settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
+        totalUSD += (_fee * settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
     }
 
     function _distributeFee(address _account, address _refer, uint256 _fee) internal {
@@ -287,7 +287,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     function _mintOrBurnVUSDForVault(bool _mint, uint256 _amount, uint256 _fee, address _refer) internal {
         if (_fee != 0 && _refer != ZERO_ADDRESS && settingsManager.referEnabled()) {
             uint256 referFee = (_fee * settingsManager.referFee()) / BASIS_POINTS_DIVISOR;
-            IVUSDC(vUSDC).mint(_refer, referFee);
+            IVUSD(vusd).mint(_refer, referFee);
             if (_mint) {
                 _amount -= referFee;
             } else {
@@ -299,7 +299,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         if (_fee != 0 && _feeManager != ZERO_ADDRESS) {
             uint256 feeReward = (_fee * settingsManager.feeRewardBasisPoints()) / BASIS_POINTS_DIVISOR;
             uint256 feeMinusFeeReward = _fee - feeReward;
-            IVUSDC(vUSDC).mint(_feeManager, feeMinusFeeReward);
+            IVUSD(vusd).mint(_feeManager, feeMinusFeeReward);
             if (_mint) {
                 _amount -= feeMinusFeeReward;
             } else {
@@ -307,9 +307,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             }
         }
         if (_mint) {
-            IVUSDC(vUSDC).mint(address(this), _amount);
+            IVUSD(vusd).mint(address(this), _amount);
         } else {
-            IVUSDC(vUSDC).burn(address(this), _amount);
+            IVUSD(vusd).burn(address(this), _amount);
         }
     }
 
@@ -317,11 +317,11 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         if (totalVLP == 0) {
             return DEFAULT_VLP_PRICE;
         } else {
-            return (BASIS_POINTS_DIVISOR * (10 ** VLP_DECIMALS) * totalUSDC) / (totalVLP * PRICE_PRECISION);
+            return (BASIS_POINTS_DIVISOR * (10 ** VLP_DECIMALS) * totalUSD) / (totalVLP * PRICE_PRECISION);
         }
     }
 
     function getVaultUSDBalance() external view override returns (uint256) {
-        return totalUSDC;
+        return totalUSD;
     }
 }

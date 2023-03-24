@@ -3,9 +3,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./interfaces/IVUSDC.sol";
+import "./interfaces/IVUSD.sol";
 
-contract vUSDC is IVUSDC, Ownable {
+contract VUSD is IVUSD, Ownable {
     uint8 public constant decimals = 30;
 
     string public name;
