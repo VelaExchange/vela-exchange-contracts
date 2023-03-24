@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../tokens/interfaces/IMintable.sol";
-import "../tokens/interfaces/IVUSDC.sol";
+import "../tokens/interfaces/IVUSD.sol";
 import "./interfaces/IPositionVault.sol";
 import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
@@ -294,7 +294,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             _decreasePosition(_account, position.indexToken, position.size, price, position.isLong, _posId);
             return;
         }
-        vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, marginFees);
+        vault.accountDeltaAndFeeIntoTotalUSD(true, 0, marginFees);
         settingsManager.decreaseOpenInterest(position.indexToken, _account, position.isLong, position.size);
         vaultUtils.emitLiquidatePositionEvent(_account, position.indexToken, position.isLong, _posId);
         delete positions[_posId];
@@ -525,14 +525,13 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         position.size += _sizeDelta;
         position.lastIncreasedTime = block.timestamp;
         position.lastPrice = _price;
-        vault.accountDeltaAndFeeIntoTotalUSDC(true, 0, fee);
+        vault.accountDeltaAndFeeIntoTotalUSD(true, 0, fee);
         vault.takeVUSDIn(_account, position.refer, _amountIn, fee);
         settingsManager.validatePosition(_account, _indexToken, _isLong, position.size, position.collateral);
         vaultUtils.validateMaxLeverage(_indexToken, position.size, position.collateral);
         settingsManager.increaseOpenInterest(_indexToken, _account, _isLong, _sizeDelta);
         vaultUtils.emitIncreasePositionEvent(_account, _indexToken, _isLong, _posId, _amountIn, _sizeDelta, fee);
     }
-
 
     function _reduceCollateral(
         address _account,
@@ -584,7 +583,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             usdOut += _collateralDelta;
             position.collateral -= _collateralDelta;
         }
-        vault.accountDeltaAndFeeIntoTotalUSDC(hasProfit, adjustedDelta, fee);
+        vault.accountDeltaAndFeeIntoTotalUSD(hasProfit, adjustedDelta, fee);
         // if the usdOut is more or equal than the fee then deduct the fee from the usdOut directly
         // else deduct the fee from the position's collateral
         if (usdOut < fee) {

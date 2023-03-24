@@ -10,11 +10,11 @@ import "./interfaces/IPositionVault.sol";
 import "./interfaces/IOperators.sol";
 import "../staking/interfaces/ITokenFarm.sol";
 import {Constants} from "../access/Constants.sol";
-import "../tokens/interfaces/IVUSDC.sol";
+import "../tokens/interfaces/IVUSD.sol";
 
 contract SettingsManager is ISettingsManager, Ownable, Constants {
     using EnumerableSet for EnumerableSet.AddressSet;
-    address public immutable vUSDC;
+    address public immutable vusd;
     IPositionVault public immutable positionVault;
     IOperators public immutable operators;
     ITokenFarm public immutable tokenFarm;
@@ -106,15 +106,15 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         _;
     }
 
-    constructor(address _positionVault, address _operators, address _vUSDC, address _tokenFarm) {
+    constructor(address _positionVault, address _operators, address _vusd, address _tokenFarm) {
         require(Address.isContract(_positionVault), "vault address is invalid");
         require(Address.isContract(_operators), "operators address is invalid");
-        require(Address.isContract(_vUSDC), "vUSD address is invalid");
+        require(Address.isContract(_vusd), "VUSD address is invalid");
         require(Address.isContract(_tokenFarm), "tokenFarm address is invalid");
         positionVault = IPositionVault(_positionVault);
         operators = IOperators(_operators);
         tokenFarm = ITokenFarm(_tokenFarm);
-        vUSDC = _vUSDC;
+        vusd = _vusd;
     }
 
     function delegate(address[] memory _delegates) external {

@@ -3,7 +3,7 @@
 pragma solidity 0.8.9;
 
 interface IVault {
-    function accountDeltaAndFeeIntoTotalUSDC(bool _hasProfit, uint256 _adjustDelta, uint256 _fee) external;
+    function accountDeltaAndFeeIntoTotalUSD(bool _hasProfit, uint256 _adjustDelta, uint256 _fee) external;
 
     function distributeFee(address _account, address _refer, uint256 _fee) external;
 
