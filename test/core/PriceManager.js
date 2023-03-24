@@ -64,7 +64,7 @@ describe("PriceManager", function () {
         usdc = await deployContract("BaseToken", ["USD Coin", "USDC", expandDecimals('10000000', 18)])
         usdcPriceFeed = await deployContract("FastPriceFeed", [])
         vlpPriceFeed = await deployContract("FastPriceFeed", [])
-        vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
+        vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0])
         vlp = await deployContract('VLP', [])
         operator = await deployContract('ExchangeOperators', [])
         vestingDuration = 6 * 30 * 24 * 60 * 60

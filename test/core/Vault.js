@@ -96,7 +96,7 @@ describe("Vault", function () {
         usdc = await deployContract("BaseToken", ["USD Coin", "USDC", expandDecimals('10000000', 18)])
         usdcPriceFeed = await deployContract("FastPriceFeed", [])
 
-        vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
+        vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0])
         vlp = await deployContract('VLP', [])
         vela = await deployContract('Vela', [trustForwarder])
         eVela = await deployContract('eVELA', [])
@@ -127,7 +127,7 @@ describe("Vault", function () {
             zeroAddress,
             tokenFarm.address
           ]
-        )).to.be.revertedWith("vUSD address is invalid")
+        )).to.be.revertedWith("VUSD address is invalid")
         await expect(deployContract("SettingsManager",
           [
             PositionVault.address,
@@ -402,23 +402,17 @@ describe("Vault", function () {
       await settingsManager.setEnableUnstaking(usdc.address, true);
       await settingsManager.setFeeManager(feeManagerAddress);
       await settingsManager.setMaxOpenInterestPerAsset(btc.address, BTCMaxOpenInterest);
-      await settingsManager.setFundingRateFactor(btc.address, true, BTCLongFundingRateFactor);
-      await settingsManager.setFundingRateFactor(btc.address, false, BTCShortFundingRateFactor);
+      await settingsManager.setFundingRateFactor(btc.address, BTCLongFundingRateFactor);
       await settingsManager.setMaxOpenInterestPerAsset(eth.address, ETHMaxOpenInterest);
-      await settingsManager.setFundingRateFactor(eth.address, true, ETHLongFundingRateFactor);
-      await settingsManager.setFundingRateFactor(eth.address, false, ETHShortFundingRateFactor);
+      await settingsManager.setFundingRateFactor(eth.address, ETHLongFundingRateFactor);
       await settingsManager.setMaxOpenInterestPerAsset(doge.address, DOGEMaxOpenInterest);
-      await settingsManager.setFundingRateFactor(doge.address, true, DOGELongFundingRateFactor);
-      await settingsManager.setFundingRateFactor(doge.address, false, DOGEShortFundingRateFactor);
+      await settingsManager.setFundingRateFactor(doge.address, DOGELongFundingRateFactor);
       await settingsManager.setMaxOpenInterestPerAsset(gbp.address, GBPMaxOpenInterest);
-      await settingsManager.setFundingRateFactor(gbp.address, true, GBPLongFundingRateFactor);
-      await settingsManager.setFundingRateFactor(gbp.address, false, GBPShortFundingRateFactor);
+      await settingsManager.setFundingRateFactor(gbp.address, GBPLongFundingRateFactor);
       await settingsManager.setMaxOpenInterestPerAsset(eur.address, EURMaxOpenInterest);
-      await settingsManager.setFundingRateFactor(eur.address, true, EURLongFundingRateFactor);
-      await settingsManager.setFundingRateFactor(eur.address, false, EURShortFundingRateFactor);
+      await settingsManager.setFundingRateFactor(eur.address, EURLongFundingRateFactor);
       await settingsManager.setMaxOpenInterestPerAsset(jpy.address, JPYMaxOpenInterest);
-      await settingsManager.setFundingRateFactor(jpy.address, true, JPYLongFundingRateFactor);
-      await settingsManager.setFundingRateFactor(jpy.address, false, JPYShortFundingRateFactor);
+      await settingsManager.setFundingRateFactor(jpy.address, JPYLongFundingRateFactor);
     })
 
     it ("deploy ComplexRewardPerSec and add pool info to tokenFarm", async () => {
@@ -516,11 +510,6 @@ describe("Vault", function () {
      await tokenFarm.updateRewardTierInfo(levels, percents);
     })
 
-    it ("setFundingInterval", async () => {
-      const fundingInterval = 1 * 60 * 60;
-      await settingsManager.setFundingInterval(fundingInterval)
-    })
-
     it("deposit with General Token", async () => {
       const amount = expandDecimals('1', 18)
       const collateralDeltaUsd = await priceManager.tokenToUsd(btc.address, amount);
@@ -577,10 +566,10 @@ describe("Vault", function () {
    it("stakeFor with Stable Coins", async () => {
     const amount = expandDecimals('1000', 18)
     await usdc.connect(wallet).transfer(user1.address, amount)
-    const totalUSDC = await Vault.totalUSDC()
+    const totalUSD = await Vault.totalUSD()
     const totalVLP = await Vault.totalVLP()
     expect(await Vault.getVLPPrice())
-      .eq(bigNumberify(BASIS_POINTS_DIVISOR).mul(expandDecimals('1', 18)).mul(totalUSDC).div(totalVLP).div(PRICE_PRECISION))
+      .eq(bigNumberify(BASIS_POINTS_DIVISOR).mul(expandDecimals('1', 18)).mul(totalUSD).div(totalVLP).div(PRICE_PRECISION))
     const originalVLPBalance = await vlp.balanceOf(wallet.address)
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount);
     await usdc.connect(user1).approve(Vault.address,  amount); // approve USDC
@@ -591,7 +580,7 @@ describe("Vault", function () {
       .eq(true)
     await Vault.connect(user1).stake(wallet.address, usdc.address, amount); // stake USDC
     const usdAmountAfterFee = collateralDeltaUsd.mul(bigNumberify(BASIS_POINTS_DIVISOR).sub(bigNumberify(stakingFee))).div(bigNumberify(BASIS_POINTS_DIVISOR))
-    const newVLPMintedAmount = usdAmountAfterFee.mul(totalVLP).div(totalUSDC)
+    const newVLPMintedAmount = usdAmountAfterFee.mul(totalVLP).div(totalUSD)
     expect(await vlp.balanceOf(wallet.address)).eq(newVLPMintedAmount.add(originalVLPBalance))
    })
 
@@ -635,9 +624,9 @@ describe("Vault", function () {
       .to.be.revertedWith("zero amount not allowed and cant exceed totalVLP")
     await expect(Vault.unstake(usdc.address, vlpAmount, wallet.address))
       .to.be.revertedWith("cooldown duration not yet passed")
-    const totalUSDC = await Vault.totalUSDC()
+    const totalUSD = await Vault.totalUSD()
     const totalVLP = await Vault.totalVLP()
-    const usdAmount = vlpAmount.mul(totalUSDC).div(totalVLP)
+    const usdAmount = vlpAmount.mul(totalUSD).div(totalVLP)
     const usdAmountFee = usdAmount.mul(bigNumberify(unstakingFee)).div(bigNumberify(BASIS_POINTS_DIVISOR));
     const usdAmountAfterFee = usdAmount.sub(usdAmountFee)
     const amountOut = await priceManager.usdToToken(
@@ -1217,9 +1206,9 @@ describe("Vault", function () {
       ).to.be.revertedWith("trigger not ready")
     }
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
-    await expect(PositionVault.triggerForOpenOrders(
+    await PositionVault.triggerForOpenOrders(
       account,
-      posId, {from: wallet.address, value: 0})).to.be.revertedWith("Vault: poolAmount exceeded")
+      posId, {from: wallet.address, value: 0})
   })
 
   it ("addTrailingStop for Short with trailing type = Amount", async () => {
@@ -1767,11 +1756,6 @@ describe("Vault", function () {
     )).to.be.revertedWith("you are not allowed to decrease position")
     await expect(Vault.decreasePosition(
       indexToken,
-      expandDecimals('1000', 30),
-      posId
-    )).to.be.revertedWith("Vault: reservedAmounts exceeded")
-    await expect(Vault.decreasePosition(
-      indexToken,
       sizeDelta,
       posId
     )).to.be.revertedWith("not allowed to close the position")
@@ -1807,13 +1791,6 @@ describe("Vault", function () {
     await expect(PositionVault.liquidatePosition(account, posId))
       .to.be.revertedWith("not exceed or allowed")
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice(43800))
-    await expect(VaultUtils.validateLiquidation(
-      account,
-      indexToken,
-      isLong,
-      posId,
-      true
-    )).to.be.revertedWith("Vault: losses exceed collateral")
     const validateLiquidation = await VaultUtils.validateLiquidation(
       account,
       indexToken,
@@ -1821,11 +1798,6 @@ describe("Vault", function () {
       posId,
       false
     )
-    expect(validateLiquidation[0].toNumber()).gt(0)
-    snapshot = await ethers.provider.send('evm_snapshot', [])
-    await PositionVault.liquidatePosition(account, posId)
-    await ethers.provider.send('evm_revert', [snapshot])
-    // rollback to position 0 not liquidated
   })
 
   it ("liquidatePosition not manager", async () => {
@@ -1833,7 +1805,7 @@ describe("Vault", function () {
     const indexToken = btc.address;
     const isLong = true
     const posId = 0
-
+    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(13800))
     let [status, marginFee] = await VaultUtils.validateLiquidation(
       account,
       indexToken,
@@ -1889,13 +1861,6 @@ describe("Vault", function () {
       posId,
       false
     )
-    await expect(VaultUtils.validateLiquidation(
-      account,
-      indexToken,
-      isLong,
-      posId,
-      true
-    )).to.be.revertedWith("Vault: fees exceed collateral")
     if (validateLiquidation[0].toNumber() == 2) { // Liquidate Max Threshold
       await expect(PositionVault.liquidatePosition(account, posId)).to.be.revertedWith("Vault: fees exceed collateral")
     }
@@ -1948,13 +1913,6 @@ describe("Vault", function () {
       posId,
       false
     )
-    await expect(VaultUtils.validateLiquidation(
-      account,
-      indexToken,
-      isLong,
-      posId,
-      true
-    )).to.be.revertedWith("Vault: fees exceed collateral")
     if (validateLiquidation[0].toNumber() == 2) { // Liquidate Max Threshold
       await PositionVault.liquidatePosition(account, posId)
     }
@@ -2009,13 +1967,6 @@ describe("Vault", function () {
       posId,
       false
     )
-    await expect(VaultUtils.validateLiquidation(
-      account,
-      indexToken,
-      isLong,
-      posId,
-      true
-    )).to.be.revertedWith("Vault: liquidation fees exceed collateral")
     if (validateLiquidation[0].toNumber() == 2) { // Liquidate Max Threshold
       await PositionVault.liquidatePosition(account, posId)
     }

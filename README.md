@@ -1173,25 +1173,6 @@ Example Output
 ```
 ```
 
-### setFundingInterval
-Owner Function
-
-This is an owner function to set funding interval for fundingFee
-```
-settingsManager.setFundingInterval(uint256 _fundingInterval)
-```
-
-Example Input
-```
-(
-    60 * 60 * 2 // set funding interval as 2 hrs
-)
-```
-
-Example Output
-```
-```
-
 ### setFundingRateFactor
 Owner Function
 
@@ -1199,7 +1180,6 @@ This is an owner function to set funding rate factor based on asset and side
 ```
 settingsManager.setFundingRateFactor(
         address _token,
-        bool _isLong,
         uint256 _fundingRateFactor
     )
 ```
@@ -1207,7 +1187,7 @@ settingsManager.setFundingRateFactor(
 Example Input
 ```
 (
-    '0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', true, 100 // set BTC Long funding rate
+    '0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', 100 // set BTC Long funding rate
 )
 ```
 

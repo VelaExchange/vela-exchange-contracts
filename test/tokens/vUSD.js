@@ -17,7 +17,7 @@ describe("vUSD", function () {
     let vUSD;
 
     before(async function () {
-        vUSD = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
+        vUSD = await deployContract('VUSD', ['Vested USD', 'VUSD', 0])
     });
 
     it("transferOwnership", async () => {
@@ -60,7 +60,7 @@ describe("vUSD", function () {
 
     it("setInfo", async () => {
         const name = "vUSD"
-        const symbol = "VUSDC"
+        const symbol = "VUSD"
         await expect(vUSD.connect(user3).setInfo(name, symbol))
         .to.be.revertedWith('Ownable: caller is not the owner')
         await vUSD.connect(user1).setInfo(name, symbol)

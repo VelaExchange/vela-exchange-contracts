@@ -11,7 +11,7 @@ contract Constants {
     uint256 public constant LIQUIDATE_THRESHOLD_DIVISOR = 10 * BASIS_POINTS_DIVISOR;
     uint256 public constant DEFAULT_VLP_PRICE = 100000;
     uint256 public constant DEFAULT_MAX_OI_PER_WALLET = 1000000000 * PRICE_PRECISION;
-    uint256 public constant FUNDING_RATE_PRECISION = 1000000;
+    uint256 public constant FUNDING_RATE_PRECISION = 1000000000;
     uint256 public constant LIQUIDATE_NONE_EXCEED = 0;
     uint256 public constant LIQUIDATE_FEE_EXCEED = 1;
     uint256 public constant LIQUIDATE_THRESHOLD_EXCEED = 2;

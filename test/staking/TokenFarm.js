@@ -48,7 +48,7 @@ describe("TokenFarm", function () {
         await tokenFarm.depositVelaForVesting(expandDecimals('10000000', 18))
         await vlp.transferOwnership(wallet.address)
         await vlp.connect(wallet).mint(wallet.address, expandDecimals(100000, 18)); // mint eVELA
-        let vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0]);
+        let vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0]);
         let vault = await deployContract("Vault", [
             vlp.address,
             vusd.address
@@ -89,7 +89,7 @@ describe("TokenFarm", function () {
             zeroAddress,
             operator.address
         ])).to.be.revertedWith("constructor: FarmDistributor must be a valid contract")
-        const vusd = await deployContract('vUSDC', ['Vested USD', 'VUSD', 0])
+        const vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0])
         await expect(deployContract("ComplexRewarderPerSec", [
             vusd.address,
             tokenFarm.address,
