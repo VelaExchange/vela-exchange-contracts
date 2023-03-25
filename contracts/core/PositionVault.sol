@@ -366,13 +366,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     position.isLong,
                     order.size
                 );
+                uint256 price = priceManager.getLastPrice(position.indexToken);
                 _increasePosition(
                     _account,
                     position.indexToken,
                     order.collateral + fee,
                     order.size,
                     _posId,
-                    order.lmtPrice,
+                    price,
                     position.isLong
                 );
                 order.collateral = 0;
@@ -385,13 +386,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     position.isLong,
                     order.size
                 );
+                uint256 price = priceManager.getLastPrice(position.indexToken);
                 _increasePosition(
                     _account,
                     position.indexToken,
                     order.collateral + fee,
                     order.size,
                     _posId,
-                    order.stpPrice,
+                    price,
                     position.isLong
                 );
                 order.collateral = 0;
