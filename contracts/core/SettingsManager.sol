@@ -52,11 +52,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => bool) public override isManager;
     mapping(address => bool) public override isStakingEnabled;
     mapping(address => bool) public override isUnstakingEnabled;
+    mapping(address => uint256) public override deductFeePercent;
     mapping(address => uint256) public override depositFee;
     mapping(address => uint256) public override withdrawFee;
     mapping(address => uint256) public override stakingFee;
     mapping(address => uint256) public override unstakingFee;
-
     mapping(address => int256) public override fundingIndex;
     mapping(address => uint256) public override fundingRateFactor;
     mapping(address => mapping(bool => uint256)) public override marginFeeBasisPoints; // = 100; // 0.1%
@@ -74,6 +74,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event EnableMarketOrder(bool _enabled);
     event SetAssetManagerWallet(address manager);
     event SetBountyPercent(uint256 bountyPercentTeam, uint256 bountyPercentFirstCaller, uint256 bountyPercentResolver);
+    event SetDeductFeePercent(address indexed account, uint256 deductFee);
     event SetDepositFee(address indexed token, uint256 indexed fee);
     event SetWithdrawFee(address indexed token, uint256 indexed fee);
     event SetEnableDeposit(address indexed token, bool isEnabled);
@@ -275,6 +276,13 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetEnableUnstaking(_token, _isEnabled);
     }
 
+    function setDeductFeePercentForUser(address _account, uint256 _deductFee) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        require(_deductFee <= BASIS_POINTS_DIVISOR, "it cant exceed max value");
+        deductFeePercent[_account] = _deductFee;
+        emit SetDeductFeePercent(_account, _deductFee);
+    }
+
     function setFundingRateFactor(address _token, uint256 _fundingRateFactor) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         fundingRateFactor[_token] = _fundingRateFactor;
@@ -395,7 +403,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         bool _isLong,
         uint256 _sizeDelta
     ) external view override returns (uint256) {
-        uint256 feeUsd = getPositionFee(_indexToken, _isLong, _sizeDelta);
+        uint256 feeUsd = (BASIS_POINTS_DIVISOR - deductFeePercent[_account]) * getPositionFee(_indexToken, _isLong, _sizeDelta) / BASIS_POINTS_DIVISOR;
 
         return (feeUsd * tokenFarm.getTier(STAKING_PID_FOR_CHARGE_FEE, _account)) / BASIS_POINTS_DIVISOR;
     }

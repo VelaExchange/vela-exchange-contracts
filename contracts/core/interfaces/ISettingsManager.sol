@@ -37,6 +37,8 @@ interface ISettingsManager {
 
     function basisFundingRateFactor() external view returns (uint256);
 
+    function deductFeePercent(address _account) external view returns (uint256);
+
     function fundingIndex(address _token) external view returns (int256);
 
     function fundingRateFactor(address _token) external view returns (uint256);
