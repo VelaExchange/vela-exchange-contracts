@@ -28,6 +28,8 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     bool private isInitialized;
     mapping(uint256 => Position) public positions;
+    mapping(address => uint256[]) private userPositionIds;
+    mapping(uint256 => uint256) private userAliveIndexOf; //posId => index of userPositionIds[user], note that a position can only have a user
     mapping(uint256 => ConfirmInfo) public confirms;
     mapping(uint256 => Order) public orders;
     mapping(uint256 => address) public liquidateRegistrant;
@@ -299,6 +301,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         settingsManager.decreaseOpenInterest(position.indexToken, _account, position.isLong, position.size);
         vaultUtils.emitLiquidatePositionEvent(_account, position.indexToken, position.isLong, _posId, marginFees);
         delete positions[_posId];
+        _removeUserAlivePosition(_account, _posId);
         delete orders[_posId];
         delete confirms[_posId];
         // pay the fee receive using the pool, we assume that in general the liquidated amount should be sufficient to cover
@@ -315,6 +318,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     ) external nonReentrant onlyVault {
         Order storage order = orders[lastPosId];
         Position storage position = positions[lastPosId];
+        _addUserAlivePosition(_account, lastPosId);
         vaultUtils.validatePosData(_isLong, _indexToken, _orderType, _params, true);
         order.collateral = _params[2];
         order.size = _params[3];
@@ -484,6 +488,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         } else {
             vaultUtils.emitClosePositionEvent(_account, _indexToken, _isLong, _posId);
             delete positions[_posId];
+            _removeUserAlivePosition(_account, _posId);
             delete orders[_posId];
             delete confirms[_posId];
         }
@@ -608,4 +613,36 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     function getVaultUSDBalance() external view override returns (uint256) {
         return vault.getVaultUSDBalance();
     }
+
+
+    function getUserAlivePositions(address _user) public view returns (Position[] memory, Order[] memory, ConfirmInfo[] memory) {
+        uint256 length = userPositionIds[_user].length;
+        Position[] memory positions_ = new Position[](length);
+        Order[] memory orders_ = new Order[](length);
+        ConfirmInfo[] memory confirms_ = new ConfirmInfo[](length);
+        uint256[] storage posIds = userPositionIds[_user];
+        for(uint i; i<length; i++){
+            uint256 posId = posIds[i];
+            positions_[i] = positions[posId];
+            orders_[i] = orders[posId];
+            confirms_[i] = confirms[posId];
+        }
+        return (positions_, orders_, confirms_);
+    }
+    function _addUserAlivePosition(address _user, uint256 _posId) internal{
+        userAliveIndexOf[_posId] = userPositionIds[_user].length; 
+        userPositionIds[_user].push(_posId);
+    }
+    function _removeUserAlivePosition(address _user, uint256 _posId) internal{
+        uint256 index = userAliveIndexOf[_posId];
+        uint256 lastIndex = userPositionIds[_user].length - 1;
+        uint256 lastId = userPositionIds[_user][lastIndex];
+
+        userAliveIndexOf[lastId] = index;
+        delete userAliveIndexOf[_posId];
+
+        userPositionIds[_user][index] = lastId;
+        userPositionIds[_user].pop();
+    }
+
 }

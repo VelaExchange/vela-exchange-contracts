@@ -724,6 +724,7 @@ describe("Vault", function () {
       account,
       posId)).to.be.revertedWith("order is still in delay pending")
      await Vault.addPosition(indexToken, posId, amountIn, toUsdAmount)
+     console.log(await PositionVault.getUserAlivePositions(account)) //todo: add test for this view function
    })
 
    it ("confirmDelayTransaction", async () => {
