@@ -291,12 +291,13 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         if (liquidationState == LIQUIDATE_THRESHOLD_EXCEED) {
             uint256 price = priceManager.getLastPrice(position.indexToken);
             // max leverage exceeded but there is collateral remaining after deducting losses so decreasePosition instead
+            vaultUtils.emitLiquidatePositionEvent(_account, position.indexToken, position.isLong, _posId, marginFees);
             _decreasePosition(_account, position.indexToken, position.size, price, position.isLong, _posId);
             return;
         }
         vault.accountDeltaAndFeeIntoTotalUSD(true, 0, marginFees);
         settingsManager.decreaseOpenInterest(position.indexToken, _account, position.isLong, position.size);
-        vaultUtils.emitLiquidatePositionEvent(_account, position.indexToken, position.isLong, _posId);
+        vaultUtils.emitLiquidatePositionEvent(_account, position.indexToken, position.isLong, _posId, marginFees);
         delete positions[_posId];
         delete orders[_posId];
         delete confirms[_posId];
