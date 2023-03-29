@@ -22,14 +22,14 @@ contract VaultUtils is IVaultUtils, Constants {
         bool isLong,
         uint256 posId,
         int256 realisedPnl,
-        uint256[6] posData
+        uint256[5] posData
     );
     event IncreasePosition(
         address indexed account,
         address indexed indexToken,
         bool isLong,
         uint256 posId,
-        uint256[6] posData
+        uint256[5] posData
     );
     event LiquidatePosition(uint256 posId, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
     event SetDepositFee(address indexed token, uint256 indexed fee);
@@ -75,7 +75,7 @@ contract VaultUtils is IVaultUtils, Constants {
             _isLong,
             _posId,
             position.realisedPnl,
-            [_collateralDelta, _sizeDelta, position.reserveAmount, position.averagePrice, price, _fee]
+            [_collateralDelta, _sizeDelta, position.averagePrice, price, _fee]
         );
     }
 
@@ -95,7 +95,7 @@ contract VaultUtils is IVaultUtils, Constants {
             _indexToken,
             _isLong,
             _posId,
-            [_collateralDelta, _sizeDelta, position.reserveAmount, position.averagePrice, price, _fee]
+            [_collateralDelta, _sizeDelta, position.averagePrice, price, _fee]
         );
     }
 

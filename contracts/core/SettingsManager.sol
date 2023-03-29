@@ -403,7 +403,8 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         bool _isLong,
         uint256 _sizeDelta
     ) external view override returns (uint256) {
-        uint256 feeUsd = (BASIS_POINTS_DIVISOR - deductFeePercent[_account]) * getPositionFee(_indexToken, _isLong, _sizeDelta) / BASIS_POINTS_DIVISOR;
+        uint256 feeUsd = ((BASIS_POINTS_DIVISOR - deductFeePercent[_account]) *
+            getPositionFee(_indexToken, _isLong, _sizeDelta)) / BASIS_POINTS_DIVISOR;
 
         return (feeUsd * tokenFarm.getTier(STAKING_PID_FOR_CHARGE_FEE, _account)) / BASIS_POINTS_DIVISOR;
     }
@@ -504,7 +505,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function getFundingRate(address _indexToken) public view override returns (int256) {
-        if (positionVault.getVaultUSDBalance() == 0) { return 0; }
+        if (positionVault.getVaultUSDBalance() == 0) {
+            return 0;
+        }
         uint256 assetLongOI = openInterestPerAssetPerSide[_indexToken][true];
         uint256 assetShortOI = openInterestPerAssetPerSide[_indexToken][false];
 

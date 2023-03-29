@@ -35,14 +35,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     mapping(uint256 => address) public liquidateRegistrant;
     mapping(uint256 => uint256) public liquidateRegisterTime;
 
-    event AddOrRemoveCollateral(
-        uint256 posId,
-        bool isPlus,
-        uint256 amount,
-        uint256 reserveAmount,
-        uint256 collateral,
-        uint256 size
-    );
+    event AddOrRemoveCollateral(uint256 posId, bool isPlus, uint256 amount, uint256 collateral, uint256 size);
     event AddPosition(uint256 posId, bool confirmDelayStatus, uint256 collateral, uint256 size);
     event AddTrailingStop(uint256 posId, uint256[] data);
     event ConfirmDelayTransaction(
@@ -89,17 +82,15 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         if (isPlus) {
             position.collateral += _amount;
             vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
-            position.reserveAmount += _amount;
             vault.takeVUSDIn(_account, position.refer, _amount, 0);
         } else {
             position.collateral -= _amount;
             vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
             vaultUtils.validateMaxLeverage(_indexToken, position.size, position.collateral);
-            position.reserveAmount -= _amount;
             position.lastIncreasedTime = block.timestamp;
             vault.takeVUSDOut(_account, position.refer, 0, _amount);
         }
-        emit AddOrRemoveCollateral(_posId, isPlus, _amount, position.reserveAmount, position.collateral, position.size);
+        emit AddOrRemoveCollateral(_posId, isPlus, _amount, position.collateral, position.size);
     }
 
     function addPosition(
@@ -471,7 +462,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         Position storage position = positions[_posId];
         require(position.size > 0, "position size is zero");
         settingsManager.decreaseOpenInterest(_indexToken, _account, _isLong, _sizeDelta);
-        position.reserveAmount -= (position.reserveAmount * _sizeDelta) / position.size;
         (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(
             _account,
             _indexToken,
@@ -529,7 +519,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
         uint256 _amountInAfterFee = _amountIn - fee;
         position.collateral += _amountInAfterFee;
-        position.reserveAmount += _amountIn;
         position.size += _sizeDelta;
         position.lastIncreasedTime = block.timestamp;
         position.lastPrice = _price;
@@ -614,14 +603,15 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         return vault.getVaultUSDBalance();
     }
 
-
-    function getUserAlivePositions(address _user) public view returns (Position[] memory, Order[] memory, ConfirmInfo[] memory) {
+    function getUserAlivePositions(
+        address _user
+    ) public view returns (Position[] memory, Order[] memory, ConfirmInfo[] memory) {
         uint256 length = userPositionIds[_user].length;
         Position[] memory positions_ = new Position[](length);
         Order[] memory orders_ = new Order[](length);
         ConfirmInfo[] memory confirms_ = new ConfirmInfo[](length);
         uint256[] storage posIds = userPositionIds[_user];
-        for(uint i; i<length; i++){
+        for (uint i; i < length; i++) {
             uint256 posId = posIds[i];
             positions_[i] = positions[posId];
             orders_[i] = orders[posId];
@@ -629,11 +619,13 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         }
         return (positions_, orders_, confirms_);
     }
-    function _addUserAlivePosition(address _user, uint256 _posId) internal{
-        userAliveIndexOf[_posId] = userPositionIds[_user].length; 
+
+    function _addUserAlivePosition(address _user, uint256 _posId) internal {
+        userAliveIndexOf[_posId] = userPositionIds[_user].length;
         userPositionIds[_user].push(_posId);
     }
-    function _removeUserAlivePosition(address _user, uint256 _posId) internal{
+
+    function _removeUserAlivePosition(address _user, uint256 _posId) internal {
         uint256 index = userAliveIndexOf[_posId];
         uint256 lastIndex = userPositionIds[_user].length - 1;
         uint256 lastId = userPositionIds[_user][lastIndex];
@@ -644,5 +636,4 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         userPositionIds[_user][index] = lastId;
         userPositionIds[_user].pop();
     }
-
 }
