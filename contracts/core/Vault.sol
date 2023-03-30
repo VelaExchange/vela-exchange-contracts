@@ -84,7 +84,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _sizeDelta
     ) external payable nonReentrant preventTradeForForexCloseTime(_indexToken) preventBanners(msg.sender) {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.feeManager()).transfer(msg.value);
+        payable(settingsManager.feeManager()).call{ value: msg.value }("");
         positionVault.addPosition(msg.sender, _indexToken, _posId, _collateralDelta, _sizeDelta);
     }
 
@@ -94,7 +94,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256[] memory _params
     ) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.feeManager()).transfer(msg.value);
+        payable(settingsManager.feeManager()).call{ value: msg.value }("");
         positionVault.addTrailingStop(msg.sender, _indexToken, _posId, _params);
     }
 
@@ -108,7 +108,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _posId
     ) external payable nonReentrant preventTradeForForexCloseTime(_indexToken) preventBanners(msg.sender) {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
-        payable(settingsManager.feeManager()).transfer(msg.value);
+        payable(settingsManager.feeManager()).call{ value: msg.value }("");
         positionVault.decreasePosition(msg.sender, _indexToken, _sizeDelta, _posId);
     }
 
@@ -145,10 +145,10 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     ) external payable nonReentrant preventBanners(msg.sender) preventTradeForForexCloseTime(_indexToken) {
         if (_orderType != OrderType.MARKET) {
             require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-            payable(settingsManager.feeManager()).transfer(msg.value);
+            payable(settingsManager.feeManager()).call{ value: msg.value }("");
         } else {
             require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
-            payable(settingsManager.feeManager()).transfer(msg.value);
+            payable(settingsManager.feeManager()).call{ value: msg.value }("");
         }
         positionVault.newPositionOrder(msg.sender, _indexToken, _isLong, _orderType, _params, _refer);
     }
