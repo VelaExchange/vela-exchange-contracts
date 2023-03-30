@@ -34,14 +34,14 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
     event UpdateTriggerOrderStatus(uint256 posId, uint256 orderId, TriggerStatus status);
     event UpdatePositionTriggerStatus(uint256 posId, TriggerStatus status);
     modifier onlyVault() {
-        require(msg.sender == address(positionVault), "Only vault has access");
+        require(msg.sender == address(positionVault), "Only vault");
         _;
     }
 
     constructor(address _positionVault, address _priceManager, address _settingsManager) {
-        require(Address.isContract(_positionVault), "positionVault address is invalid");
-        require(Address.isContract(_priceManager), "priceManager address is invalid");
-        require(Address.isContract(_settingsManager), "settingsManager address is invalid");
+        require(Address.isContract(_positionVault), "positionVault invalid");
+        require(Address.isContract(_priceManager), "priceManager invalid");
+        require(Address.isContract(_settingsManager), "settingsManager invalid");
         positionVault = IPositionVault(_positionVault);
         priceManager = IPriceManager(_priceManager);
         settingsManager = ISettingsManager(_settingsManager);

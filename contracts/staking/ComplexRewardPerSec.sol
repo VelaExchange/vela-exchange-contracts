@@ -57,7 +57,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     constructor(IBoringERC20 _rewardToken, IFarmDistributor _distributor, address _operators) {
         require(Address.isContract(address(_rewardToken)), "constructor: reward token must be a valid contract");
         require(Address.isContract(address(_distributor)), "constructor: FarmDistributor must be a valid contract");
-        require(Address.isContract(_operators), "operators address is invalid");
+        require(Address.isContract(_operators), "operators invalid");
         operators = IOperators(_operators);
         rewardToken = _rewardToken;
         distributor = _distributor;
