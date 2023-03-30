@@ -64,6 +64,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         address caller,
         uint256 marginFees
     );
+
     modifier onlyVault() {
         require(msg.sender == address(vault), "Only vault has access");
         _;
@@ -73,29 +74,29 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     function addOrRemoveCollateral(
         address _account,
-        address _indexToken,
         uint256 _posId,
         bool isPlus,
         uint256 _amount
     ) external override onlyVault {
         Position storage position = positions[_posId];
+        require(_account == position.owner, "you are not allowed to add position");
+
         if (isPlus) {
             position.collateral += _amount;
-            vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
+            vaultUtils.validateMinLeverage(position.size, position.collateral);
             vault.takeVUSDIn(_account, position.refer, _amount, 0);
         } else {
             position.collateral -= _amount;
-            vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
-            vaultUtils.validateMaxLeverage(_indexToken, position.size, position.collateral);
-            position.lastIncreasedTime = block.timestamp;
+            vaultUtils.validateMaxLeverage(position.indexToken, position.size, position.collateral);
+            vaultUtils.validateLiquidation(_posId, true);
             vault.takeVUSDOut(_account, position.refer, 0, _amount);
         }
+
         emit AddOrRemoveCollateral(_posId, isPlus, _amount, position.collateral, position.size);
     }
 
     function addPosition(
         address _account,
-        address _indexToken,
         uint256 _posId,
         uint256 _collateralDelta,
         uint256 _sizeDelta
@@ -103,10 +104,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         ConfirmInfo storage confirm = confirms[_posId];
         Position storage position = positions[_posId];
         require(position.size > 0, "Position not Open");
-        require(
-            _account == position.owner && _indexToken == position.indexToken,
-            "you are not allowed to add position"
-        );
+        require(_account == position.owner, "you are not allowed to add position");
         confirm.delayStartTime = block.timestamp;
         confirm.confirmDelayStatus = true;
         confirm.pendingDelayCollateral = _collateralDelta;
@@ -114,19 +112,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit AddPosition(_posId, confirm.confirmDelayStatus, _collateralDelta, _sizeDelta);
     }
 
-    function addTrailingStop(
-        address _account,
-        address _indexToken,
-        uint256 _posId,
-        uint256[] memory _params
-    ) external override onlyVault {
+    function addTrailingStop(address _account, uint256 _posId, uint256[] memory _params) external override onlyVault {
         Order storage order = orders[_posId];
-        Position storage position = positions[_posId];
-        require(
-            _account == position.owner && _indexToken == position.indexToken,
-            "you are not allowed to add trailing stop"
-        );
-        vaultUtils.validateTrailingStopInputData(_indexToken, position.isLong, _posId, _params);
+        require(_account == positions[_posId].owner, "you are not allowed to add trailing stop");
+        vaultUtils.validateTrailingStopInputData(_posId, _params);
         order.collateral = _params[0];
         order.size = _params[1];
         order.status = OrderStatus.PENDING;
@@ -139,8 +128,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     function cancelPendingOrder(address _account, uint256 _posId) external override onlyVault {
         Order storage order = orders[_posId];
-        Position storage position = positions[_posId];
-        require(_account == position.owner, "You are not allowed to cancel");
+        require(_account == positions[_posId].owner, "You are not allowed to cancel");
         require(order.status == OrderStatus.PENDING, "Not in Pending");
         if (order.positionType == POSITION_TRAILING_STOP) {
             order.status = OrderStatus.FILLED;
@@ -188,19 +176,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         confirm.pendingDelaySize = 0;
     }
 
-    function decreasePosition(
-        address _account,
-        address _indexToken,
-        uint256 _sizeDelta,
-        uint256 _posId
-    ) external override onlyVault {
+    function decreasePosition(address _account, uint256 _sizeDelta, uint256 _posId) external override onlyVault {
         Position memory position = positions[_posId];
-        uint256 price = priceManager.getLastPrice(_indexToken);
-        require(
-            _account == position.owner && _indexToken == position.indexToken,
-            "you are not allowed to decrease position"
-        );
-        _decreasePosition(_account, _indexToken, _sizeDelta, price, position.isLong, _posId);
+        uint256 price = priceManager.getLastPrice(position.indexToken);
+        require(_account == position.owner, "you are not allowed to decrease position");
+        _decreasePosition(_account, position.indexToken, _sizeDelta, price, position.isLong, _posId);
     }
 
     function initialize(
@@ -224,43 +204,30 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         isInitialized = true;
     }
 
-    function registerLiquidatePosition(
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    ) external nonReentrant {
-        settingsManager.updateFunding(_indexToken);
+    function registerLiquidatePosition(uint256 _posId) external nonReentrant {
         require(liquidateRegistrant[_posId] == address(0), "not the firstCaller");
-        (uint256 liquidationState, uint256 marginFees) = vaultUtils.validateLiquidation(
-            _account,
-            _indexToken,
-            _isLong,
-            _posId,
-            false
-        );
-        require(liquidationState != LIQUIDATE_NONE_EXCEED, "not exceed or allowed");
-        liquidateRegistrant[_posId] = msg.sender;
-        liquidateRegisterTime[_posId] = block.timestamp;
-        emit RegisterLiquidation(_account, _indexToken, _isLong, _posId, msg.sender, marginFees);
-    }
 
-    function liquidatePosition(address _account, uint256 _posId) external nonReentrant {
         Position memory position = positions[_posId];
         settingsManager.updateFunding(position.indexToken);
+        (uint256 liquidationState, uint256 marginFees) = vaultUtils.validateLiquidation(_posId, false);
+        require(liquidationState != LIQUIDATE_NONE_EXCEED, "not exceed or allowed");
+
+        liquidateRegistrant[_posId] = msg.sender;
+        liquidateRegisterTime[_posId] = block.timestamp;
+        emit RegisterLiquidation(position.owner, position.indexToken, position.isLong, _posId, msg.sender, marginFees);
+    }
+
+    function liquidatePosition(uint256 _posId) external nonReentrant {
         require(
             settingsManager.isManager(msg.sender) ||
                 (msg.sender == liquidateRegistrant[_posId] &&
                     liquidateRegisterTime[_posId] + settingsManager.liquidationPendingTime() <= block.timestamp),
             "not manager or not allowed before pendingTime"
         );
-        (uint256 liquidationState, uint256 marginFees) = vaultUtils.validateLiquidation(
-            _account,
-            position.indexToken,
-            position.isLong,
-            _posId,
-            false
-        );
+
+        Position memory position = positions[_posId];
+        settingsManager.updateFunding(position.indexToken);
+        (uint256 liquidationState, uint256 marginFees) = vaultUtils.validateLiquidation(_posId, false);
         require(liquidationState != LIQUIDATE_NONE_EXCEED, "not exceed or allowed");
 
         (uint32 teamPercent, uint32 firstCallerPercent, uint32 resolverPercent) = settingsManager.bountyPercent();
@@ -284,15 +251,21 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         if (liquidationState == LIQUIDATE_THRESHOLD_EXCEED) {
             uint256 price = priceManager.getLastPrice(position.indexToken);
             // max leverage exceeded but there is collateral remaining after deducting losses so decreasePosition instead
-            vaultUtils.emitLiquidatePositionEvent(_account, position.indexToken, position.isLong, _posId, marginFees);
-            _decreasePosition(_account, position.indexToken, position.size, price, position.isLong, _posId);
+            vaultUtils.emitLiquidatePositionEvent(
+                position.owner,
+                position.indexToken,
+                position.isLong,
+                _posId,
+                marginFees
+            );
+            _decreasePosition(position.owner, position.indexToken, position.size, price, position.isLong, _posId);
             return;
         }
         vault.accountDeltaAndFeeIntoTotalUSD(true, 0, marginFees);
-        settingsManager.decreaseOpenInterest(position.indexToken, _account, position.isLong, position.size);
-        vaultUtils.emitLiquidatePositionEvent(_account, position.indexToken, position.isLong, _posId, marginFees);
+        settingsManager.decreaseOpenInterest(position.indexToken, position.owner, position.isLong, position.size);
+        vaultUtils.emitLiquidatePositionEvent(position.owner, position.indexToken, position.isLong, _posId, marginFees);
         delete positions[_posId];
-        _removeUserAlivePosition(_account, _posId);
+        _removeUserAlivePosition(position.owner, _posId);
         delete orders[_posId];
         delete confirms[_posId];
         // pay the fee receive using the pool, we assume that in general the liquidated amount should be sufficient to cover
@@ -472,7 +445,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         );
         if (position.size != _sizeDelta) {
             position.size -= _sizeDelta;
-            vaultUtils.validateSizeCollateralAmount(position.size, position.collateral);
+            vaultUtils.validateMinLeverage(position.size, position.collateral);
             vaultUtils.validateMaxLeverage(_indexToken, position.size, position.collateral);
             vaultUtils.emitDecreasePositionEvent(_account, _indexToken, _isLong, _posId, _sizeDelta, usdOutFee);
         } else {
@@ -499,6 +472,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         bool _isLong
     ) internal {
         settingsManager.updateFunding(_indexToken);
+        require(
+            settingsManager.isIncreasingPositionDisabled(_indexToken),
+            "current asset is disabled from increasing position"
+        );
+        require(
+            !settingsManager.checkBanList(_account),
+            "wallets on ban list are not allowed to increase position, stake & deposit"
+        );
         Position storage position = positions[_posId];
         if (position.size == 0) {
             position.averagePrice = _price;
@@ -586,7 +567,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         if (usdOut < fee) {
             position.collateral -= fee;
         }
-        vaultUtils.validateDecreasePosition(_isLong, _posId, _price, true);
+        vaultUtils.validateDecreasePosition(_posId, _price, true);
         return (usdOut, fee);
     }
 

@@ -5,8 +5,6 @@ pragma solidity 0.8.9;
 interface IPriceManager {
     function getLastPrice(address _token) external view returns (uint256);
 
-    function isForex(address _token) external view returns (bool);
-
     function maxLeverage(address _token) external view returns (uint256);
 
     function usdToToken(address _token, uint256 _usdAmount) external view returns (uint256);

@@ -21,7 +21,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     address public override feeManager;
     bool public override marketOrderEnabled = true;
-    bool public override pauseForexForCloseTime;
     bool public override referEnabled = true;
     EnumerableSet.AddressSet private banWalletList;
     uint256 public maxOpenInterestPerUser;
@@ -48,10 +47,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public override basisFundingRateFactor = 10000;
 
     mapping(address => bool) public override isDeposit;
-    mapping(address => bool) public override isWithdraw;
     mapping(address => bool) public override isManager;
     mapping(address => bool) public override isStakingEnabled;
-    mapping(address => bool) public override isUnstakingEnabled;
+    mapping(address => bool) public override isIncreasingPositionDisabled;
     mapping(address => uint256) public override deductFeePercent;
     mapping(address => uint256) public override depositFee;
     mapping(address => uint256) public override withdrawFee;
@@ -70,7 +68,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => EnumerableSet.AddressSet) private _delegatesByMaster;
     event ChangedReferEnabled(bool referEnabled);
     event ChangedReferFee(uint256 referFee);
-    event PauseForexMarket(bool _paused);
     event EnableMarketOrder(bool _enabled);
     event SetAssetManagerWallet(address manager);
     event SetBountyPercent(uint256 bountyPercentTeam, uint256 bountyPercentFirstCaller, uint256 bountyPercentResolver);
@@ -155,12 +152,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
             openInterestPerAssetPerSide[_token][_isLong] -= _amount;
         }
         emit UpdateTotalOpenInterest(_token, _isLong, _amount);
-    }
-
-    function pauseForexMarket(bool _paused) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        pauseForexForCloseTime = _paused;
-        emit PauseForexMarket(_paused);
     }
 
     function enableMarketOrder(bool _enable) external {
@@ -258,22 +249,16 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetEnableDeposit(_token, _isEnabled);
     }
 
-    function setEnableWithdraw(address _token, bool _isEnabled) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        isWithdraw[_token] = _isEnabled;
-        emit SetEnableWithdraw(_token, _isEnabled);
-    }
-
     function setEnableStaking(address _token, bool _isEnabled) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         isStakingEnabled[_token] = _isEnabled;
         emit SetEnableStaking(_token, _isEnabled);
     }
 
-    function setEnableUnstaking(address _token, bool _isEnabled) external {
+    function setIsIncreasingPositionDisabled(address _token, bool _isDisabled) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        isUnstakingEnabled[_token] = _isEnabled;
-        emit SetEnableUnstaking(_token, _isEnabled);
+        isIncreasingPositionDisabled[_token] = _isDisabled;
+        emit SetEnableUnstaking(_token, _isDisabled);
     }
 
     function setDeductFeePercentForUser(address _account, uint256 _deductFee) external {

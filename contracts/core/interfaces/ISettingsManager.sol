@@ -76,13 +76,11 @@ interface ISettingsManager {
 
     function isDeposit(address _token) external view returns (bool);
 
-    function isWithdraw(address _token) external view returns (bool);
-
     function isManager(address _account) external view returns (bool);
 
     function isStakingEnabled(address _token) external view returns (bool);
 
-    function isUnstakingEnabled(address _token) external view returns (bool);
+    function isIncreasingPositionDisabled(address _token) external view returns (bool);
 
     function lastFundingTimes(address _token) external view returns (uint256);
 
@@ -93,8 +91,6 @@ interface ISettingsManager {
     function marginFeeBasisPoints(address _token, bool _isLong) external view returns (uint256);
 
     function marketOrderEnabled() external view returns (bool);
-
-    function pauseForexForCloseTime() external view returns (bool);
 
     function priceMovementPercent() external view returns (uint256);
 
