@@ -70,6 +70,8 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => EnumerableSet.AddressSet) private _delegatesByMaster;
     event ChangedReferEnabled(bool referEnabled);
     event ChangedReferFee(uint256 referFee);
+    event DecreaseOpenInterest(address indexed token, bool isLong, uint256 amount);
+    event IncreaseOpenInterest(address indexed token, bool isLong, uint256 amount);
     event PauseForexMarket(bool _paused);
     event EnableMarketOrder(bool _enabled);
     event SetAssetManagerWallet(address manager);
@@ -95,7 +97,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetGlobalGasFee(uint256 indexed fee);
     event SetVaultSettings(uint256 indexed cooldownDuration, uint256 feeRewardBasisPoints);
     event UpdateFunding(address indexed token, int256 fundingIndex);
-    event UpdateTotalOpenInterest(address indexed token, bool isLong, uint256 amount);
     event UpdateLiquidationPendingTime(uint256 liquidationPendingTime);
     event UpdateCloseDeltaTime(uint256 deltaTime);
     event UpdateDelayDeltaTime(uint256 deltaTime);
@@ -154,7 +155,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         } else {
             openInterestPerAssetPerSide[_token][_isLong] -= _amount;
         }
-        emit UpdateTotalOpenInterest(_token, _isLong, _amount);
+        emit DecreaseOpenInterest(_token, _isLong, _amount);
     }
 
     function pauseForexMarket(bool _paused) external {
@@ -178,7 +179,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         openInterestPerUser[_sender] += _amount;
         openInterestPerAssetPerSide[_token][_isLong] += _amount;
 
-        emit UpdateTotalOpenInterest(_token, _isLong, _amount);
+        emit IncreaseOpenInterest(_token, _isLong, _amount);
     }
 
     function setBountyPercent(
