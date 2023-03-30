@@ -47,8 +47,8 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         settingsManager = ISettingsManager(_settingsManager);
     }
 
-    function cancelTriggerOrder(        
-        uint256 _posId, 
+    function cancelTriggerOrder(
+        uint256 _posId,
         uint256 _orderId) external {
         PositionTrigger storage order = triggerOrders[_posId];
         require(order.status == TriggerStatus.OPEN && order.triggers.length > _orderId, "TriggerOrder was cancelled");
@@ -56,7 +56,7 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         emit UpdateTriggerOrderStatus(_posId, _orderId, order.triggers[_orderId].status);
     }
 
-    function cancelPositionTrigger(        
+    function cancelPositionTrigger(
         uint256 _posId) external {
         PositionTrigger storage order = triggerOrders[_posId];
         require(order.status == TriggerStatus.OPEN , "PositionTrigger was cancelled");
@@ -78,9 +78,9 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
             if (order.triggers[i].status == TriggerStatus.OPEN && order.triggers[i].triggeredAmount == 0 && (pricesAreUpperBounds ? order.triggers[i].price <= price : price <= order.triggers[i].price)) {
                 order.triggers[i].triggeredAmount = (position.size * order.triggers[i].amountPercent) / BASIS_POINTS_DIVISOR;
                 order.triggers[i].triggeredAt = block.timestamp;
-                order.triggers[i].status = TriggerStatus.TRIGGERED; 
+                order.triggers[i].status = TriggerStatus.TRIGGERED;
                 if (order.triggers[i].amountPercent == BASIS_POINTS_DIVISOR) {
-                    order.status = TriggerStatus.TRIGGERED;                        
+                    order.status = TriggerStatus.TRIGGERED;
                 }
                 emit ExecuteTriggerOrders(
                     _posId,
@@ -106,7 +106,7 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         (Position memory position, , ) = positionVault.getPosition(_posId);
         require(position.size > 0, "position size should be greater than zero");
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.feeManager()).transfer(msg.value);
+        payable(settingsManager.feeManager()).call{ value: msg.value }("");
         bool validateTriggerData = validateTriggerOrdersData(
             _indexToken,
             _isLong,
@@ -118,7 +118,7 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         PositionTrigger storage triggerOrder = triggerOrders[_posId];
         if (triggerOrder.triggerCount == 0) {
             triggerOrder.status = TriggerStatus.OPEN;
-        } 
+        }
         for (uint256 i = 0; i < _prices.length; i++) {
             triggerOrder.triggers.push(TriggerInfo({
                 isTP: _isTPs[i],
