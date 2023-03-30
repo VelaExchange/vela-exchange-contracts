@@ -33,7 +33,7 @@ describe("TokenFarm", function () {
 
     before(async function () {
         vestingDuration = 6 * 30 * 24 * 60 * 60
-        unbondingPeriod = 14 * 24 * 60 * 60 
+        unbondingPeriod = 14 * 24 * 60 * 60
         vlp = await deployContract('VLP', [])
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
@@ -50,6 +50,7 @@ describe("TokenFarm", function () {
         await vlp.connect(wallet).mint(wallet.address, expandDecimals(100000, 18)); // mint eVELA
         let vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0]);
         let vault = await deployContract("Vault", [
+            operator.address,
             vlp.address,
             vusd.address
         ]);
@@ -72,7 +73,7 @@ describe("TokenFarm", function () {
         const currentTimestamp = await getBlockTime(provider);
         endTimestamp1 = currentTimestamp + 14 * 60 * 60 * 24 //1659716363  => delta 2,592,000
         endTimestamp2 = currentTimestamp + 30 * 60 * 60 * 24
-        endTimestamp3 = currentTimestamp + 30 * 60 * 60 * 24 
+        endTimestamp3 = currentTimestamp + 30 * 60 * 60 * 24
         rewardPerSec1 = expandDecimals(8267, 12)
         rewardPerSec2 = expandDecimals(3858, 12)
         rewardPerSec3 = expandDecimals(3858, 12)
@@ -94,7 +95,7 @@ describe("TokenFarm", function () {
             vusd.address,
             tokenFarm.address,
             operator.address
-        ])).to.be.revertedWith("constructor: reward token decimals must be inferior to 30")        
+        ])).to.be.revertedWith("constructor: reward token decimals must be inferior to 30")
         complexRewardPerSec1 = await deployContract("ComplexRewarderPerSec", [
             eVela.address,
             tokenFarm.address,
@@ -211,7 +212,7 @@ describe("TokenFarm", function () {
         expect(tierPercentOne.toNumber()).eq(98000)
         expect(parseFloat(ethers.utils.formatUnits(tierLevelNine, 18))).eq(1000000)
         expect(tierPercentNine.toNumber()).eq(50000)
-    })    
+    })
 
     it ("checking startTimestamp", async () => {
         const passTime = 60 * 60 * 24 * 60
@@ -475,7 +476,7 @@ describe("TokenFarm", function () {
             (100 - 50) * 1000
         ]
         await expect(tokenFarm.updateRewardTierInfo(
-            [expandDecimals('1000', 18)], 
+            [expandDecimals('1000', 18)],
             [
                 (100 - 2) * 1000,
                 (100 - 3) * 1000
@@ -484,7 +485,7 @@ describe("TokenFarm", function () {
             [
                 expandDecimals('1500', 18),
                 expandDecimals('1000', 18)
-            ], 
+            ],
             [
                 (100 - 2) * 1000,
                 (100 - 3) * 1000
@@ -493,7 +494,7 @@ describe("TokenFarm", function () {
             [
                 expandDecimals('1000', 18),
                 expandDecimals('1500', 18)
-            ], 
+            ],
             [
                 (120) * 1000,
                 (100 - 3) * 1000
@@ -521,10 +522,10 @@ describe("TokenFarm", function () {
     it ("harvestMany", async () => {
         const pIdList = [0, 1, 2]
         const maxPIdList = [
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 
-            11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 
-            21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 
-            31 
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+            11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+            21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+            31
         ]
         await expect(tokenFarm.harvestMany(maxPIdList))
             .to.be.revertedWith("harvest many: too many pool ids")
@@ -534,18 +535,18 @@ describe("TokenFarm", function () {
     it ("set", async () => {
         const pId = 0
         const rewarders = [complexRewardPerSec1.address]
-        const maxRewarders = [ 
-            complexRewardPerSec1.address, 
+        const maxRewarders = [
             complexRewardPerSec1.address,
-            complexRewardPerSec1.address, 
             complexRewardPerSec1.address,
-            complexRewardPerSec1.address, 
             complexRewardPerSec1.address,
-            complexRewardPerSec1.address, 
             complexRewardPerSec1.address,
-            complexRewardPerSec1.address, 
             complexRewardPerSec1.address,
-            complexRewardPerSec1.address, 
+            complexRewardPerSec1.address,
+            complexRewardPerSec1.address,
+            complexRewardPerSec1.address,
+            complexRewardPerSec1.address,
+            complexRewardPerSec1.address,
+            complexRewardPerSec1.address,
             complexRewardPerSec1.address,
         ]
         await expect(tokenFarm.set(pId, maxRewarders))
@@ -596,7 +597,7 @@ describe("TokenFarm", function () {
             pId,
             currentTimestamp + passTime,
             rewardPerSec1
-        )).to.be.revertedWith("add reward info: reward period ended")        
+        )).to.be.revertedWith("add reward info: reward period ended")
     })
 
     it ("ComplexRewardPerSec addRewardInfo bad new endTimestamp", async ()=> {

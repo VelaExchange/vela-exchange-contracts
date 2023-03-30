@@ -99,6 +99,7 @@ describe("SettingsManager", function () {
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
+           operator.address,
            vlp.address,
            vusd.address
         ]);
@@ -325,7 +326,7 @@ describe("SettingsManager", function () {
       await expect(settingsManager.setStakingFee(btc.address, 15000))
         .to.be.revertedWith("Above max")
       await settingsManager.setStakingFee(
-        btc.address, 
+        btc.address,
         fee
       )
     })

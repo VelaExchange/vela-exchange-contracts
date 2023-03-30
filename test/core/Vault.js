@@ -104,6 +104,7 @@ describe("Vault", function () {
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
+           operator.address,
            vlp.address,
            vusd.address
         ]);
@@ -2148,7 +2149,7 @@ describe("Vault", function () {
     )
   })
 
-  
+
   it ("referFee managerFee", async() =>{
     const closeDeltaTime = 60 * 60 * 1
     await settingsManager.setCloseDeltaTime(closeDeltaTime)

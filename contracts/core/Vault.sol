@@ -13,8 +13,9 @@ import "./interfaces/IPositionVault.sol";
 import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
 import "./interfaces/IVault.sol";
+import "./interfaces/IOperators.sol";
 import {Constants} from "../access/Constants.sol";
-import {OrderStatus, OrderType} from "./structs.sol";
+import {Position, OrderStatus, OrderType} from "./structs.sol";
 
 contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     using SafeERC20 for IERC20;
@@ -22,6 +23,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     uint256 public totalVLP;
     uint256 public totalUSD;
     IPositionVault private positionVault;
+    IOperators public immutable operators;
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
     address private immutable vlp;
@@ -55,7 +57,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         _;
     }
 
-    constructor(address _vlp, address _vusd) {
+    constructor(address _operators, address _vlp, address _vusd) {
+        require(Address.isContract(_operators), "operators invalid");
+        operators = IOperators(_operators);
         vlp = _vlp;
         vusd = _vusd;
     }
@@ -100,6 +104,16 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function cancelPendingOrder(uint256 _posId) external nonReentrant preventBanners(msg.sender) {
         positionVault.cancelPendingOrder(msg.sender, _posId);
+    }
+
+    function forceClosePosition(
+        uint256 _posId
+    ) external payable nonReentrant {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        // put a require here to call something like positionVault.getPositionProfit(_posId)
+        // compare to maxProfitPercent and totalUSD, if the position profit > max profit % of totalUSD, close
+        (Position memory position, , ) = positionVault.getPosition(_posId);
+        positionVault.decreasePosition(position.owner, position.indexToken, position.size, _posId);
     }
 
     function decreasePosition(

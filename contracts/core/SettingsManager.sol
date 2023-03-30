@@ -26,6 +26,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     EnumerableSet.AddressSet private banWalletList;
     uint256 public maxOpenInterestPerUser;
     uint256 public priceMovementPercent = 500; // 0.5%
+    uint256 public maxProfitPercent = 10000; // 10%
 
     struct BountyPercent {
         uint32 team;
@@ -101,6 +102,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event UpdateCloseDeltaTime(uint256 deltaTime);
     event UpdateDelayDeltaTime(uint256 deltaTime);
     event UpdateFeeManager(address indexed feeManager);
+    event UpdateMaxProfitPercent(uint256 maxProfitPercent);
     event UpdateThreshold(uint256 oldThreshold, uint256 newThredhold);
 
     modifier onlyVault() {
@@ -206,6 +208,12 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
         feeManager = _feeManager;
         emit UpdateFeeManager(_feeManager);
+    }
+
+    function setMaxProfitPercent(uint256 _maxProfitPercent) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        maxProfitPercent = _maxProfitPercent;
+        emit UpdateMaxProfitPercent(_maxProfitPercent);
     }
 
     function setVaultSettings(uint256 _cooldownDuration, uint256 _feeRewardsBasisPoints) external {
