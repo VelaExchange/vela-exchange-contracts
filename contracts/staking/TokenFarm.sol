@@ -79,7 +79,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
 
     constructor(uint256 _vestingDuration, IBoringERC20 _esToken, IBoringERC20 _claimableToken, address _operators) {
         //StartBlock always many years later from contract const ruct, will be set later in StartFarming function
-        require(Address.isContract(_operators), "operators address is invalid");
+        require(Address.isContract(_operators), "operators invalid");
         operators = IOperators(_operators);
         claimableToken = _claimableToken;
         esToken = _esToken;

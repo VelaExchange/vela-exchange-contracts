@@ -39,18 +39,18 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     event TransferBounty(address indexed account, uint256 amount);
 
     modifier onlyVault() {
-        require(msg.sender == address(positionVault), "Only vault has access");
+        require(msg.sender == address(positionVault), "Only vault");
         _;
     }
 
     modifier preventBanners(address _account) {
-        require(!settingsManager.checkBanList(_account), "prevent banners from trade, stake, deposit");
+        require(!settingsManager.checkBanList(_account), "Account banned");
         _;
     }
 
     modifier preventTradeForForexCloseTime(address _token) {
         if (priceManager.isForex(_token)) {
-            require(!settingsManager.pauseForexForCloseTime(), "prevent trade for forex close time");
+            require(!settingsManager.pauseForexForCloseTime(), "Forex closed");
         }
         _;
     }
@@ -121,7 +121,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         require(settingsManager.isDeposit(_token), "deposit not allowed");
         require(_amount > 0, "zero amount");
         if (_account != msg.sender) {
-            require(settingsManager.checkDelegation(_account, msg.sender), "not allowed for depositFor");
+            require(settingsManager.checkDelegation(_account, msg.sender), "Not allowed");
         }
         _transferIn(msg.sender, _token, _amount);
         uint256 fee = (collateralDeltaUsd * settingsManager.depositFee(_token)) / BASIS_POINTS_DIVISOR;
@@ -159,9 +159,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         IPositionVault _positionVault
     ) external {
         require(!isInitialized, "Not initialized");
-        require(Address.isContract(address(_priceManager)), "priceManager address is invalid");
-        require(Address.isContract(address(_settingsManager)), "settingsManager address is invalid");
-        require(Address.isContract(address(_positionVault)), "positionVault address is invalid");
+        require(Address.isContract(address(_priceManager)), "priceManager invalid");
+        require(Address.isContract(address(_settingsManager)), "settingsManager invalid");
+        require(Address.isContract(address(_positionVault)), "positionVault invalid");
         priceManager = _priceManager;
         settingsManager = _settingsManager;
         positionVault = _positionVault;
@@ -169,11 +169,11 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     function stake(address _account, address _token, uint256 _amount) external nonReentrant preventBanners(msg.sender) {
-        require(settingsManager.isStakingEnabled(_token), "stake not allowed");
+        require(settingsManager.isStakingEnabled(_token), "staking disabled");
         require(_amount > 0, "zero amount");
         uint256 usdAmount = priceManager.tokenToUsd(_token, _amount);
         if (_account != msg.sender) {
-            require(settingsManager.checkDelegation(_account, msg.sender), "not allowed for stakeFor");
+            require(settingsManager.checkDelegation(_account, msg.sender), "Not allowed");
         }
         _transferIn(msg.sender, _token, _amount);
         uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee(_token)) / BASIS_POINTS_DIVISOR;
@@ -213,8 +213,8 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 _vlpAmount,
         address _receiver
     ) external nonReentrant preventBanners(msg.sender) {
-        require(settingsManager.isUnstakingEnabled(_tokenOut), "unstake not allowed");
-        require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "zero amount not allowed and cant exceed totalVLP");
+        require(settingsManager.isUnstakingEnabled(_tokenOut), "unstaking disabled");
+        require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "vlpAmount error");
         require(
             lastStakedAt[msg.sender] + settingsManager.cooldownDuration() <= block.timestamp,
             "cooldown duration not yet passed"
@@ -240,9 +240,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 fee = (_amount * settingsManager.withdrawFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = _amount - fee;
         uint256 collateralDelta = priceManager.usdToToken(_token, afterFeeAmount);
-        require(settingsManager.isWithdraw(_token), "withdraw not allowed");
+        require(settingsManager.isWithdraw(_token), "withdraw disabled");
         if (_account != msg.sender) {
-            require(settingsManager.checkDelegation(_account, msg.sender), "not allowed for withdrawFor");
+            require(settingsManager.checkDelegation(_account, msg.sender), "Not allowed");
         }
         _accountDeltaAndFeeIntoTotalUSD(true, 0, fee);
         IVUSD(vusd).burn(address(_account), _amount);

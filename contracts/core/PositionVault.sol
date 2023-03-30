@@ -72,7 +72,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 marginFees
     );
     modifier onlyVault() {
-        require(msg.sender == address(vault), "Only vault has access");
+        require(msg.sender == address(vault), "Only vault");
         _;
     }
 
@@ -220,10 +220,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         IVaultUtils _vaultUtils
     ) external {
         require(!isInitialized, "Not initialized");
-        require(Address.isContract(address(_priceManager)), "priceManager address is invalid");
-        require(Address.isContract(address(_settingsManager)), "settingsManager address is invalid");
+        require(Address.isContract(address(_priceManager)), "priceManager invalid");
+        require(Address.isContract(address(_settingsManager)), "settingsManager invalid");
         require(Address.isContract(address(_triggerOrderManager)), "triggerOrderManager address is invalid");
-        require(Address.isContract(address(_vault)), "vault address is invalid");
+        require(Address.isContract(address(_vault)), "vault invalid");
         require(Address.isContract(address(_vaultUtils)), "vaultUtils address is invalid");
         priceManager = _priceManager;
         settingsManager = _settingsManager;
