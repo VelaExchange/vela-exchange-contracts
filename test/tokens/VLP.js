@@ -23,11 +23,12 @@ describe("VLP", function () {
         vlp = await deployContract('VLP', [])
         let usdc = await deployContract("BaseToken", ["USD Coin", "USDC", expandDecimals('10000000', 6)])
         let vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0]);
+        operator = await deployContract('ExchangeOperators', [])
         let Vault = await deployContract("Vault", [
+            operator.address,
             vlp.address,
             vusd.address
         ]);
-        operator = await deployContract('ExchangeOperators', [])
         let vaultPriceFeed = await deployContract("VaultPriceFeed", []);
         let priceManager = await deployContract("PriceManager", [
             vaultPriceFeed.address,
