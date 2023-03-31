@@ -113,6 +113,15 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         // put a require here to call something like positionVault.getPositionProfit(_posId)
         // compare to maxProfitPercent and totalUSD, if the position profit > max profit % of totalUSD, close
         (Position memory position, , ) = positionVault.getPosition(_posId);
+        uint256 price = priceManager.getLastPrice(position.indexToken);
+        (bool isProfit, uint256 pnl) = settingsManager.getPnl(
+            position.indexToken,
+            position.size,
+            position.averagePrice,
+            price,
+            position.fundingIndex,
+            position.isLong);
+        require(isProfit && pnl >= totalUSD * settingsManager.maxProfitPercent() / BASIS_POINTS_DIVISOR, "not allowed");
         positionVault.decreasePosition(position.owner, position.indexToken, position.size, _posId);
     }
 

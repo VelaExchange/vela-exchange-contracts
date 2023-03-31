@@ -26,7 +26,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     EnumerableSet.AddressSet private banWalletList;
     uint256 public maxOpenInterestPerUser;
     uint256 public priceMovementPercent = 500; // 0.5%
-    uint256 public maxProfitPercent = 10000; // 10%
+    uint256 public override maxProfitPercent = 10000; // 10%
 
     struct BountyPercent {
         uint32 team;

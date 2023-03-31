@@ -94,6 +94,8 @@ interface ISettingsManager {
 
     function marketOrderEnabled() external view returns (bool);
 
+    function maxProfitPercent() external view returns (uint256); 
+    
     function pauseForexForCloseTime() external view returns (bool);
 
     function priceMovementPercent() external view returns (uint256);
