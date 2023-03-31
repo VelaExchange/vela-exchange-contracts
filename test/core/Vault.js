@@ -104,6 +104,7 @@ describe("Vault", function () {
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
+           operator.address,
            vlp.address,
            vusd.address
         ]);
@@ -119,7 +120,7 @@ describe("Vault", function () {
             vusd.address,
             tokenFarm.address
           ]
-        )).to.be.revertedWith("vault address is invalid")
+        )).to.be.revertedWith("vault invalid")
         await expect(deployContract("SettingsManager",
           [
             PositionVault.address,
@@ -127,7 +128,7 @@ describe("Vault", function () {
             zeroAddress,
             tokenFarm.address
           ]
-        )).to.be.revertedWith("VUSD address is invalid")
+        )).to.be.revertedWith("VUSD invalid")
         await expect(deployContract("SettingsManager",
           [
             PositionVault.address,
@@ -135,7 +136,7 @@ describe("Vault", function () {
             vusd.address,
             zeroAddress
           ]
-        )).to.be.revertedWith("tokenFarm address is invalid")
+        )).to.be.revertedWith("tokenFarm invalid")
         settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,
@@ -155,7 +156,7 @@ describe("Vault", function () {
           zeroAddress,
           priceManager.address,
           settingsManager.address
-        ])).to.be.revertedWith("vault address is invalid");
+        ])).to.be.revertedWith("vault invalid");
         VaultUtils = await deployContract("VaultUtils", [
           PositionVault.address,
           priceManager.address,
@@ -166,17 +167,17 @@ describe("Vault", function () {
           zeroAddress,
           settingsManager.address,
           PositionVault.address,
-        )).to.be.revertedWith("priceManager address is invalid");
+        )).to.be.revertedWith("priceManager invalid");
         await expect(Vault.setVaultSettings(
           priceManager.address,
           zeroAddress,
           PositionVault.address,
-        )).to.be.revertedWith("settingsManager address is invalid");
+        )).to.be.revertedWith("settingsManager invalid");
         await expect(Vault.setVaultSettings(
           priceManager.address,
           settingsManager.address,
           zeroAddress,
-        )).to.be.revertedWith("positionVault address is invalid");
+        )).to.be.revertedWith("positionVault invalid");
         await Vault.setVaultSettings(
           priceManager.address,
           settingsManager.address,
@@ -189,14 +190,14 @@ describe("Vault", function () {
           triggerOrderManager.address,
           Vault.address,
           VaultUtils.address
-        )).to.be.revertedWith("priceManager address is invalid");
+        )).to.be.revertedWith("priceManager invalid");
         await expect(PositionVault.initialize(
           priceManager.address,
           zeroAddress,
           triggerOrderManager.address,
           Vault.address,
           VaultUtils.address
-        )).to.be.revertedWith("settingsManager address is invalid");
+        )).to.be.revertedWith("settingsManager invalid");
         await expect(PositionVault.initialize(
           priceManager.address,
           settingsManager.address,
@@ -210,7 +211,7 @@ describe("Vault", function () {
           triggerOrderManager.address,
           zeroAddress,
           VaultUtils.address
-        )).to.be.revertedWith("vault address is invalid");
+        )).to.be.revertedWith("vault invalid");
         await expect(PositionVault.initialize(
           priceManager.address,
           settingsManager.address,
@@ -533,7 +534,7 @@ describe("Vault", function () {
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount);
     await usdc.connect(user1).approve(Vault.address,  amount); // approve USDC
     await expect(Vault.connect(user1).deposit(wallet.address, usdc.address, amount))
-    .to.be.revertedWith("not allowed for depositFor"); // deposit USDC
+    .to.be.revertedWith("Not allowed"); // deposit USDC
     await settingsManager.connect(wallet).delegate([user1.address, user0.address])
     expect(await settingsManager.checkDelegation(wallet.address, user1.address))
       .eq(true)
@@ -547,7 +548,7 @@ describe("Vault", function () {
     const collateralDeltaUsd = await priceManager.tokenToUsd(btc.address, amount);
     await btc.connect(wallet).approve(Vault.address,  amount); // stake BTC
     await expect(Vault.stake(wallet.address, btc.address, amount))
-      .to.be.revertedWith("stake not allowed"); // stake BTC
+      .to.be.revertedWith("staking disabled"); // stake BTC
    })
 
 
@@ -574,7 +575,7 @@ describe("Vault", function () {
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount);
     await usdc.connect(user1).approve(Vault.address,  amount); // approve USDC
     await expect(Vault.connect(user1).stake(wallet.address, usdc.address, amount))
-      .to.be.revertedWith("not allowed for stakeFor"); // stake USDC
+      .to.be.revertedWith("Not allowed"); // stake USDC
     await settingsManager.connect(wallet).delegate([user1.address, user0.address])
     expect(await settingsManager.checkDelegation(wallet.address, user1.address))
       .eq(true)
@@ -587,7 +588,7 @@ describe("Vault", function () {
    it("withdraw with General Token", async () => {
       const amount = expandDecimals('10', 30)
       await expect(Vault.withdraw(btc.address, wallet.address, amount))
-        .to.be.revertedWith("withdraw not allowed"); // deposit BTC
+        .to.be.revertedWith("withdraw disabled"); // deposit BTC
    })
 
   it("withdraw with Stable Coins", async () => {
@@ -603,7 +604,7 @@ describe("Vault", function () {
     const vusdAmount = expandDecimals('100', 30)
     const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
     const collateralToken = await priceManager.usdToToken(usdc.address, vusdAmount);
-    await expect(Vault.connect(user2).withdraw(usdc.address, wallet.address, vusdAmount)).to.be.revertedWith("not allowed for withdrawFor")
+    await expect(Vault.connect(user2).withdraw(usdc.address, wallet.address, vusdAmount)).to.be.revertedWith("Not allowed")
     await settingsManager.delegate([user2.address])
     await Vault.connect(user2).withdraw(usdc.address, wallet.address, vusdAmount)
     expect(await usdc.balanceOf(wallet.address)).eq(
@@ -613,7 +614,7 @@ describe("Vault", function () {
   it("unstake with General Token", async () => {
     const amount = expandDecimals('10', 18)
     await expect(Vault.unstake(btc.address, amount, wallet.address))
-      .to.be.revertedWith("unstake not allowed"); // deposit BTC
+      .to.be.revertedWith("unstaking disabled"); // deposit BTC
   })
 
   it("unstake with Stable Coins", async () => {
@@ -621,7 +622,7 @@ describe("Vault", function () {
     const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
     // const collateralToken = await priceManager.usdToToken(usdc.address, vusdAmount);
     await expect(Vault.unstake(usdc.address, expandDecimals('10000', 18), wallet.address))
-      .to.be.revertedWith("zero amount not allowed and cant exceed totalVLP")
+      .to.be.revertedWith("vlpAmount error")
     await expect(Vault.unstake(usdc.address, vlpAmount, wallet.address))
       .to.be.revertedWith("cooldown duration not yet passed")
     const totalUSD = await Vault.totalUSD()
@@ -1698,7 +1699,7 @@ describe("Vault", function () {
     const isPlus = true
     const amount = expandDecimals('5', 30)
     await expect(Vault.addOrRemoveCollateral(indexToken, posId, isPlus, expandDecimals('1500', 30)))
-      .to.be.revertedWith("position size should be greater than collateral")
+      .to.be.revertedWith("pos size > collateral")
     await Vault.addOrRemoveCollateral(indexToken, posId, isPlus, amount)
   })
 
@@ -1958,7 +1959,7 @@ describe("Vault", function () {
     await ethers.provider.send('evm_increaseTime', [passTime]);
     await ethers.provider.send('evm_mine');
     const liquidateFeeUsd = expandDecimals('10', 30)
-    await expect(settingsManager.setLiquidationFeeUsd(expandDecimals('160', 30))).to.be.revertedWith("liquidationFeeUsd should be smaller than MAX")
+    await expect(settingsManager.setLiquidationFeeUsd(expandDecimals('160', 30))).to.be.revertedWith("Above max")
     await settingsManager.setLiquidationFeeUsd(liquidateFeeUsd)
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice(55220))
     const validateLiquidation = await VaultUtils.validateLiquidation(
@@ -2137,7 +2138,7 @@ describe("Vault", function () {
       orderType,
       triggerPrices, //triggerPrices
       referAddress
-    )).to.be.revertedWith("prevent trade for forex close time")
+    )).to.be.revertedWith("Forex closed")
     await settingsManager.pauseForexMarket(false)
     await Vault.newPositionOrder(
       indexToken, //_indexToken
@@ -2148,7 +2149,7 @@ describe("Vault", function () {
     )
   })
 
-  
+
   it ("referFee managerFee", async() =>{
     const closeDeltaTime = 60 * 60 * 1
     await settingsManager.setCloseDeltaTime(closeDeltaTime)
@@ -2207,7 +2208,7 @@ describe("Vault", function () {
         size
        ], //triggerPrices
       referAddress
-    )).to.be.revertedWith("prevent banners from trade, stake, deposit")
+    )).to.be.revertedWith("Account banned")
     await settingsManager.removeDelegatesFromBanList([wallet.address])
     await Vault.connect(wallet).newPositionOrder(
       btc.address, //_indexToken
@@ -2228,10 +2229,10 @@ describe("Vault", function () {
     await settingsManager.addDelegatesToBanList([wallet.address])
     await expect(Vault.connect(wallet).stake(
       wallet.address, usdc.address, amount
-    )).to.be.revertedWith("prevent banners from trade, stake, deposit")
+    )).to.be.revertedWith("Account banned")
     await settingsManager.connect(wallet).delegate([user2.address])
     await expect(Vault.connect(user2).stake(
       wallet.address, usdc.address, amount
-    )).to.be.revertedWith("prevent banners from delegation")
+    )).to.be.revertedWith("account banned")
   })
 });

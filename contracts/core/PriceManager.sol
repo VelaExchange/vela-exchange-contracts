@@ -19,7 +19,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
     mapping(address => uint256) public override tokenDecimals;
 
     constructor(address _priceFeed, address _operators) {
-        require(Address.isContract(_operators), "operators address is invalid");
+        require(Address.isContract(_operators), "operators invalid");
         operators = IOperators(_operators);
         priceFeed = _priceFeed;
     }

@@ -23,27 +23,30 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
     event UpdateTriggerOrderStatus(uint256 posId, uint256 orderId, TriggerStatus status);
     event UpdatePositionTriggerStatus(uint256 posId, TriggerStatus status);
     modifier onlyVault() {
-        require(msg.sender == address(positionVault), "Only vault has access");
+        require(msg.sender == address(positionVault), "Only vault");
         _;
     }
 
     constructor(address _positionVault, address _priceManager, address _settingsManager) {
-        require(Address.isContract(_positionVault), "positionVault address is invalid");
-        require(Address.isContract(_priceManager), "priceManager address is invalid");
-        require(Address.isContract(_settingsManager), "settingsManager address is invalid");
+        require(Address.isContract(_positionVault), "positionVault invalid");
+        require(Address.isContract(_priceManager), "priceManager invalid");
+        require(Address.isContract(_settingsManager), "settingsManager invalid");
         positionVault = IPositionVault(_positionVault);
         priceManager = IPriceManager(_priceManager);
         settingsManager = ISettingsManager(_settingsManager);
     }
 
-    function cancelTriggerOrder(uint256 _posId, uint256 _orderId) external {
+    function cancelTriggerOrder(
+        uint256 _posId,
+        uint256 _orderId) external {
         PositionTrigger storage order = triggerOrders[_posId];
         require(order.status == TriggerStatus.OPEN && order.triggers.length > _orderId, "TriggerOrder was cancelled");
         order.triggers[_orderId].status = TriggerStatus.CANCELLED;
         emit UpdateTriggerOrderStatus(_posId, _orderId, order.triggers[_orderId].status);
     }
 
-    function cancelPositionTrigger(uint256 _posId) external {
+    function cancelPositionTrigger(
+        uint256 _posId) external {
         PositionTrigger storage order = triggerOrders[_posId];
         require(order.status == TriggerStatus.OPEN, "PositionTrigger was cancelled");
         order.status = TriggerStatus.CANCELLED;
@@ -92,8 +95,14 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         (Position memory position, , ) = positionVault.getPosition(_posId);
         require(position.size > 0, "position size should be greater than zero");
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.feeManager()).transfer(msg.value);
-        bool validateTriggerData = validateTriggerOrdersData(_indexToken, _isLong, _isTPs, _prices, _amountPercents);
+        payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        bool validateTriggerData = validateTriggerOrdersData(
+            _indexToken,
+            _isLong,
+            _isTPs,
+            _prices,
+            _amountPercents
+        );
         require(validateTriggerData, "triggerOrder data are incorrect");
         PositionTrigger storage triggerOrder = triggerOrders[_posId];
         if (triggerOrder.triggerCount == 0) {

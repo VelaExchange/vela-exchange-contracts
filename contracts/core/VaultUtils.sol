@@ -35,12 +35,12 @@ contract VaultUtils is IVaultUtils, Constants {
     event SetDepositFee(address indexed token, uint256 indexed fee);
 
     modifier onlyVault() {
-        require(msg.sender == address(positionVault), "Only vault has access");
+        require(msg.sender == address(positionVault), "Only vault");
         _;
     }
 
     constructor(address _positionVault, address _priceManager, address _settingsManager) {
-        require(Address.isContract(_positionVault), "vault address is invalid");
+        require(Address.isContract(_positionVault), "vault invalid");
         positionVault = IPositionVault(_positionVault);
         priceManager = IPriceManager(_priceManager);
         settingsManager = ISettingsManager(_settingsManager);
@@ -311,6 +311,10 @@ contract VaultUtils is IVaultUtils, Constants {
             statusFlag = ORDER_NOT_FILLED;
         }
         return statusFlag;
+    }
+
+    function validateSizeCollateralAmount(uint256 _size, uint256 _collateral) external pure override {
+        require(_size >= _collateral, "pos size > collateral");
     }
 
     function _checkMaxThreshold(

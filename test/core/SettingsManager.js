@@ -99,6 +99,7 @@ describe("SettingsManager", function () {
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
+           operator.address,
            vlp.address,
            vusd.address
         ]);
@@ -124,35 +125,35 @@ describe("SettingsManager", function () {
       await expect(settingsManager.setVaultSettings(max_cooldown_duration, feeRewardBasisPoints))
         .to.be.revertedWith("invalid cooldownDuration")
       await expect(settingsManager.setVaultSettings(cooldownDuration, minFeeBasisPoints))
-        .to.be.revertedWith("feeRewardsBasisPoints not greater than min")
+        .to.be.revertedWith("Below min")
       await expect(settingsManager.setVaultSettings(cooldownDuration, maxFeeBasisPoints))
-        .to.be.revertedWith("feeRewardsBasisPoints not smaller than max")
+        .to.be.revertedWith("Above max")
       await settingsManager.setVaultSettings(cooldownDuration, feeRewardBasisPoints)
     })
 
     it ("setCloseDeltaTime", async () => {
       const maxCloseDeltaTime = 25 * 60 * 60
       await expect(settingsManager.setCloseDeltaTime(maxCloseDeltaTime))
-        .to.be.revertedWith("closeDeltaTime is bigger than max")
+        .to.be.revertedWith("Above max")
       await settingsManager.setCloseDeltaTime(closeDeltaTime)
     })
 
     it ("setDelayDeltaTime", async () => {
       const maxDelayDeltaTime = 25 * 60 * 60
       await expect(settingsManager.setDelayDeltaTime(maxDelayDeltaTime))
-        .to.be.revertedWith("delayDeltaTime is bigger than max")
+        .to.be.revertedWith("Above max")
       await settingsManager.setDelayDeltaTime(delayDeltaTime)
     })
 
     it ("setDepositFee", async () => {
       await expect(settingsManager.setDepositFee(btc.address, 15000))
-        .to.be.revertedWith("deposit fee is bigger than max")
+        .to.be.revertedWith("Above max")
       await settingsManager.setDepositFee(btc.address, depositFee)
     })
 
     it ("setWithdrawFee", async () => {
       await expect(settingsManager.setWithdrawFee(btc.address, 15000))
-        .to.be.revertedWith("withdraw fee is bigger than max")
+        .to.be.revertedWith("Above max")
       await settingsManager.setWithdrawFee(btc.address, withdrawFee)
     })
 
@@ -176,7 +177,7 @@ describe("SettingsManager", function () {
       const token = btc.address
       const maxThreshold = 1200000
       await expect(settingsManager.setLiquidateThreshold(maxThreshold, token))
-        .to.be.revertedWith("threshold should be smaller than MAX")
+        .to.be.revertedWith("Above max")
       await settingsManager.setLiquidateThreshold(newThreshold, token)
     })
 
@@ -184,7 +185,7 @@ describe("SettingsManager", function () {
       const liquidationFeeUsd = expandDecimals('2', 30)
       const maxLiquidationFeeUsd = expandDecimals('120', 30)
       await expect(settingsManager.setLiquidationFeeUsd(maxLiquidationFeeUsd))
-        .to.be.revertedWith("liquidationFeeUsd should be smaller than MAX")
+        .to.be.revertedWith("Above max")
       await settingsManager.setLiquidationFeeUsd(liquidationFeeUsd)
     })
 
@@ -196,7 +197,7 @@ describe("SettingsManager", function () {
       const eurMarginFeeBasisPoints = 8
       const jpyMarginFeeBasisPoints = 8
       await expect(settingsManager.setMarginFeeBasisPoints(btc.address, true, 5500))
-        .to.be.revertedWith("marginFeeBasisPoints should be smaller than MAX")
+        .to.be.revertedWith("Above max")
       await settingsManager.setMarginFeeBasisPoints(btc.address, true, btcMarginFeeBasisPoints)
       await settingsManager.setMarginFeeBasisPoints(btc.address, false, btcMarginFeeBasisPoints)
       await settingsManager.setMarginFeeBasisPoints(eth.address, true, ethMarginFeeBasisPoints)
@@ -223,14 +224,14 @@ describe("SettingsManager", function () {
         _isLong,
         0,
         10
-      )).to.be.revertedWith("collateral is not zero")
+      )).to.be.revertedWith("collateral zero")
       await expect(settingsManager.validatePosition(
         _account,
         _indexToken,
         _isLong,
         10,
         100
-      )).to.be.revertedWith("position size should be greater than collateral")
+      )).to.be.revertedWith("pos size > collateral")
       await settingsManager.validatePosition(
         _account,
         _indexToken,
@@ -252,7 +253,7 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max open interest per asset and per side")
+      )).to.be.revertedWith("maxOI exceeded")
       await settingsManager.setMaxOpenInterestPerAssetPerSide(
         _indexToken,
         _isLong,
@@ -268,7 +269,7 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max open interest for this account")
+      )).to.be.revertedWith("maxOI exceeded")
       await settingsManager.setMaxOpenInterestPerWallet(
         _account,
         1000000
@@ -283,7 +284,7 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max open interest per user")
+      )).to.be.revertedWith("maxOI exceeded")
       await settingsManager.setMaxOpenInterestPerUser(
         100
       )
@@ -305,7 +306,7 @@ describe("SettingsManager", function () {
         _isLong,
         100,
         10
-      )).to.be.revertedWith("exceed max open interest per asset and per side")
+      )).to.be.revertedWith("maxOI exceeded")
       settingsManager.validatePosition( // should not revert for the other side
         _account,
         _indexToken,
@@ -323,9 +324,9 @@ describe("SettingsManager", function () {
     it ("setStakingFee", async () => {
       const fee = 100
       await expect(settingsManager.setStakingFee(btc.address, 15000))
-        .to.be.revertedWith("staking fee is bigger than max")
+        .to.be.revertedWith("Above max")
       await settingsManager.setStakingFee(
-        btc.address, 
+        btc.address,
         fee
       )
     })
@@ -338,7 +339,7 @@ describe("SettingsManager", function () {
     it ("setReferFee", async () => {
       const fee1 = 10000000; // greater than feeDivisor
       await expect(settingsManager.setReferFee(fee1))
-        .to.be.revertedWith("fee should be smaller than feeDivider")
+        .to.be.revertedWith("Above max")
       const fee2 = 100; // greater than feeDivisor
       await settingsManager.setReferFee(fee2)
     })
@@ -346,7 +347,7 @@ describe("SettingsManager", function () {
     it ("setPriceMovementPercent", async () => {
       const priceMovementPercent = 10000000; // greater than feeDivisor
       await expect(settingsManager.setPriceMovementPercent(priceMovementPercent))
-        .to.be.revertedWith("price percent should be smaller than max percent")
+        .to.be.revertedWith("Above max")
       const priceMovementPercent2 = 100; // greater than feeDivisor
       await settingsManager.setPriceMovementPercent(priceMovementPercent2)
     })
@@ -428,6 +429,6 @@ describe("SettingsManager", function () {
         sender,
         isLong,
         amount
-      )).to.be.revertedWith("Only vault has access")
+      )).to.be.revertedWith("Only vault")
     })
 });

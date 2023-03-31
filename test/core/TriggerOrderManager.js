@@ -92,6 +92,7 @@ describe("TriggerOrderManager", function () {
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
         vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
+           operator.address,
            vlp.address,
            vusd.address
         ]);
@@ -114,21 +115,21 @@ describe("TriggerOrderManager", function () {
             priceManager.address,
             settingsManager.address
           ]
-        )).to.be.revertedWith("positionVault address is invalid")
+        )).to.be.revertedWith("positionVault invalid")
         await expect(deployContract("TriggerOrderManager",
           [
             PositionVault.address,
             zeroAddress,
             settingsManager.address
           ]
-        )).to.be.revertedWith("priceManager address is invalid")
+        )).to.be.revertedWith("priceManager invalid")
         await expect(deployContract("TriggerOrderManager",
           [
             PositionVault.address,
             priceManager.address,
             zeroAddress
           ]
-        )).to.be.revertedWith("settingsManager address is invalid")
+        )).to.be.revertedWith("settingsManager invalid")
         triggerOrderManager = await deployContract("TriggerOrderManager",
           [
             PositionVault.address,
@@ -549,7 +550,7 @@ describe("TriggerOrderManager", function () {
       ]
       const newTriggerGasFee = expandDecimals('1', 16)
       await expect(settingsManager.setTriggerGasFee(expandDecimals('1', 18)))
-        .to.be.revertedWith("trigger gas fee exceed max")
+        .to.be.revertedWith("Above max")
       await settingsManager.setTriggerGasFee(newTriggerGasFee)
       await expect(triggerOrderManager.addTriggerOrders(
         indexToken,
