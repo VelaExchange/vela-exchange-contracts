@@ -26,8 +26,8 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     IVault private vault;
     IVaultUtils private vaultUtils;
 
-    // uint256 public openMarketQueueIndex;
-    // uint256[] public openMarketQueuePosIds;
+    uint256 public openMarketQueueIndex;
+    uint256[] public openMarketQueuePosIds;
     // uint256 public addMarketQueueIndex;
     // uint256[] public addMarketQueuePosIds;
     // uint256 public closeMarketQueueIndex;
@@ -71,6 +71,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         address caller,
         uint256 marginFees
     );
+    event MarketOrderExecutionError(uint256 indexed posId, address indexed account, string err);
 
     modifier onlyVault() {
         require(msg.sender == address(vault), "Only vault has access");
@@ -307,7 +308,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             order.positionType = POSITION_MARKET;
             order.lmtPrice = _params[0];
 
-            // openMarketQueuePosIds.push(lastPosId);
+            openMarketQueuePosIds.push(lastPosId);
         } else if (_orderType == OrderType.LIMIT) {
             require(_params[0] > 0, "limit price is invalid");
 
@@ -369,6 +370,51 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         _addUserAlivePosition(position.owner, lastPosId);
 
         emit UpdateOrder(_posId, order.positionType, order.status);
+    }
+
+    function _executeOpenMarketOrders(uint256 numOfOrders) internal {
+        uint256 index = openMarketQueueIndex;
+        uint256 endIndex = index + numOfOrders;
+        uint256 length = openMarketQueuePosIds.length;
+
+        if (index >= length) return;
+        if (endIndex > length) endIndex = length;
+
+        while (index < endIndex) {
+            uint256 posId = openMarketQueuePosIds[index];
+
+            try this.executeOpenMarketOrder(posId) {} catch Error(string memory err) {
+                cancelMarketOrder(posId);
+                emit MarketOrderExecutionError(posId, positions[posId].owner, err);
+            } catch (bytes memory) {
+                cancelMarketOrder(posId);
+            }
+
+            delete openMarketQueuePosIds[posId];
+            ++index;
+        }
+
+        openMarketQueueIndex = index;
+    }
+
+    // uint256 numOfOrders,
+    // address[] calldata indexTokens,
+    // uint256[] calldata prices
+    function executeOpenMarketOrdersWithPrices(uint256 numOfOrders) external {
+        require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
+
+        // update prices for used index tokens
+        _executeOpenMarketOrders(numOfOrders);
+    }
+
+    function cancelMarketOrder(uint256 _posId) internal {
+        Order storage order = orders[_posId];
+        order.status = OrderStatus.CANCELED;
+        emit UpdateOrder(_posId, order.positionType, order.status);
+    }
+
+    function hasUnexecutedMarketOrders() external view returns (bool) {
+        return openMarketQueueIndex < openMarketQueuePosIds.length;
     }
 
     function triggerForOpenOrders(address _account, uint256 _posId) external nonReentrant {
