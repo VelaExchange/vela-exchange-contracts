@@ -12,4 +12,6 @@ interface IPriceFeed {
     function latestAnswer() external view returns (uint256);
 
     function latestRound() external view returns (uint80);
+
+    function setLatestAnswer(uint256 _answer) external;
 }

@@ -397,13 +397,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         openMarketQueueIndex = index;
     }
 
-    // uint256 numOfOrders,
-    // address[] calldata indexTokens,
-    // uint256[] calldata prices
-    function executeOpenMarketOrdersWithPrices(uint256 numOfOrders) external {
+    function executeOpenMarketOrdersWithPrices(
+        uint256 numOfOrders,
+        address[] calldata indexTokens,
+        uint256[] calldata prices
+    ) external {
         require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
 
-        // update prices for used index tokens
+        priceManager.setLatestPrices(indexTokens, prices);
         _executeOpenMarketOrders(numOfOrders);
     }
 

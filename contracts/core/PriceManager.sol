@@ -63,4 +63,8 @@ contract PriceManager is IPriceManager, Ownable, Constants {
     function getLastPrice(address _token) public view override returns (uint256) {
         return IVaultPriceFeed(priceFeed).getLastPrice(_token);
     }
+
+    function setLatestPrices(address[] calldata _tokens, uint256[] calldata _answers) external override {
+        return IVaultPriceFeed(priceFeed).setPrices(_tokens, _answers);
+    }
 }

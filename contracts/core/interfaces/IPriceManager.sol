@@ -12,4 +12,6 @@ interface IPriceManager {
     function tokenDecimals(address _token) external view returns (uint256);
 
     function tokenToUsd(address _token, uint256 _tokenAmount) external view returns (uint256);
+
+    function setLatestPrices(address[] calldata _tokens, uint256[] calldata _answers) external;
 }

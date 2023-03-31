@@ -37,7 +37,7 @@ contract FastPriceFeed is IPriceFeed {
         emit SetDecription(_description);
     }
 
-    function setLatestAnswer(uint256 _answer) external {
+    function setLatestAnswer(uint256 _answer) external override {
         require(isAdmin[msg.sender], "PriceFeed: forbidden");
         roundId = roundId + 1;
         answer = _answer;
