@@ -20,7 +20,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     ITokenFarm public immutable tokenFarm;
 
     address public override feeManager;
-    bool public override marketOrderEnabled = true;
     bool public override referEnabled = true;
     EnumerableSet.AddressSet private banWalletList;
     uint256 public maxOpenInterestPerUser;
@@ -68,7 +67,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => EnumerableSet.AddressSet) private _delegatesByMaster;
     event ChangedReferEnabled(bool referEnabled);
     event ChangedReferFee(uint256 referFee);
-    event EnableMarketOrder(bool _enabled);
     event SetAssetManagerWallet(address manager);
     event SetBountyPercent(uint256 bountyPercentTeam, uint256 bountyPercentFirstCaller, uint256 bountyPercentResolver);
     event SetDeductFeePercent(address indexed account, uint256 deductFee);
@@ -152,12 +150,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
             openInterestPerAssetPerSide[_token][_isLong] -= _amount;
         }
         emit UpdateTotalOpenInterest(_token, _isLong, _amount);
-    }
-
-    function enableMarketOrder(bool _enable) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        marketOrderEnabled = _enable;
-        emit EnableMarketOrder(_enable);
     }
 
     function increaseOpenInterest(

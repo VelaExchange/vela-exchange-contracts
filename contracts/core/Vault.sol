@@ -121,13 +121,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256[] memory _params,
         address _refer
     ) external payable nonReentrant {
-        if (_orderType != OrderType.MARKET) {
-            require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-            payable(settingsManager.feeManager()).transfer(msg.value);
-        } else {
-            require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
-            payable(settingsManager.feeManager()).transfer(msg.value);
-        }
+        require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
+        payable(settingsManager.feeManager()).transfer(msg.value);
+
         positionVault.newPositionOrder(msg.sender, _indexToken, _isLong, _orderType, _params, _refer);
     }
 

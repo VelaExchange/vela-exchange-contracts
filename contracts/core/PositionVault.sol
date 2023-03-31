@@ -26,6 +26,13 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     IVault private vault;
     IVaultUtils private vaultUtils;
 
+    // uint256 public openMarketQueueIndex;
+    // uint256[] public openMarketQueuePosIds;
+    // uint256 public addMarketQueueIndex;
+    // uint256[] public addMarketQueuePosIds;
+    // uint256 public closeMarketQueueIndex;
+    // uint256[] public closeMarketQueuePosIds;
+
     bool private isInitialized;
     mapping(uint256 => Position) public positions;
     mapping(address => uint256[]) private userPositionIds;
@@ -280,41 +287,88 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256[] memory _params,
         address _refer
     ) external nonReentrant onlyVault {
+        require(_params[2] > MIN_COLLATERAL, "collateral is too small");
+        require(_params[3] > MIN_COLLATERAL, "size is too small");
+
         Order storage order = orders[lastPosId];
         Position storage position = positions[lastPosId];
-        _addUserAlivePosition(_account, lastPosId);
-        vaultUtils.validatePosData(_isLong, _indexToken, _orderType, _params, true);
+
         order.collateral = _params[2];
         order.size = _params[3];
         position.owner = _account;
         position.refer = _refer;
         position.indexToken = _indexToken;
         position.isLong = _isLong;
+
         if (_orderType == OrderType.MARKET) {
-            require(settingsManager.marketOrderEnabled(), "market order was disabled");
+            require(_params[0] > 0, "market price is invalid");
+
+            order.status = OrderStatus.PENDING;
             order.positionType = POSITION_MARKET;
-            uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, order.size);
-            uint256 price = priceManager.getLastPrice(_indexToken);
-            _increasePosition(_account, _indexToken, order.collateral + fee, order.size, lastPosId, price, _isLong);
-            order.collateral = 0;
-            order.size = 0;
-            order.status = OrderStatus.FILLED;
+            order.lmtPrice = _params[0];
+
+            // openMarketQueuePosIds.push(lastPosId);
         } else if (_orderType == OrderType.LIMIT) {
+            require(_params[0] > 0, "limit price is invalid");
+
             order.status = OrderStatus.PENDING;
             order.positionType = POSITION_LIMIT;
             order.lmtPrice = _params[0];
         } else if (_orderType == OrderType.STOP) {
+            require(_params[1] > 0, "stop price is invalid");
+
             order.status = OrderStatus.PENDING;
             order.positionType = POSITION_STOP_MARKET;
             order.stpPrice = _params[1];
         } else if (_orderType == OrderType.STOP_LIMIT) {
+            require(_params[0] > 0 && _params[1] > 0, "stop limit price is invalid");
+
             order.status = OrderStatus.PENDING;
             order.positionType = POSITION_STOP_LIMIT;
             order.lmtPrice = _params[0];
             order.stpPrice = _params[1];
         }
+
         lastPosId += 1;
         emit NewOrder(_account, _indexToken, _isLong, lastPosId - 1, order.positionType, order.status, _params);
+    }
+
+    function executeOpenMarketOrder(uint256 _posId) public nonReentrant {
+        require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
+
+        Position memory position = positions[_posId];
+        Order storage order = orders[_posId];
+        require(order.size > 0, "order size is 0");
+        require(order.positionType == POSITION_MARKET, "not market order");
+        require(order.status == OrderStatus.PENDING, "not pending order");
+
+        settingsManager.updateFunding(position.indexToken);
+
+        uint256 fee = settingsManager.collectMarginFees(
+            position.owner,
+            position.indexToken,
+            position.isLong,
+            order.size
+        );
+        uint256 price = priceManager.getLastPrice(position.indexToken);
+        checkSlippage(position.isLong, order.lmtPrice, price);
+
+        _increasePosition(
+            position.owner,
+            position.indexToken,
+            order.collateral + fee,
+            order.size,
+            lastPosId,
+            price,
+            position.isLong
+        );
+
+        order.collateral = 0;
+        order.size = 0;
+        order.status = OrderStatus.FILLED;
+        _addUserAlivePosition(position.owner, lastPosId);
+
+        emit UpdateOrder(_posId, order.positionType, order.status);
     }
 
     function triggerForOpenOrders(address _account, uint256 _posId) external nonReentrant {
@@ -348,6 +402,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 order.collateral = 0;
                 order.size = 0;
                 order.status = OrderStatus.FILLED;
+                _addUserAlivePosition(_account, lastPosId);
             } else if (order.positionType == POSITION_STOP_MARKET) {
                 uint256 fee = settingsManager.collectMarginFees(
                     _account,
@@ -368,6 +423,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 order.collateral = 0;
                 order.size = 0;
                 order.status = OrderStatus.FILLED;
+                _addUserAlivePosition(_account, lastPosId);
             } else if (order.positionType == POSITION_STOP_LIMIT) {
                 order.positionType = POSITION_LIMIT;
             } else if (order.positionType == POSITION_TRAILING_STOP) {

@@ -219,45 +219,6 @@ contract VaultUtils is IVaultUtils, Constants {
         );
     }
 
-    function validatePosData(
-        bool _isLong,
-        address _indexToken,
-        OrderType _orderType,
-        uint256[] memory _params,
-        bool _raise
-    ) external view override returns (bool) {
-        bool orderTypeFlag;
-        if (_params[3] > 0) {
-            if (_isLong) {
-                if (_orderType == OrderType.LIMIT && _params[0] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.STOP && _params[1] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.STOP_LIMIT && _params[0] > 0 && _params[1] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.MARKET) {
-                    checkSlippage(_isLong, _params[0], _params[1], priceManager.getLastPrice(_indexToken));
-                    orderTypeFlag = true;
-                }
-            } else {
-                if (_orderType == OrderType.LIMIT && _params[0] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.STOP && _params[1] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.STOP_LIMIT && _params[0] > 0 && _params[1] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.MARKET) {
-                    checkSlippage(_isLong, _params[0], _params[1], priceManager.getLastPrice(_indexToken));
-                    orderTypeFlag = true;
-                }
-            }
-        } else orderTypeFlag = true;
-        if (_raise) {
-            require(orderTypeFlag, "invalid position data");
-        }
-        return orderTypeFlag;
-    }
-
     function validateTrailingStopInputData(
         uint256 _posId,
         uint256[] memory _params

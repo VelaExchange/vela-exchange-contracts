@@ -42,14 +42,6 @@ interface IVaultUtils {
 
     function validateMaxLeverage(address _indexToken, uint256 _size, uint256 _collateral) external view;
 
-    function validatePosData(
-        bool _isLong,
-        address _indexToken,
-        OrderType _orderType,
-        uint256[] memory _params,
-        bool _raise
-    ) external view returns (bool);
-
     function validateMinLeverage(uint256 _size, uint256 _collateral) external view;
 
     function validateTrailingStopInputData(uint256 _posId, uint256[] memory _params) external view returns (bool);

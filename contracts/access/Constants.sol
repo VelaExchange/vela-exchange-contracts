@@ -39,25 +39,13 @@ contract Constants {
     uint256 public constant TRAILING_STOP_TYPE_AMOUNT = 0;
     uint256 public constant TRAILING_STOP_TYPE_PERCENT = 1;
     uint256 public constant VLP_DECIMALS = 18;
+    uint256 public constant MIN_COLLATERAL = 5 * PRICE_PRECISION; // 5 USD
 
-    function checkSlippage(
-        bool isLong,
-        uint256 expectedMarketPrice,
-        uint256 slippageBasisPoints,
-        uint256 actualMarketPrice
-    ) internal pure {
+    function checkSlippage(bool isLong, uint256 allowedPrice, uint256 actualMarketPrice) internal pure {
         if (isLong) {
-            require(
-                actualMarketPrice <=
-                    (expectedMarketPrice * (BASIS_POINTS_DIVISOR + slippageBasisPoints)) / BASIS_POINTS_DIVISOR,
-                "slippage exceeded"
-            );
+            require(actualMarketPrice <= allowedPrice, "long: slippage exceeded");
         } else {
-            require(
-                (expectedMarketPrice * (BASIS_POINTS_DIVISOR - slippageBasisPoints)) / BASIS_POINTS_DIVISOR <=
-                    actualMarketPrice,
-                "slippage exceeded"
-            );
+            require(actualMarketPrice >= allowedPrice, "short: slippage exceeded");
         }
     }
 }
