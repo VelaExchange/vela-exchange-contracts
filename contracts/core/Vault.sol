@@ -71,13 +71,17 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function addPosition(uint256 _posId, uint256 _collateralDelta, uint256 _sizeDelta) external payable nonReentrant {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.feeManager()).call{value: msg.value}("");
+        (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
+        require(success, "failed to send fee");
+
         positionVault.addPosition(msg.sender, _posId, _collateralDelta, _sizeDelta);
     }
 
     function addTrailingStop(uint256 _posId, uint256[] memory _params) external payable nonReentrant {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.feeManager()).call{value: msg.value}("");
+        (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
+        require(success, "failed to send fee");
+
         positionVault.addTrailingStop(msg.sender, _posId, _params);
     }
 
@@ -108,7 +112,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function decreasePosition(uint256 _sizeDelta, uint256 _posId) external payable nonReentrant {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
-        payable(settingsManager.feeManager()).call{value: msg.value}("");
+        (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
+        require(success, "failed to send fee");
+
         positionVault.decreasePosition(msg.sender, _sizeDelta, _posId);
     }
 
@@ -145,11 +151,12 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     ) external payable nonReentrant preventBanners(msg.sender) {
         if (_orderType != OrderType.MARKET) {
             require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-            payable(settingsManager.feeManager()).call{value: msg.value}("");
         } else {
             require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
-            payable(settingsManager.feeManager()).call{value: msg.value}("");
         }
+        (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
+        require(success, "failed to send fee");
+
         positionVault.newPositionOrder(msg.sender, _indexToken, _isLong, _orderType, _params, _refer);
     }
 
