@@ -313,10 +313,6 @@ contract VaultUtils is IVaultUtils, Constants {
         return statusFlag;
     }
 
-    function validateSizeCollateralAmount(uint256 _size, uint256 _collateral) external pure override {
-        require(_size >= _collateral, "pos size > collateral");
-    }
-
     function _checkMaxThreshold(
         uint256 _collateral,
         uint256 _size,

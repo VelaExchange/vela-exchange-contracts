@@ -70,8 +70,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event ChangedReferFee(uint256 referFee);
     event DecreaseOpenInterest(address indexed token, bool isLong, uint256 amount);
     event IncreaseOpenInterest(address indexed token, bool isLong, uint256 amount);
-    event PauseForexMarket(bool _paused);
-    event EnableMarketOrder(bool _enabled);
     event SetAssetManagerWallet(address manager);
     event SetBountyPercent(uint256 bountyPercentTeam, uint256 bountyPercentFirstCaller, uint256 bountyPercentResolver);
     event SetDeductFeePercent(address indexed account, uint256 deductFee);
@@ -330,10 +328,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     function setPriceMovementPercent(uint256 _priceMovementPercent) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        require(
-            _priceMovementPercent <= MAX_PRICE_MOVEMENT_PERCENT,
-            "Above max"
-        );
+        require(_priceMovementPercent <= MAX_PRICE_MOVEMENT_PERCENT, "Above max");
         priceMovementPercent = _priceMovementPercent;
         emit SetPriceMovementPercent(_priceMovementPercent);
     }

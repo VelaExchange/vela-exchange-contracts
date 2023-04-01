@@ -50,13 +50,6 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         _;
     }
 
-    modifier preventTradeForForexCloseTime(address _token) {
-        if (priceManager.isForex(_token)) {
-            require(!settingsManager.pauseForexForCloseTime(), "Forex closed");
-        }
-        _;
-    }
-
     constructor(address _operators, address _vlp, address _vusd) {
         require(Address.isContract(_operators), "operators invalid");
         operators = IOperators(_operators);
@@ -78,23 +71,21 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function addPosition(uint256 _posId, uint256 _collateralDelta, uint256 _sizeDelta) external payable nonReentrant {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.feeManager()).call{ value: msg.value }("");
-        positionVault.addPosition(msg.sender, _indexToken, _posId, _collateralDelta, _sizeDelta);
+        payable(settingsManager.feeManager()).call{value: msg.value}("");
+        positionVault.addPosition(msg.sender, _posId, _collateralDelta, _sizeDelta);
     }
 
     function addTrailingStop(uint256 _posId, uint256[] memory _params) external payable nonReentrant {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.feeManager()).call{ value: msg.value }("");
-        positionVault.addTrailingStop(msg.sender, _indexToken, _posId, _params);
+        payable(settingsManager.feeManager()).call{value: msg.value}("");
+        positionVault.addTrailingStop(msg.sender, _posId, _params);
     }
 
     function cancelPendingOrder(uint256 _posId) external nonReentrant {
         positionVault.cancelPendingOrder(msg.sender, _posId);
     }
 
-    function forceClosePosition(
-        uint256 _posId
-    ) external payable nonReentrant {
+    function forceClosePosition(uint256 _posId) external payable nonReentrant {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         // put a require here to call something like positionVault.getPositionProfit(_posId)
         // compare to maxProfitPercent and totalUSD, if the position profit > max profit % of totalUSD, close
@@ -106,19 +97,19 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             position.averagePrice,
             price,
             position.fundingIndex,
-            position.isLong);
-        require(isProfit && pnl >= totalUSD * settingsManager.maxProfitPercent() / BASIS_POINTS_DIVISOR, "not allowed");
-        positionVault.decreasePosition(position.owner, position.indexToken, position.size, _posId);
+            position.isLong
+        );
+        require(
+            isProfit && pnl >= (totalUSD * settingsManager.maxProfitPercent()) / BASIS_POINTS_DIVISOR,
+            "not allowed"
+        );
+        positionVault.decreasePosition(position.owner, position.size, _posId);
     }
 
-    function decreasePosition(
-        address _indexToken,
-        uint256 _sizeDelta,
-        uint256 _posId
-    ) external payable nonReentrant preventTradeForForexCloseTime(_indexToken) preventBanners(msg.sender) {
+    function decreasePosition(uint256 _sizeDelta, uint256 _posId) external payable nonReentrant {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
-        payable(settingsManager.feeManager()).call{ value: msg.value }("");
-        positionVault.decreasePosition(msg.sender, _indexToken, _sizeDelta, _posId);
+        payable(settingsManager.feeManager()).call{value: msg.value}("");
+        positionVault.decreasePosition(msg.sender, _sizeDelta, _posId);
     }
 
     function deposit(
@@ -151,13 +142,13 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         OrderType _orderType,
         uint256[] memory _params,
         address _refer
-    ) external payable nonReentrant preventBanners(msg.sender) preventTradeForForexCloseTime(_indexToken) {
+    ) external payable nonReentrant preventBanners(msg.sender) {
         if (_orderType != OrderType.MARKET) {
             require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-            payable(settingsManager.feeManager()).call{ value: msg.value }("");
+            payable(settingsManager.feeManager()).call{value: msg.value}("");
         } else {
             require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
-            payable(settingsManager.feeManager()).call{ value: msg.value }("");
+            payable(settingsManager.feeManager()).call{value: msg.value}("");
         }
         positionVault.newPositionOrder(msg.sender, _indexToken, _isLong, _orderType, _params, _refer);
     }
@@ -217,12 +208,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit TakeVUSDOut(_account, _refer, _usdOut, _fee);
     }
 
-    function unstake(
-        address _tokenOut,
-        uint256 _vlpAmount,
-        address _receiver
-    ) external nonReentrant preventBanners(msg.sender) {
-        require(settingsManager.isUnstakingEnabled(_tokenOut), "unstaking disabled");
+    function unstake(address _tokenOut, uint256 _vlpAmount, address _receiver) external nonReentrant {
         require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "vlpAmount error");
         require(
             lastStakedAt[msg.sender] + settingsManager.cooldownDuration() <= block.timestamp,
@@ -245,7 +231,6 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 fee = (_amount * settingsManager.withdrawFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = _amount - fee;
         uint256 collateralDelta = priceManager.usdToToken(_token, afterFeeAmount);
-        require(settingsManager.isWithdraw(_token), "withdraw disabled");
         if (_account != msg.sender) {
             require(settingsManager.checkDelegation(_account, msg.sender), "Not allowed");
         }

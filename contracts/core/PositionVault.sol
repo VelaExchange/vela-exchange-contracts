@@ -111,8 +111,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     ) external override onlyVault {
         ConfirmInfo storage confirm = confirms[_posId];
         Position storage position = positions[_posId];
+
+        require(
+            settingsManager.isIncreasingPositionDisabled(position.indexToken),
+            "current asset is disabled from increasing position"
+        );
         require(position.size > 0, "Position not Open");
         require(_account == position.owner, "you are not allowed to add position");
+
         confirm.delayStartTime = block.timestamp;
         confirm.confirmDelayStatus = true;
         confirm.pendingDelayCollateral = _collateralDelta;
@@ -288,6 +294,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256[] memory _params,
         address _refer
     ) external nonReentrant onlyVault {
+        require(
+            settingsManager.isIncreasingPositionDisabled(_indexToken),
+            "current asset is disabled from increasing position"
+        );
         require(_params[2] > MIN_COLLATERAL, "collateral is too small");
         require(_params[3] > MIN_COLLATERAL, "size is too small");
 
@@ -575,14 +585,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         bool _isLong
     ) internal {
         settingsManager.updateFunding(_indexToken);
-        require(
-            settingsManager.isIncreasingPositionDisabled(_indexToken),
-            "current asset is disabled from increasing position"
-        );
-        require(
-            !settingsManager.checkBanList(_account),
-            "wallets on ban list are not allowed to increase position, stake & deposit"
-        );
+
         Position storage position = positions[_posId];
         if (position.size == 0) {
             position.averagePrice = _price;
