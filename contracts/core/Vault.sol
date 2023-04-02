@@ -102,7 +102,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         positionVault.addTrailingStop(msg.sender, _indexToken, _posId, _params);
     }
 
-    function cancelPendingOrder(uint256 _posId) external nonReentrant preventBanners(msg.sender) {
+    function cancelPendingOrder(uint256 _posId) public nonReentrant preventBanners(msg.sender) {
         positionVault.cancelPendingOrder(msg.sender, _posId);
     }
 
@@ -133,6 +133,31 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
         payable(settingsManager.feeManager()).call{ value: msg.value }("");
         positionVault.decreasePosition(msg.sender, _indexToken, _sizeDelta, _posId);
+    }
+
+    function _closePosition(uint256 _posId) internal {
+        (Position memory pos, , ) = positionVault.getPosition(_posId);
+        positionVault.decreasePosition(msg.sender, pos.indexToken, pos.size, _posId);
+    }
+
+    function closePosition(uint256 _posId) external payable nonReentrant preventBanners(msg.sender) {
+        require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
+        payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        _closePosition(_posId);
+    }
+
+    function closePositions(uint256[] memory _posIds) external payable nonReentrant preventBanners(msg.sender) {
+        require(msg.value == settingsManager.globalGasFee() * _posIds.length, "invalid globalGasFee");
+        payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        for(uint i=0; i<_posIds.length; i++){
+            _closePosition(_posIds[i]);
+        }
+    }
+    
+    function cancelPendingOrders(uint256[] memory _posIds) external preventBanners(msg.sender) {
+        for(uint i=0; i<_posIds.length; i++){
+            positionVault.cancelPendingOrder(msg.sender, _posIds[i]);
+        }
     }
 
     function deposit(
