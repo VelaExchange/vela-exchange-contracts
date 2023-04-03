@@ -58,6 +58,8 @@ describe("Vault", function () {
     let cooldownDuration
     let feeRewardBasisPoints // FeeRewardBasisPoints 70%
 
+    let snapshot
+
     before(async function () {
         trustForwarder = user3.address
         positionManagerAddress = user1.address
@@ -1642,7 +1644,15 @@ describe("Vault", function () {
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     await expect(Vault.cancelPendingOrder(0)).to.be.revertedWith("Not in Pending")
+    snapshot = await ethers.provider.send('evm_snapshot', []);
     await Vault.cancelPendingOrder(posId)
+  })
+
+  it ("cancelPendingOrders", async () => {
+    await ethers.provider.send('evm_revert', [snapshot])
+    const lastPosId = await PositionVault.lastPosId()
+    const posId = lastPosId.toNumber() - 1
+    await Vault.cancelPendingOrders([posId])
   })
 
   it ("cancel for Trailing Stop", async () => {
@@ -1762,6 +1772,7 @@ describe("Vault", function () {
       posId
     )).to.be.revertedWith("not allowed to close the position")
     await settingsManager.setCloseDeltaTime(0)
+
     await Vault.decreasePosition(
       indexToken,
       sizeDelta,
@@ -1780,8 +1791,6 @@ describe("Vault", function () {
       posId
     )
   })
-
-  let snapshot;
 
   it ("liquidatePosition for Long", async () => {
     const account = wallet.address
@@ -2019,6 +2028,7 @@ describe("Vault", function () {
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const sizeDelta = expandDecimals('100', 30)
+    snapshot = await ethers.provider.send('evm_snapshot', []);
     await Vault.decreasePosition(
       indexToken,
       sizeDelta,
@@ -2026,6 +2036,42 @@ describe("Vault", function () {
     )
   })
 
+  it ("closePosition should work like decreasePosition with full amount", async ()=>{
+    await ethers.provider.send('evm_revert', [snapshot])
+    snapshot = await ethers.provider.send('evm_snapshot', []);
+    const lastPosId = await PositionVault.lastPosId()
+    const posId = lastPosId.toNumber() - 1
+    await Vault.closePosition(posId);
+  })
+
+  it ("closePositions", async ()=>{
+    await ethers.provider.send('evm_revert', [snapshot])
+    const indexToken = eth.address;
+    const amountIn = expandDecimals('10', 30)
+    const toUsdAmount = expandDecimals('100', 30)
+    const isLong = true
+    const referAddress = user0.address;
+    const orderType = 0 // M
+    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken);
+    const slippage = 1000 // 1%
+    const collateral = amountIn;
+    const size = toUsdAmount;
+    const triggerPrices = [
+      expectedMarketPrice,
+      slippage,
+      collateral,
+      size
+     ]
+    await Vault.newPositionOrder(
+      indexToken, //_indexToken
+      isLong,
+      orderType,
+      triggerPrices, //triggerPrices
+      referAddress
+    )
+    const lastPosId = await PositionVault.lastPosId()
+    await Vault.closePositions([lastPosId-2, lastPosId-1]);
+  })
 
   it ("long market order for checking decreasePosition at quick price movement", async () => {
     const closeDeltaTime = 60 * 60 * 1
