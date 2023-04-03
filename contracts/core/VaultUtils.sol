@@ -214,7 +214,7 @@ contract VaultUtils is IVaultUtils, Constants {
 
     function validateMaxLeverage(address _indexToken, uint256 _size, uint256 _collateral) external view override {
         require(
-            _size * 10 ** 4 <= _collateral * (priceManager.maxLeverage(_indexToken) + LEVERAGE_SLIPPAGE),
+            _size * MIN_LEVERAGE <= _collateral * (priceManager.maxLeverage(_indexToken) + LEVERAGE_SLIPPAGE),
             "maxLeverage exceeded"
         );
     }
