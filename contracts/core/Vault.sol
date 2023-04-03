@@ -150,7 +150,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             _closePosition(_posIds[i]);
         }
     }
-    
+
     function cancelPendingOrders(uint256[] memory _posIds) external preventBanners(msg.sender) {
         for(uint i=0; i<_posIds.length; i++){
             positionVault.cancelPendingOrder(msg.sender, _posIds[i]);
@@ -195,7 +195,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         }
         (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
-
+        require(_refer != msg.sender, 'Refer error');
         positionVault.newPositionOrder(msg.sender, _indexToken, _isLong, _orderType, _params, _refer);
     }
 
