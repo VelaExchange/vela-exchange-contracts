@@ -193,7 +193,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     function decreasePosition(address _account, uint256 _sizeDelta, uint256 _posId) external override onlyVault {
         Position memory position = positions[_posId];
         uint256 price = priceManager.getLastPrice(position.indexToken);
-        require(_account == position.owner, "you are not allowed to decrease position");
+        require(_account == position.owner, "Not allowed");
         _decreasePosition(_account, position.indexToken, _sizeDelta, price, position.isLong, _posId);
     }
 

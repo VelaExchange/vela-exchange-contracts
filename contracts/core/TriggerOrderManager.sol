@@ -95,7 +95,8 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         (Position memory position, , ) = positionVault.getPosition(_posId);
         require(position.size > 0, "position size should be greater than zero");
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        (bool success, ) = payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        require(success, "failed to send fee");
         bool validateTriggerData = validateTriggerOrdersData(
             _indexToken,
             _isLong,

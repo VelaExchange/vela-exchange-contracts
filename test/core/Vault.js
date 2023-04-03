@@ -1765,7 +1765,7 @@ describe("Vault", function () {
       indexToken,
       expandDecimals('1000', 30),
       posId
-    )).to.be.revertedWith("you are not allowed to decrease position")
+    )).to.be.revertedWith("Not allowed")
     await expect(Vault.decreasePosition(
       indexToken,
       sizeDelta,
