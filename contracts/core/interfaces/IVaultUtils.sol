@@ -26,46 +26,25 @@ interface IVaultUtils {
         uint256 _fee
     ) external;
 
-    function emitLiquidatePositionEvent(address _account, address _indexToken, bool _isLong, uint256 _posId, uint256 _delta) external;
-
-    function validateConfirmDelay(
-        uint256 _posId,
-        bool _raise
-    ) external view returns (bool);
-
-    function validateDecreasePosition(
-        bool _isLong,
-        uint256 _posId,
-        uint256 _price,
-        bool _raise
-    ) external view returns (bool);
-
-    function validateLiquidation(
+    function emitLiquidatePositionEvent(
         address _account,
         address _indexToken,
         bool _isLong,
         uint256 _posId,
-        bool _raise
-    ) external view returns (uint256, uint256);
+        uint256 _delta
+    ) external;
+
+    function validateConfirmDelay(uint256 _posId, bool _raise) external view returns (bool);
+
+    function validateDecreasePosition(uint256 _posId, uint256 _price, bool _raise) external view returns (bool);
+
+    function validateLiquidation(uint256 _posId, bool _raise) external view returns (uint256, uint256);
 
     function validateMaxLeverage(address _indexToken, uint256 _size, uint256 _collateral) external view;
 
-    function validatePosData(
-        bool _isLong,
-        address _indexToken,
-        OrderType _orderType,
-        uint256[] memory _params,
-        bool _raise
-    ) external view returns (bool);
+    function validateMinLeverage(uint256 _size, uint256 _collateral) external view;
 
-    function validateSizeCollateralAmount(uint256 _size, uint256 _collateral) external view;
-
-    function validateTrailingStopInputData(
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId,
-        uint256[] memory _params
-    ) external view returns (bool);
+    function validateTrailingStopInputData(uint256 _posId, uint256[] memory _params) external view returns (bool);
 
     function validateTrailingStopPrice(
         address _indexToken,
@@ -74,9 +53,5 @@ interface IVaultUtils {
         bool _raise
     ) external view returns (bool);
 
-    function validateTrigger(
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    ) external view returns (uint8);
+    function validateTrigger(address _indexToken, bool _isLong, uint256 _posId) external view returns (uint8);
 }

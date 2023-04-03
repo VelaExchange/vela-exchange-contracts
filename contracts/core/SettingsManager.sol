@@ -20,8 +20,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     ITokenFarm public immutable tokenFarm;
 
     address public override feeManager;
-    bool public override marketOrderEnabled = true;
-    bool public override pauseForexForCloseTime;
     bool public override referEnabled = true;
     EnumerableSet.AddressSet private banWalletList;
     uint256 public maxOpenInterestPerUser;
@@ -49,10 +47,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public override basisFundingRateFactor = 10000;
 
     mapping(address => bool) public override isDeposit;
-    mapping(address => bool) public override isWithdraw;
     mapping(address => bool) public override isManager;
     mapping(address => bool) public override isStakingEnabled;
-    mapping(address => bool) public override isUnstakingEnabled;
+    mapping(address => bool) public override isIncreasingPositionDisabled;
     mapping(address => uint256) public override deductFeePercent;
     mapping(address => uint256) public override depositFee;
     mapping(address => uint256) public override withdrawFee;
@@ -73,8 +70,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event ChangedReferFee(uint256 referFee);
     event DecreaseOpenInterest(address indexed token, bool isLong, uint256 amount);
     event IncreaseOpenInterest(address indexed token, bool isLong, uint256 amount);
-    event PauseForexMarket(bool _paused);
-    event EnableMarketOrder(bool _enabled);
     event SetAssetManagerWallet(address manager);
     event SetBountyPercent(uint256 bountyPercentTeam, uint256 bountyPercentFirstCaller, uint256 bountyPercentResolver);
     event SetDeductFeePercent(address indexed account, uint256 deductFee);
@@ -158,18 +153,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
             openInterestPerAssetPerSide[_token][_isLong] -= _amount;
         }
         emit DecreaseOpenInterest(_token, _isLong, _amount);
-    }
-
-    function pauseForexMarket(bool _paused) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        pauseForexForCloseTime = _paused;
-        emit PauseForexMarket(_paused);
-    }
-
-    function enableMarketOrder(bool _enable) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        marketOrderEnabled = _enable;
-        emit EnableMarketOrder(_enable);
     }
 
     function increaseOpenInterest(
@@ -267,22 +250,16 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetEnableDeposit(_token, _isEnabled);
     }
 
-    function setEnableWithdraw(address _token, bool _isEnabled) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        isWithdraw[_token] = _isEnabled;
-        emit SetEnableWithdraw(_token, _isEnabled);
-    }
-
     function setEnableStaking(address _token, bool _isEnabled) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         isStakingEnabled[_token] = _isEnabled;
         emit SetEnableStaking(_token, _isEnabled);
     }
 
-    function setEnableUnstaking(address _token, bool _isEnabled) external {
+    function setIsIncreasingPositionDisabled(address _token, bool _isDisabled) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        isUnstakingEnabled[_token] = _isEnabled;
-        emit SetEnableUnstaking(_token, _isEnabled);
+        isIncreasingPositionDisabled[_token] = _isDisabled;
+        emit SetEnableUnstaking(_token, _isDisabled);
     }
 
     function setDeductFeePercentForUser(address _account, uint256 _deductFee) external {
@@ -351,10 +328,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     function setPriceMovementPercent(uint256 _priceMovementPercent) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        require(
-            _priceMovementPercent <= MAX_PRICE_MOVEMENT_PERCENT,
-            "Above max"
-        );
+        require(_priceMovementPercent <= MAX_PRICE_MOVEMENT_PERCENT, "Above max");
         priceMovementPercent = _priceMovementPercent;
         emit SetPriceMovementPercent(_priceMovementPercent);
     }
@@ -412,7 +386,8 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         bool _isLong,
         uint256 _sizeDelta
     ) external view override returns (uint256) {
-        uint256 feeUsd = (BASIS_POINTS_DIVISOR - deductFeePercent[_account]) * getPositionFee(_indexToken, _isLong, _sizeDelta) / BASIS_POINTS_DIVISOR;
+        uint256 feeUsd = ((BASIS_POINTS_DIVISOR - deductFeePercent[_account]) *
+            getPositionFee(_indexToken, _isLong, _sizeDelta)) / BASIS_POINTS_DIVISOR;
 
         return (feeUsd * tokenFarm.getTier(STAKING_PID_FOR_CHARGE_FEE, _account)) / BASIS_POINTS_DIVISOR;
     }
@@ -513,7 +488,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function getFundingRate(address _indexToken) public view override returns (int256) {
-        if (positionVault.getVaultUSDBalance() == 0) { return 0; }
+        if (positionVault.getVaultUSDBalance() == 0) {
+            return 0;
+        }
         uint256 assetLongOI = openInterestPerAssetPerSide[_indexToken][true];
         uint256 assetShortOI = openInterestPerAssetPerSide[_indexToken][false];
 

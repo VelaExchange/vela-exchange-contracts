@@ -9,7 +9,8 @@ import "./interfaces/ISettingsManager.sol";
 import "./interfaces/ITriggerOrderManager.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Constants} from "../access/Constants.sol";
-import {Position, TriggerInfo, TriggerStatus, PositionTrigger } from "./structs.sol";
+import {Position, TriggerInfo, TriggerStatus, PositionTrigger} from "./structs.sol";
+
 contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants {
     IPositionVault public immutable positionVault;
     ISettingsManager public immutable settingsManager;
@@ -17,20 +18,8 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
 
     mapping(uint256 => PositionTrigger) public triggerOrders;
 
-    event ExecuteTriggerOrders(
-        uint256 posId,
-        uint256 amount,
-        uint256 orderId,
-        uint256 price,
-        TriggerStatus status
-    );
-    event AddTriggerOrders(
-        uint256 posId,
-        bool isTP,
-        uint256 price,
-        uint256 amountPercent,
-        TriggerStatus status
-    );
+    event ExecuteTriggerOrders(uint256 posId, uint256 amount, uint256 orderId, uint256 price, TriggerStatus status);
+    event AddTriggerOrders(uint256 posId, bool isTP, uint256 price, uint256 amountPercent, TriggerStatus status);
     event UpdateTriggerOrderStatus(uint256 posId, uint256 orderId, TriggerStatus status);
     event UpdatePositionTriggerStatus(uint256 posId, TriggerStatus status);
     modifier onlyVault() {
@@ -59,7 +48,7 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
     function cancelPositionTrigger(
         uint256 _posId) external {
         PositionTrigger storage order = triggerOrders[_posId];
-        require(order.status == TriggerStatus.OPEN , "PositionTrigger was cancelled");
+        require(order.status == TriggerStatus.OPEN, "PositionTrigger was cancelled");
         order.status = TriggerStatus.CANCELLED;
         emit UpdatePositionTriggerStatus(_posId, order.status);
     }
@@ -75,20 +64,20 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         uint256 price = priceManager.getLastPrice(_token);
         for (uint256 i = 0; i < order.triggers.length; i++) {
             bool pricesAreUpperBounds = order.triggers[i].isTP ? _isLong : !_isLong;
-            if (order.triggers[i].status == TriggerStatus.OPEN && order.triggers[i].triggeredAmount == 0 && (pricesAreUpperBounds ? order.triggers[i].price <= price : price <= order.triggers[i].price)) {
-                order.triggers[i].triggeredAmount = (position.size * order.triggers[i].amountPercent) / BASIS_POINTS_DIVISOR;
+            if (
+                order.triggers[i].status == TriggerStatus.OPEN &&
+                order.triggers[i].triggeredAmount == 0 &&
+                (pricesAreUpperBounds ? order.triggers[i].price <= price : price <= order.triggers[i].price)
+            ) {
+                order.triggers[i].triggeredAmount =
+                    (position.size * order.triggers[i].amountPercent) /
+                    BASIS_POINTS_DIVISOR;
                 order.triggers[i].triggeredAt = block.timestamp;
                 order.triggers[i].status = TriggerStatus.TRIGGERED;
                 if (order.triggers[i].amountPercent == BASIS_POINTS_DIVISOR) {
                     order.status = TriggerStatus.TRIGGERED;
                 }
-                emit ExecuteTriggerOrders(
-                    _posId,
-                    order.triggers[i].triggeredAmount,
-                    i,
-                    price,
-                    order.status
-                );
+                emit ExecuteTriggerOrders(_posId, order.triggers[i].triggeredAmount, i, price, order.status);
                 return (true, order.triggers[i].amountPercent, order.triggers[i].price);
             }
         }
@@ -120,37 +109,27 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
             triggerOrder.status = TriggerStatus.OPEN;
         }
         for (uint256 i = 0; i < _prices.length; i++) {
-            triggerOrder.triggers.push(TriggerInfo({
-                isTP: _isTPs[i],
-                amountPercent: _amountPercents[i],
-                createdAt: block.timestamp,
-                price: _prices[i],
-                triggeredAmount: 0,
-                triggeredAt: 0,
-                status: TriggerStatus.OPEN
-            }));
-            triggerOrder.triggerCount += 1;
-            emit AddTriggerOrders(
-                _posId,
-                _isTPs[i],
-                _prices[i],
-                _amountPercents[i],
-                TriggerStatus.OPEN
+            triggerOrder.triggers.push(
+                TriggerInfo({
+                    isTP: _isTPs[i],
+                    amountPercent: _amountPercents[i],
+                    createdAt: block.timestamp,
+                    price: _prices[i],
+                    triggeredAmount: 0,
+                    triggeredAt: 0,
+                    status: TriggerStatus.OPEN
+                })
             );
+            triggerOrder.triggerCount += 1;
+            emit AddTriggerOrders(_posId, _isTPs[i], _prices[i], _amountPercents[i], TriggerStatus.OPEN);
         }
     }
 
-    function getTriggerOrderInfo(
-        uint256 _posId
-    ) external view returns (PositionTrigger memory) {
+    function getTriggerOrderInfo(uint256 _posId) external view returns (PositionTrigger memory) {
         return triggerOrders[_posId];
     }
 
-    function validateTPSLTriggers(
-        address _token,
-        bool _isLong,
-        uint256 _posId
-    ) external view override returns (bool) {
+    function validateTPSLTriggers(address _token, bool _isLong, uint256 _posId) external view override returns (bool) {
         PositionTrigger storage order = triggerOrders[_posId];
         if (order.status != TriggerStatus.OPEN) {
             return false;
@@ -158,7 +137,11 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         uint256 price = priceManager.getLastPrice(_token);
         for (uint256 i = 0; i < order.triggers.length; i++) {
             bool pricesAreUpperBounds = order.triggers[i].isTP ? _isLong : !_isLong;
-            if (order.triggers[i].status == TriggerStatus.OPEN && order.triggers[i].triggeredAmount == 0 && (pricesAreUpperBounds ? order.triggers[i].price <= price : price <= order.triggers[i].price)) {
+            if (
+                order.triggers[i].status == TriggerStatus.OPEN &&
+                order.triggers[i].triggeredAmount == 0 &&
+                (pricesAreUpperBounds ? order.triggers[i].price <= price : price <= order.triggers[i].price)
+            ) {
                 return true;
             }
         }

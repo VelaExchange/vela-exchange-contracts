@@ -60,7 +60,6 @@ struct Position {
     int256 fundingIndex;
     uint256 lastIncreasedTime;
     uint256 lastPrice;
-    uint256 reserveAmount;
     uint256 size;
 }
 

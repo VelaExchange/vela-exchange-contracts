@@ -22,14 +22,14 @@ contract VaultUtils is IVaultUtils, Constants {
         bool isLong,
         uint256 posId,
         int256 realisedPnl,
-        uint256[6] posData
+        uint256[5] posData
     );
     event IncreasePosition(
         address indexed account,
         address indexed indexToken,
         bool isLong,
         uint256 posId,
-        uint256[6] posData
+        uint256[5] posData
     );
     event LiquidatePosition(uint256 posId, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
     event SetDepositFee(address indexed token, uint256 indexed fee);
@@ -75,7 +75,7 @@ contract VaultUtils is IVaultUtils, Constants {
             _isLong,
             _posId,
             position.realisedPnl,
-            [_collateralDelta, _sizeDelta, position.reserveAmount, position.averagePrice, price, _fee]
+            [_collateralDelta, _sizeDelta, position.averagePrice, price, _fee]
         );
     }
 
@@ -95,7 +95,7 @@ contract VaultUtils is IVaultUtils, Constants {
             _indexToken,
             _isLong,
             _posId,
-            [_collateralDelta, _sizeDelta, position.reserveAmount, position.averagePrice, price, _fee]
+            [_collateralDelta, _sizeDelta, position.averagePrice, price, _fee]
         );
     }
 
@@ -129,7 +129,6 @@ contract VaultUtils is IVaultUtils, Constants {
     }
 
     function validateDecreasePosition(
-        bool _isLong,
         uint256 _posId,
         uint256 _price,
         bool _raise
@@ -142,7 +141,7 @@ contract VaultUtils is IVaultUtils, Constants {
             position.averagePrice,
             _price,
             position.fundingIndex,
-            _isLong
+            position.isLong
         );
         if (hasProfit) {
             if (
@@ -152,10 +151,10 @@ contract VaultUtils is IVaultUtils, Constants {
                 validateFlag = true;
             } else {
                 if (
-                    (_isLong &&
+                    (position.isLong &&
                         _price * BASIS_POINTS_DIVISOR >=
                         (BASIS_POINTS_DIVISOR + settingsManager.priceMovementPercent()) * position.lastPrice) ||
-                    (!_isLong &&
+                    (!position.isLong &&
                         _price * BASIS_POINTS_DIVISOR <=
                         (BASIS_POINTS_DIVISOR - settingsManager.priceMovementPercent()) * position.lastPrice)
                 ) {
@@ -171,25 +170,24 @@ contract VaultUtils is IVaultUtils, Constants {
         return validateFlag;
     }
 
-    function validateLiquidation(
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId,
-        bool _raise
-    ) external view override returns (uint256, uint256) {
+    function validateLiquidation(uint256 _posId, bool _raise) external view override returns (uint256, uint256) {
         (Position memory position, , ) = positionVault.getPosition(_posId);
-        uint256 price = priceManager.getLastPrice(_indexToken);
+        uint256 price = priceManager.getLastPrice(position.indexToken);
         if (position.averagePrice > 0) {
             (bool hasProfit, uint256 delta) = settingsManager.getPnl(
-                _indexToken,
+                position.indexToken,
                 position.size,
                 position.averagePrice,
                 price,
                 position.fundingIndex,
-                _isLong
+                position.isLong
             );
-            uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
+            uint256 migrateFeeUsd = settingsManager.collectMarginFees(
+                position.owner,
+                position.indexToken,
+                position.isLong,
+                position.size
+            );
             if (!hasProfit && position.collateral < delta) {
                 if (_raise) {
                     revert("Vault: losses exceed collateral");
@@ -204,68 +202,31 @@ contract VaultUtils is IVaultUtils, Constants {
                 remainingCollateral = position.collateral + delta;
             }
 
-            return _checkMaxThreshold(remainingCollateral, position.size, migrateFeeUsd, _indexToken, _raise);
+            return _checkMaxThreshold(remainingCollateral, position.size, migrateFeeUsd, position.indexToken, _raise);
         } else {
             return (LIQUIDATE_NONE_EXCEED, 0);
         }
     }
 
+    function validateMinLeverage(uint256 _size, uint256 _collateral) external pure override {
+        require(_size >= _collateral, "leverage cannot be less than 1");
+    }
+
     function validateMaxLeverage(address _indexToken, uint256 _size, uint256 _collateral) external view override {
         require(
-            _collateral * (priceManager.maxLeverage(_indexToken) + LEVERAGE_SLIPPAGE) >= _size * MIN_LEVERAGE,
-            "Vault: maxLeverage exceeded"
+            _size * MIN_LEVERAGE <= _collateral * (priceManager.maxLeverage(_indexToken) + LEVERAGE_SLIPPAGE),
+            "maxLeverage exceeded"
         );
     }
 
-    function validatePosData(
-        bool _isLong,
-        address _indexToken,
-        OrderType _orderType,
-        uint256[] memory _params,
-        bool _raise
-    ) external view override returns (bool) {
-        bool orderTypeFlag;
-        if (_params[3] > 0) {
-            if (_isLong) {
-                if (_orderType == OrderType.LIMIT && _params[0] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.STOP && _params[1] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.STOP_LIMIT && _params[0] > 0 && _params[1] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.MARKET) {
-                    checkSlippage(_isLong, _params[0], _params[1], priceManager.getLastPrice(_indexToken));
-                    orderTypeFlag = true;
-                }
-            } else {
-                if (_orderType == OrderType.LIMIT && _params[0] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.STOP && _params[1] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.STOP_LIMIT && _params[0] > 0 && _params[1] > 0) {
-                    orderTypeFlag = true;
-                } else if (_orderType == OrderType.MARKET) {
-                    checkSlippage(_isLong, _params[0], _params[1], priceManager.getLastPrice(_indexToken));
-                    orderTypeFlag = true;
-                }
-            }
-        } else orderTypeFlag = true;
-        if (_raise) {
-            require(orderTypeFlag, "invalid position data");
-        }
-        return orderTypeFlag;
-    }
-
     function validateTrailingStopInputData(
-        address _indexToken,
-        bool _isLong,
         uint256 _posId,
         uint256[] memory _params
     ) external view override returns (bool) {
         (Position memory position, , ) = positionVault.getPosition(_posId);
-        uint256 price = priceManager.getLastPrice(_indexToken);
+        uint256 price = priceManager.getLastPrice(position.indexToken);
         require(_params[1] > 0 && _params[1] <= position.size, "trailing size should be smaller than position size");
-        if (_isLong) {
+        if (position.isLong) {
             require(_params[4] > 0 && _params[3] > 0 && _params[3] <= price, "invalid trailing data");
         } else {
             require(_params[4] > 0 && _params[3] > 0 && _params[3] >= price, "invalid trailing data");
@@ -273,7 +234,7 @@ contract VaultUtils is IVaultUtils, Constants {
         if (_params[2] == TRAILING_STOP_TYPE_PERCENT) {
             require(_params[4] < BASIS_POINTS_DIVISOR, "percent cant exceed 100%");
         } else {
-            if (_isLong) {
+            if (position.isLong) {
                 require(_params[4] < price, "step amount cant exceed price");
             }
         }
@@ -350,10 +311,6 @@ contract VaultUtils is IVaultUtils, Constants {
             statusFlag = ORDER_NOT_FILLED;
         }
         return statusFlag;
-    }
-
-    function validateSizeCollateralAmount(uint256 _size, uint256 _collateral) external pure override {
-        require(_size >= _collateral, "pos size > collateral");
     }
 
     function _checkMaxThreshold(
