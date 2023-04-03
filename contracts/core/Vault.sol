@@ -65,11 +65,19 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         _accountDeltaAndFeeIntoTotalUSD(_hasProfit, _adjustDelta, _fee);
     }
 
-    function addOrRemoveCollateral(uint256 _posId, bool isPlus, uint256 _amount) external nonReentrant {
+    function addOrRemoveCollateral(
+        uint256 _posId,
+        bool isPlus,
+        uint256 _amount
+    ) external nonReentrant preventBanners(msg.sender) {
         positionVault.addOrRemoveCollateral(msg.sender, _posId, isPlus, _amount);
     }
 
-    function addPosition(uint256 _posId, uint256 _collateralDelta, uint256 _sizeDelta) external payable nonReentrant {
+    function addPosition(
+        uint256 _posId,
+        uint256 _collateralDelta,
+        uint256 _sizeDelta
+    ) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
@@ -77,7 +85,10 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         positionVault.addPosition(msg.sender, _posId, _collateralDelta, _sizeDelta);
     }
 
-    function addTrailingStop(uint256 _posId, uint256[] memory _params) external payable nonReentrant {
+    function addTrailingStop(
+        uint256 _posId,
+        uint256[] memory _params
+    ) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
@@ -85,7 +96,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         positionVault.addTrailingStop(msg.sender, _posId, _params);
     }
 
-    function cancelPendingOrder(uint256 _posId) external nonReentrant {
+    function cancelPendingOrder(uint256 _posId) external nonReentrant preventBanners(msg.sender) {
         positionVault.cancelPendingOrder(msg.sender, _posId);
     }
 
@@ -110,7 +121,10 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         positionVault.decreasePosition(position.owner, position.size, _posId);
     }
 
-    function decreasePosition(uint256 _sizeDelta, uint256 _posId) external payable nonReentrant {
+    function decreasePosition(
+        uint256 _sizeDelta,
+        uint256 _posId
+    ) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
         (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
@@ -215,7 +229,11 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit TakeVUSDOut(_account, _refer, _usdOut, _fee);
     }
 
-    function unstake(address _tokenOut, uint256 _vlpAmount, address _receiver) external nonReentrant {
+    function unstake(
+        address _tokenOut,
+        uint256 _vlpAmount,
+        address _receiver
+    ) external nonReentrant preventBanners(msg.sender) {
         require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "vlpAmount error");
         require(
             lastStakedAt[msg.sender] + settingsManager.cooldownDuration() <= block.timestamp,
@@ -234,7 +252,11 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit Unstake(msg.sender, _tokenOut, _vlpAmount, amountOut);
     }
 
-    function withdraw(address _token, address _account, uint256 _amount) external nonReentrant {
+    function withdraw(
+        address _token,
+        address _account,
+        uint256 _amount
+    ) external nonReentrant preventBanners(msg.sender) {
         uint256 fee = (_amount * settingsManager.withdrawFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = _amount - fee;
         uint256 collateralDelta = priceManager.usdToToken(_token, afterFeeAmount);
