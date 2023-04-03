@@ -345,7 +345,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     }
 
     function executeOpenMarketOrder(uint256 _posId) public nonReentrant {
-        require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
+        require(settingsManager.isManager(msg.sender) || msg.sender == address(this), "You are not allowed to trigger");
 
         Position memory position = positions[_posId];
         Order storage order = orders[_posId];
@@ -400,7 +400,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 cancelMarketOrder(posId);
             }
 
-            delete openMarketQueuePosIds[posId];
+            delete openMarketQueuePosIds[index];
             ++index;
         }
 
@@ -424,8 +424,8 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
 
-    function hasUnexecutedMarketOrders() external view returns (bool) {
-        return openMarketQueueIndex < openMarketQueuePosIds.length;
+    function getNumOfUnexecutedMarketOrders() external view returns (uint256) {
+        return openMarketQueuePosIds.length - openMarketQueueIndex;
     }
 
     function triggerForOpenOrders(address _account, uint256 _posId) external nonReentrant {
