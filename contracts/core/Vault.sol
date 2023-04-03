@@ -134,18 +134,20 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function _closePosition(uint256 _posId) internal {
         (Position memory pos, , ) = positionVault.getPosition(_posId);
-        positionVault.decreasePosition(msg.sender, pos.indexToken, pos.size, _posId);
+        positionVault.decreasePosition(msg.sender, pos.size, _posId);
     }
 
     function closePosition(uint256 _posId) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
-        payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        (bool success, ) = payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        require(success, "failed to send fee");
         _closePosition(_posId);
     }
 
     function closePositions(uint256[] memory _posIds) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.globalGasFee() * _posIds.length, "invalid globalGasFee");
-        payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        (bool success, ) = payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        require(success, "failed to send fee");
         for(uint i=0; i<_posIds.length; i++){
             _closePosition(_posIds[i]);
         }
