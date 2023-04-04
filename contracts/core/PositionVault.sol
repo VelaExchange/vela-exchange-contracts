@@ -667,7 +667,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             usdOut += _collateralDelta;
             position.collateral -= _collateralDelta;
         }
-        vault.accountDeltaAndFeeIntoTotalUSD(hasProfit, adjustedDelta, fee);
+        vault.accountDeltaAndFeeIntoTotalUSD(!hasProfit, adjustedDelta, fee);
         // if the usdOut is more or equal than the fee then deduct the fee from the usdOut directly
         // else deduct the fee from the position's collateral
         if (usdOut < fee) {
