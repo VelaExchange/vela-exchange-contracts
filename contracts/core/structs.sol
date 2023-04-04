@@ -31,12 +31,6 @@ enum TriggerStatus {
     CANCELLED
 }
 
-struct AddPositionOrder {
-    uint256 collateral;
-    uint256 size;
-    uint256 acceptedPrice;
-}
-
 struct Order {
     OrderStatus status;
     uint256 lmtPrice;

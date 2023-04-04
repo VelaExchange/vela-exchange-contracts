@@ -53,7 +53,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _posId
     ) external override onlyVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(_posId);
+        (Position memory position,) = positionVault.getPosition(_posId);
         uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
         emit ClosePosition(_posId, position.realisedPnl, price, migrateFeeUsd);
     }
@@ -67,7 +67,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _fee
     ) external override onlyVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(_posId);
+        (Position memory position,) = positionVault.getPosition(_posId);
         uint256 _collateralDelta = (position.collateral * _sizeDelta) / position.size;
         emit DecreasePosition(
             _account,
@@ -89,7 +89,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _fee
     ) external override onlyVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(_posId);
+        (Position memory position,) = positionVault.getPosition(_posId);
         emit IncreasePosition(
             _account,
             _indexToken,
@@ -107,7 +107,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _delta
     ) external override onlyVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
-        (Position memory position, , ) = positionVault.getPosition(_posId);
+        (Position memory position,) = positionVault.getPosition(_posId);
         uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
         emit LiquidatePosition(_posId, (-1) * int256(_delta), price, migrateFeeUsd);
     }
@@ -117,7 +117,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _price,
         bool _raise
     ) external view override returns (bool) {
-        (Position memory position, , ) = positionVault.getPosition(_posId);
+        (Position memory position,) = positionVault.getPosition(_posId);
         bool validateFlag;
         (bool hasProfit, ) = settingsManager.getPnl(
             position.indexToken,
@@ -155,7 +155,7 @@ contract VaultUtils is IVaultUtils, Constants {
     }
 
     function validateLiquidation(uint256 _posId, bool _raise) external view override returns (uint256, uint256) {
-        (Position memory position, , ) = positionVault.getPosition(_posId);
+        (Position memory position,) = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(position.indexToken);
         if (position.averagePrice > 0) {
             (bool hasProfit, uint256 delta) = settingsManager.getPnl(
@@ -207,7 +207,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _posId,
         uint256[] memory _params
     ) external view override returns (bool) {
-        (Position memory position, , ) = positionVault.getPosition(_posId);
+        (Position memory position,) = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(position.indexToken);
         require(_params[1] > 0 && _params[1] <= position.size, "trailing size should be smaller than position size");
         if (position.isLong) {
@@ -231,7 +231,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _posId,
         bool _raise
     ) external view override returns (bool) {
-        (, Order memory order, ) = positionVault.getPosition(_posId);
+        (, Order memory order) = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         uint256 stopPrice;
         if (_isLong) {
@@ -270,7 +270,7 @@ contract VaultUtils is IVaultUtils, Constants {
     }
 
     function validateTrigger(address _indexToken, bool _isLong, uint256 _posId) external view override returns (uint8) {
-        (, Order memory order, ) = positionVault.getPosition(_posId);
+        (, Order memory order) = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(_indexToken);
         uint8 statusFlag;
         if (order.status == OrderStatus.PENDING) {
