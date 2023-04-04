@@ -8,7 +8,7 @@ import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
 import "./interfaces/IVaultUtils.sol";
 import {Constants} from "../access/Constants.sol";
-import {Position, Order, ConfirmInfo, OrderStatus} from "./structs.sol";
+import {Position, Order, OrderStatus} from "./structs.sol";
 
 contract VaultUtils is IVaultUtils, Constants {
     IPositionVault private immutable positionVault;
@@ -110,22 +110,6 @@ contract VaultUtils is IVaultUtils, Constants {
         (Position memory position, , ) = positionVault.getPosition(_posId);
         uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
         emit LiquidatePosition(_posId, (-1) * int256(_delta), price, migrateFeeUsd);
-    }
-
-    function validateConfirmDelay(uint256 _posId, bool _raise) external view override returns (bool) {
-        (, , ConfirmInfo memory confirm) = positionVault.getPosition(_posId);
-        bool validateFlag;
-        if (confirm.confirmDelayStatus) {
-            if (
-                block.timestamp >= (confirm.delayStartTime + settingsManager.delayDeltaTime()) &&
-                confirm.pendingDelayCollateral > 0
-            ) validateFlag = true;
-            else validateFlag = false;
-        } else validateFlag = false;
-        if (_raise) {
-            require(validateFlag, "order is still in delay pending");
-        }
-        return validateFlag;
     }
 
     function validateDecreasePosition(

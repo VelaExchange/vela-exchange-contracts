@@ -460,30 +460,6 @@ Example Output
 
 this is main contract for managing all positions, and orders,
 
-### confirmDelayTransaction
-
-As already explained above, we are putting delayTime for adding position.
-So this function can be called by the position owner or webservice position manager for adding the position.
-```
-positionVault.confirmDelayTransaction(
-        address _account,   // position owner address
-        address _indexToken,
-        bool _isLong,
-        uint256 _posId
-    )
-```
-
-Example Input
-```
-('0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', true, '0')
-```
-
-Example Output
-
-```
-
-```
-
 ### getPosition
 This is a function for fetching user's position info
 
@@ -744,28 +720,6 @@ true  // if it is triggerable, true
 ## VaultUtils
 
 This is a  contract for helping Vault
-
-### validateConfirmDelay
-Function
-
-this is a function for checking confirmDelay status, so if it is available to execute confirmDelayTransaction, then it returns true.
-```
-vaultUtils.validateConfirmDelay(
-        uint256 _posId,
-        bool _raise
-    )
-```
-
-Example Input
-```
-('0x70997970c51812dc3a010c7d01b50e0d17dc79c8', '0xa36F5ea837A1925252eB5dc5A3605C9C3ba840ec', true, false)
-```
-
-Example Output
-
-```
-true
-```
 
 ### validateDecreasePosition
 Function
@@ -1087,26 +1041,6 @@ Example Input
 Example Output
 ```
 ```
-
-### setDelayDeltaTime
-Owner Function
-
-This is an owner function for setting delay time to execute confirmDelayTransaction.
-```
-settingsManager.setDelayDeltaTime(uint256 _deltaTime)
-```
-
-Example Input
-```
-(
-    0, // no delay time, users can add position to existing position without any delay.
-)
-```
-
-Example Output
-```
-```
-
 
 ### setDepositFee
 Owner Function

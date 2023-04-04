@@ -16,7 +16,7 @@ import "./interfaces/IVaultUtils.sol";
 import "./interfaces/ITriggerOrderManager.sol";
 
 import {Constants} from "../access/Constants.sol";
-import {OrderStatus} from "./structs.sol";
+import {OrderStatus, AddPositionOrder} from "./structs.sol";
 
 contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     uint256 public lastPosId;
@@ -37,21 +37,15 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     mapping(uint256 => Position) public positions;
     mapping(address => uint256[]) private userPositionIds;
     mapping(uint256 => uint256) private userAliveIndexOf; //posId => index of userPositionIds[user], note that a position can only have a user
-    mapping(uint256 => ConfirmInfo) public confirms;
+    mapping(uint256 => AddPositionOrder) public addPositionOrders;
     mapping(uint256 => Order) public orders;
     mapping(uint256 => address) public liquidateRegistrant;
     mapping(uint256 => uint256) public liquidateRegisterTime;
 
     event AddOrRemoveCollateral(uint256 posId, bool isPlus, uint256 amount, uint256 collateral, uint256 size);
-    event AddPosition(uint256 posId, bool confirmDelayStatus, uint256 collateral, uint256 size);
+    event AddPosition(uint256 posId, uint256 collateral, uint256 size, uint256 acceptedPrice);
     event AddTrailingStop(uint256 posId, uint256[] data);
-    event ConfirmDelayTransaction(
-        uint256 posId,
-        bool confirmDelayStatus,
-        uint256 collateral,
-        uint256 size,
-        uint256 feeUsd
-    );
+    event ExecuteAddPosition(uint256 posId, uint256 collateral, uint256 size, uint256 feeUsd);
     event NewOrder(
         address indexed account,
         address indexToken,
@@ -107,23 +101,26 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         address _account,
         uint256 _posId,
         uint256 _collateralDelta,
-        uint256 _sizeDelta
+        uint256 _sizeDelta,
+        uint256 _acceptedPrice
     ) external override onlyVault {
-        ConfirmInfo storage confirm = confirms[_posId];
-        Position storage position = positions[_posId];
+        Position memory position = positions[_posId];
 
         require(
             !settingsManager.isIncreasingPositionDisabled(position.indexToken),
             "current asset is disabled from increasing position"
         );
         require(position.size > 0, "Position not Open");
+        require(_collateralDelta > MIN_COLLATERAL, "collateral is too small");
+        require(_sizeDelta > MIN_COLLATERAL, "size is too small");
         require(_account == position.owner, "you are not allowed to add position");
 
-        confirm.delayStartTime = block.timestamp;
-        confirm.confirmDelayStatus = true;
-        confirm.pendingDelayCollateral = _collateralDelta;
-        confirm.pendingDelaySize = _sizeDelta;
-        emit AddPosition(_posId, confirm.confirmDelayStatus, _collateralDelta, _sizeDelta);
+        addPositionOrders[_posId] = AddPositionOrder({
+            collateral: _collateralDelta,
+            size: _sizeDelta,
+            acceptedPrice: _acceptedPrice
+        });
+        emit AddPosition(_posId, _collateralDelta, _sizeDelta, _acceptedPrice);
     }
 
     function addTrailingStop(address _account, uint256 _posId, uint256[] memory _params) external override onlyVault {
@@ -157,37 +154,32 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
 
-    function confirmDelayTransaction(address _account, uint256 _posId) external nonReentrant {
-        Position storage position = positions[_posId];
-        require(position.owner == msg.sender || settingsManager.isManager(msg.sender), "not allowed");
-        ConfirmInfo storage confirm = confirms[_posId];
-        vaultUtils.validateConfirmDelay(_posId, true);
+    function executeAddPosition(uint256 _posId) external nonReentrant {
+        require(settingsManager.isManager(msg.sender) || msg.sender == address(this), "You are not allowed to trigger");
+
+        Position memory position = positions[_posId];
+        AddPositionOrder memory addPositionOrder = addPositionOrders[_posId];
+        require(addPositionOrder.size > 0, "order size is 0");
         uint256 price = priceManager.getLastPrice(position.indexToken);
         uint256 fee = settingsManager.collectMarginFees(
-            _account,
+            position.owner,
             position.indexToken,
             position.isLong,
-            confirm.pendingDelaySize
+            addPositionOrder.size
         );
+        checkSlippage(position.isLong, addPositionOrder.acceptedPrice, price);
         _increasePosition(
-            _account,
+            position.owner,
             position.indexToken,
-            confirm.pendingDelayCollateral + fee,
-            confirm.pendingDelaySize,
+            addPositionOrder.collateral + fee,
+            addPositionOrder.size,
             _posId,
             price,
             position.isLong
         );
-        emit ConfirmDelayTransaction(
-            _posId,
-            confirm.confirmDelayStatus,
-            confirm.pendingDelayCollateral,
-            confirm.pendingDelaySize,
-            fee
-        );
-        confirm.confirmDelayStatus = false;
-        confirm.pendingDelayCollateral = 0;
-        confirm.pendingDelaySize = 0;
+
+        emit ExecuteAddPosition(_posId, addPositionOrder.collateral, addPositionOrder.size, fee);
+        delete addPositionOrders[_posId];
     }
 
     function decreasePosition(address _account, uint256 _sizeDelta, uint256 _posId) external override onlyVault {
@@ -281,7 +273,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         delete positions[_posId];
         _removeUserAlivePosition(position.owner, _posId);
         delete orders[_posId];
-        delete confirms[_posId];
+        delete addPositionOrders[_posId];
         // pay the fee receive using the pool, we assume that in general the liquidated amount should be sufficient to cover
         // the liquidation fees
     }
@@ -393,8 +385,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         while (index < endIndex) {
             uint256 posId = openMarketQueuePosIds[index];
 
-            try this.executeOpenMarketOrder(posId) {
-            } catch Error(string memory err) {
+            try this.executeOpenMarketOrder(posId) {} catch Error(string memory err) {
                 cancelMarketOrder(posId);
                 emit MarketOrderExecutionError(posId, positions[posId].owner, err);
             } catch (bytes memory err) {
@@ -568,7 +559,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             delete positions[_posId];
             _removeUserAlivePosition(_account, _posId);
             delete orders[_posId];
-            delete confirms[_posId];
+            delete addPositionOrders[_posId];
         }
         if (usdOutFee <= usdOut) {
             vault.takeVUSDOut(_account, position.refer, usdOutFee, usdOut);
@@ -669,7 +660,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             usdOut += _collateralDelta;
             position.collateral -= _collateralDelta;
         }
-        vault.accountDeltaAndFeeIntoTotalUSD(hasProfit, adjustedDelta, fee);
+        vault.accountDeltaAndFeeIntoTotalUSD(!hasProfit, adjustedDelta, fee);
         // if the usdOut is more or equal than the fee then deduct the fee from the usdOut directly
         // else deduct the fee from the position's collateral
         if (usdOut < fee) {
@@ -681,11 +672,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     function getPosition(
         uint256 _posId
-    ) external view override returns (Position memory, Order memory, ConfirmInfo memory) {
+    ) external view override returns (Position memory, Order memory, AddPositionOrder memory) {
         Position memory position = positions[_posId];
         Order memory order = orders[_posId];
-        ConfirmInfo memory confirm = confirms[_posId];
-        return (position, order, confirm);
+        AddPositionOrder memory addPositionOrder = addPositionOrders[_posId];
+        return (position, order, addPositionOrder);
     }
 
     function getVaultUSDBalance() external view override returns (uint256) {
@@ -694,19 +685,19 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     function getUserAlivePositions(
         address _user
-    ) public view returns (uint256[] memory, Position[] memory, Order[] memory, ConfirmInfo[] memory) {
+    ) public view returns (uint256[] memory, Position[] memory, Order[] memory, AddPositionOrder[] memory) {
         uint256 length = userPositionIds[_user].length;
         Position[] memory positions_ = new Position[](length);
         Order[] memory orders_ = new Order[](length);
-        ConfirmInfo[] memory confirms_ = new ConfirmInfo[](length);
+        AddPositionOrder[] memory addPositionOrders_ = new AddPositionOrder[](length);
         uint256[] storage posIds = userPositionIds[_user];
         for (uint i; i < length; i++) {
             uint256 posId = posIds[i];
             positions_[i] = positions[posId];
             orders_[i] = orders[posId];
-            confirms_[i] = confirms[posId];
+            addPositionOrders_[i] = addPositionOrders[posId];
         }
-        return (userPositionIds[_user], positions_, orders_, confirms_);
+        return (userPositionIds[_user], positions_, orders_, addPositionOrders_);
     }
 
     function _addUserAlivePosition(address _user, uint256 _posId) internal {

@@ -34,8 +34,6 @@ interface IVaultUtils {
         uint256 _delta
     ) external;
 
-    function validateConfirmDelay(uint256 _posId, bool _raise) external view returns (bool);
-
     function validateDecreasePosition(uint256 _posId, uint256 _price, bool _raise) external view returns (bool);
 
     function validateLiquidation(uint256 _posId, bool _raise) external view returns (uint256, uint256);

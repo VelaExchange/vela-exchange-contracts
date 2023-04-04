@@ -2,12 +2,18 @@
 
 pragma solidity 0.8.9;
 
-import {Position, Order, OrderType, ConfirmInfo} from "../structs.sol";
+import {Position, Order, OrderType, AddPositionOrder} from "../structs.sol";
 
 interface IPositionVault {
     function addOrRemoveCollateral(address _account, uint256 _posId, bool isPlus, uint256 _amount) external;
 
-    function addPosition(address _account, uint256 _posId, uint256 _collateralDelta, uint256 _sizeDelta) external;
+    function addPosition(
+        address _account,
+        uint256 _posId,
+        uint256 _collateralDelta,
+        uint256 _sizeDelta,
+        uint256 _acceptedPrice
+    ) external;
 
     function addTrailingStop(address _account, uint256 _posId, uint256[] memory _params) external;
 
@@ -24,7 +30,7 @@ interface IPositionVault {
         address _refer
     ) external;
 
-    function getPosition(uint256 _posId) external view returns (Position memory, Order memory, ConfirmInfo memory);
+    function getPosition(uint256 _posId) external view returns (Position memory, Order memory, AddPositionOrder memory);
 
     function getVaultUSDBalance() external view returns (uint256);
 }

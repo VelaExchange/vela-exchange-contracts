@@ -23,8 +23,6 @@ interface ISettingsManager {
 
     function liquidationPendingTime() external view returns (uint256);
 
-    function delayDeltaTime() external view returns (uint256);
-
     function depositFee(address token) external view returns (uint256);
 
     function withdrawFee(address token) external view returns (uint256);
