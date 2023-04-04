@@ -43,7 +43,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     mapping(uint256 => uint256) public liquidateRegisterTime;
 
     event AddOrRemoveCollateral(uint256 posId, bool isPlus, uint256 amount, uint256 collateral, uint256 size);
-    event AddPosition(uint256 posId, bool confirmDelayStatus, uint256 collateral, uint256 size);
+    event AddPosition(uint256 posId, bool confirmDelayStatus, uint256 collateral, uint256 size, uint256 acceptedPrice);
     event AddTrailingStop(uint256 posId, uint256[] data);
     event ConfirmDelayTransaction(
         uint256 posId,
@@ -107,7 +107,8 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         address _account,
         uint256 _posId,
         uint256 _collateralDelta,
-        uint256 _sizeDelta
+        uint256 _sizeDelta,
+        uint256 _acceptedPrice
     ) external override onlyVault {
         ConfirmInfo storage confirm = confirms[_posId];
         Position storage position = positions[_posId];
@@ -117,13 +118,16 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             "current asset is disabled from increasing position"
         );
         require(position.size > 0, "Position not Open");
+        require(_collateralDelta > MIN_COLLATERAL, "collateral is too small");
+        require(_sizeDelta > MIN_COLLATERAL, "size is too small");
         require(_account == position.owner, "you are not allowed to add position");
 
         confirm.delayStartTime = block.timestamp;
         confirm.confirmDelayStatus = true;
         confirm.pendingDelayCollateral = _collateralDelta;
         confirm.pendingDelaySize = _sizeDelta;
-        emit AddPosition(_posId, confirm.confirmDelayStatus, _collateralDelta, _sizeDelta);
+        confirm.acceptedPrice = _acceptedPrice;
+        emit AddPosition(_posId, confirm.confirmDelayStatus, _collateralDelta, _sizeDelta, _acceptedPrice);
     }
 
     function addTrailingStop(address _account, uint256 _posId, uint256[] memory _params) external override onlyVault {
@@ -157,20 +161,22 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
 
-    function confirmDelayTransaction(address _account, uint256 _posId) external nonReentrant {
-        Position storage position = positions[_posId];
-        require(position.owner == msg.sender || settingsManager.isManager(msg.sender), "not allowed");
-        ConfirmInfo storage confirm = confirms[_posId];
-        vaultUtils.validateConfirmDelay(_posId, true);
+    function confirmDelayTransaction(uint256 _posId) external nonReentrant {
+        require(settingsManager.isManager(msg.sender) || msg.sender == address(this), "You are not allowed to trigger");
+        Position memory position = positions[_posId];
+        ConfirmInfo memory confirm = confirms[_posId];
+        require(confirm.pendingDelaySize > 0, "order size is 0");
+        require(confirm.confirmDelayStatus, "invalid order");
         uint256 price = priceManager.getLastPrice(position.indexToken);
         uint256 fee = settingsManager.collectMarginFees(
-            _account,
+            position.owner,
             position.indexToken,
             position.isLong,
             confirm.pendingDelaySize
         );
+        checkSlippage(position.isLong, confirm.acceptedPrice, price);
         _increasePosition(
-            _account,
+            position.owner,
             position.indexToken,
             confirm.pendingDelayCollateral + fee,
             confirm.pendingDelaySize,
@@ -185,9 +191,8 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             confirm.pendingDelaySize,
             fee
         );
-        confirm.confirmDelayStatus = false;
-        confirm.pendingDelayCollateral = 0;
-        confirm.pendingDelaySize = 0;
+
+        delete confirms[_posId];
     }
 
     function decreasePosition(address _account, uint256 _sizeDelta, uint256 _posId) external override onlyVault {
@@ -393,8 +398,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         while (index < endIndex) {
             uint256 posId = openMarketQueuePosIds[index];
 
-            try this.executeOpenMarketOrder(posId) {
-            } catch Error(string memory err) {
+            try this.executeOpenMarketOrder(posId) {} catch Error(string memory err) {
                 cancelMarketOrder(posId);
                 emit MarketOrderExecutionError(posId, positions[posId].owner, err);
             } catch (bytes memory err) {

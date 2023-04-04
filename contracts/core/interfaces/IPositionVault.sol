@@ -7,7 +7,13 @@ import {Position, Order, OrderType, ConfirmInfo} from "../structs.sol";
 interface IPositionVault {
     function addOrRemoveCollateral(address _account, uint256 _posId, bool isPlus, uint256 _amount) external;
 
-    function addPosition(address _account, uint256 _posId, uint256 _collateralDelta, uint256 _sizeDelta) external;
+    function addPosition(
+        address _account,
+        uint256 _posId,
+        uint256 _collateralDelta,
+        uint256 _sizeDelta,
+        uint256 _acceptedPrice
+    ) external;
 
     function addTrailingStop(address _account, uint256 _posId, uint256[] memory _params) external;
 

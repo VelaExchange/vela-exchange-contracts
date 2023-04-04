@@ -36,6 +36,7 @@ struct ConfirmInfo {
     uint256 pendingDelayCollateral;
     uint256 pendingDelaySize;
     uint256 delayStartTime;
+    uint256 acceptedPrice;
 }
 
 struct Order {

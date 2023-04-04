@@ -76,13 +76,14 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     function addPosition(
         uint256 _posId,
         uint256 _collateralDelta,
-        uint256 _sizeDelta
+        uint256 _sizeDelta,
+        uint256 _acceptedPrice
     ) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
 
-        positionVault.addPosition(msg.sender, _posId, _collateralDelta, _sizeDelta);
+        positionVault.addPosition(msg.sender, _posId, _collateralDelta, _sizeDelta, _acceptedPrice);
     }
 
     function addTrailingStop(
@@ -139,22 +140,22 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function closePosition(uint256 _posId) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
-        (bool success, ) = payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
         _closePosition(_posId);
     }
 
     function closePositions(uint256[] memory _posIds) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.globalGasFee() * _posIds.length, "invalid globalGasFee");
-        (bool success, ) = payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
-        for(uint i=0; i<_posIds.length; i++){
+        for (uint i = 0; i < _posIds.length; i++) {
             _closePosition(_posIds[i]);
         }
     }
 
     function cancelPendingOrders(uint256[] memory _posIds) external preventBanners(msg.sender) {
-        for(uint i=0; i<_posIds.length; i++){
+        for (uint i = 0; i < _posIds.length; i++) {
             positionVault.cancelPendingOrder(msg.sender, _posIds[i]);
         }
     }
@@ -197,7 +198,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         }
         (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
-        require(_refer != msg.sender, 'Refer error');
+        require(_refer != msg.sender, "Refer error");
         positionVault.newPositionOrder(msg.sender, _indexToken, _isLong, _orderType, _params, _refer);
     }
 
