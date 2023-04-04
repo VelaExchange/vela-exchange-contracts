@@ -708,11 +708,9 @@ describe('Vault', function () {
     const posId = (await PositionVault.lastPosId()) - 1
     const amountIn = expandDecimals('10', 30)
     const toUsdAmount = expandDecimals('100', 30)
-    await expect(PositionVault.confirmDelayTransaction(account, posId)).to.be.revertedWith(
-      'order is still in delay pending'
-    )
-    await Vault.addPosition(posId, amountIn, toUsdAmount)
-    await PositionVault.getUserAlivePositions(account) //todo: add test for this view function
+    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    await Vault.addPosition(posId, amountIn, toUsdAmount, expectedMarketPrice)
+    // await getUserAlivePositions(account) //todo: add test for this view function
   })
 
   it('confirmDelayTransaction', async () => {
@@ -727,19 +725,8 @@ describe('Vault', function () {
     const confirm = positionInfo[2]
     const confirmDelayStatus = confirm.confirmDelayStatus
     if (confirmDelayStatus) {
-      await expect(PositionVault.connect(user0).confirmDelayTransaction(account, posId)).to.be.revertedWith(
-        'not allowed'
-      )
-      await expect(PositionVault.confirmDelayTransaction(account, posId)).to.be.revertedWith(
-        'order is still in delay pending'
-      )
-      const passTime = 60 * 2
-      await ethers.provider.send('evm_increaseTime', [passTime])
-      await ethers.provider.send('evm_mine')
-      const validateConfirmDelay = await VaultUtils.validateConfirmDelay(posId, raise)
-      if (validateConfirmDelay) {
-        await PositionVault.confirmDelayTransaction(account, posId)
-      }
+      await expect(PositionVault.connect(user0).confirmDelayTransaction(posId)).to.be.revertedWith('not allowed')
+      await PositionVault.connect(user1).confirmDelayTransaction(posId)
     }
   })
 
