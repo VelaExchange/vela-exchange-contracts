@@ -7,13 +7,16 @@ import "../oracle/interfaces/IPriceFeed.sol";
 pragma solidity 0.8.9;
 
 contract VaultPriceFeed is IVaultPriceFeed {
+    address priceManager;
     mapping(address => bool) private isInitialized;
     uint256 public constant PRICE_PRECISION = 10 ** 30;
 
     mapping(address => address) public priceFeeds;
     mapping(address => uint256) public priceDecimals;
 
-    constructor() {}
+    constructor() {
+        priceManager = msg.sender;
+    }
 
     function setTokenConfig(address _token, address _priceFeed, uint256 _priceDecimals) external override {
         require(Address.isContract(_token), "Address is wrong");
@@ -36,6 +39,7 @@ contract VaultPriceFeed is IVaultPriceFeed {
     }
 
     function setPrice(address _token, uint256 _answer) public override {
+        require(msg.sender == priceManager, "not manager");
         address priceFeedAddress = priceFeeds[_token];
         require(priceFeedAddress != address(0), "VaultPriceFeed: invalid price feed");
 

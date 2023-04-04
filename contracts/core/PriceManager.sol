@@ -8,6 +8,7 @@ import "./interfaces/IPriceManager.sol";
 import "./interfaces/IVaultPriceFeed.sol";
 import "./interfaces/IOperators.sol";
 import {Constants} from "../access/Constants.sol";
+import "./VaultPriceFeed.sol";
 
 contract PriceManager is IPriceManager, Ownable, Constants {
     address public immutable priceFeed;
@@ -18,10 +19,10 @@ contract PriceManager is IPriceManager, Ownable, Constants {
     mapping(address => uint256) public override maxLeverage; //  50 * 10000 50x
     mapping(address => uint256) public override tokenDecimals;
 
-    constructor(address _priceFeed, address _operators) {
+    constructor(address _operators) {
         require(Address.isContract(_operators), "operators invalid");
         operators = IOperators(_operators);
-        priceFeed = _priceFeed;
+        priceFeed = address(new VaultPriceFeed());
     }
 
     function setTokenConfig(address _token, uint256 _tokenDecimals, uint256 _maxLeverage) external {

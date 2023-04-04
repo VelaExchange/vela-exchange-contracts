@@ -97,7 +97,6 @@ describe("SettingsManager", function () {
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
-        vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
            operator.address,
            vlp.address,
@@ -105,9 +104,9 @@ describe("SettingsManager", function () {
         ]);
         PositionVault = await deployContract("PositionVault", [])
         priceManager = await deployContract("PriceManager", [
-          vaultPriceFeed.address,
           operator.address
         ])
+        vaultPriceFeed = (await ethers.getContractFactory("VaultPriceFeed")).attach(await priceManager.priceFeed())
         settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,
@@ -167,10 +166,10 @@ describe("SettingsManager", function () {
       await settingsManager.setEnableStaking(token, true)
     })
 
-    it ("setEnableUnstaking", async () => {
+    /*it ("setEnableUnstaking", async () => {
       const token = usdt.address
       await settingsManager.setEnableUnstaking(token, true)
-    })
+    })*/ // no disable unstaking
 
     it ("setLiquidateThreshold", async () => {
       const newThreshold = 2000
@@ -366,11 +365,11 @@ describe("SettingsManager", function () {
       await settingsManager.setBountyPercent(25000, 25000, 25000)
     })
 
-    it ("enableMarketOrder", async () => {
+    /*it ("enableMarketOrder", async () => {
       await expect(settingsManager.connect(user2).enableMarketOrder(true))
         .to.be.revertedWith("Invalid operator")
       await settingsManager.enableMarketOrder(true)
-    })
+    })*/ //todo: discuss enableMarketOrder removal
 
     it ("getFundingFee", async () => {
       const _indexToken = btc.address

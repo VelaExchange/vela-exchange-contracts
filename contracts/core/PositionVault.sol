@@ -113,7 +113,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         Position storage position = positions[_posId];
 
         require(
-            settingsManager.isIncreasingPositionDisabled(position.indexToken),
+            !settingsManager.isIncreasingPositionDisabled(position.indexToken),
             "current asset is disabled from increasing position"
         );
         require(position.size > 0, "Position not Open");
@@ -295,7 +295,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         address _refer
     ) external nonReentrant onlyVault {
         require(
-            settingsManager.isIncreasingPositionDisabled(_indexToken),
+            !settingsManager.isIncreasingPositionDisabled(_indexToken),
             "current asset is disabled from increasing position"
         );
         require(_params[2] > MIN_COLLATERAL, "collateral is too small");
@@ -369,7 +369,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.indexToken,
             order.collateral + fee,
             order.size,
-            lastPosId,
+            _posId,
             price,
             position.isLong
         );
@@ -377,7 +377,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         order.collateral = 0;
         order.size = 0;
         order.status = OrderStatus.FILLED;
-        _addUserAlivePosition(position.owner, lastPosId);
+        _addUserAlivePosition(position.owner, _posId);
 
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
@@ -393,11 +393,13 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         while (index < endIndex) {
             uint256 posId = openMarketQueuePosIds[index];
 
-            try this.executeOpenMarketOrder(posId) {} catch Error(string memory err) {
+            try this.executeOpenMarketOrder(posId) {
+            } catch Error(string memory err) {
                 cancelMarketOrder(posId);
                 emit MarketOrderExecutionError(posId, positions[posId].owner, err);
-            } catch (bytes memory) {
+            } catch (bytes memory err) {
                 cancelMarketOrder(posId);
+                emit MarketOrderExecutionError(posId, positions[posId].owner, string(err));
             }
 
             delete openMarketQueuePosIds[index];
@@ -692,7 +694,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     function getUserAlivePositions(
         address _user
-    ) public view returns (Position[] memory, Order[] memory, ConfirmInfo[] memory) {
+    ) public view returns (uint256[] memory, Position[] memory, Order[] memory, ConfirmInfo[] memory) {
         uint256 length = userPositionIds[_user].length;
         Position[] memory positions_ = new Position[](length);
         Order[] memory orders_ = new Order[](length);
@@ -704,7 +706,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             orders_[i] = orders[posId];
             confirms_[i] = confirms[posId];
         }
-        return (positions_, orders_, confirms_);
+        return (userPositionIds[_user], positions_, orders_, confirms_);
     }
 
     function _addUserAlivePosition(address _user, uint256 _posId) internal {

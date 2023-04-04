@@ -29,11 +29,10 @@ describe("VLP", function () {
             vlp.address,
             vusd.address
         ]);
-        let vaultPriceFeed = await deployContract("VaultPriceFeed", []);
         let priceManager = await deployContract("PriceManager", [
-            vaultPriceFeed.address,
             operator.address
         ]);
+        vaultPriceFeed = (await ethers.getContractFactory("VaultPriceFeed")).attach(await priceManager.priceFeed())
         let usdcPriceFeed = await deployContract("FastPriceFeed", [])
         await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
         await vaultPriceFeed.setTokenConfig(usdc.address, usdcPriceFeed.address, 8)
@@ -41,7 +40,6 @@ describe("VLP", function () {
             usdc.address,
             6,
             100 * 10000,
-            true
         );
         let vestingDuration = 6 * 30 * 24 * 60 * 60
         let PositionVault = await deployContract("PositionVault", []);
@@ -57,7 +55,7 @@ describe("VLP", function () {
           ]
         );
         await settingsManager.setEnableStaking(usdc.address, true);
-        await settingsManager.setEnableUnstaking(usdc.address, true);
+        //await settingsManager.setEnableUnstaking(usdc.address, true);
         await vlp.initialize(Vault.address, settingsManager.address);
         await Vault.setVaultSettings(
             priceManager.address,
