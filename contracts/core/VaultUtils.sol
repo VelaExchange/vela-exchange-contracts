@@ -8,7 +8,7 @@ import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
 import "./interfaces/IVaultUtils.sol";
 import {Constants} from "../access/Constants.sol";
-import {Position, Order, ConfirmInfo, OrderStatus} from "./structs.sol";
+import {Position, Order, OrderStatus} from "./structs.sol";
 
 contract VaultUtils is IVaultUtils, Constants {
     IPositionVault private immutable positionVault;

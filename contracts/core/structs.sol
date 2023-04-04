@@ -31,11 +31,9 @@ enum TriggerStatus {
     CANCELLED
 }
 
-struct ConfirmInfo {
-    bool confirmDelayStatus;
-    uint256 pendingDelayCollateral;
-    uint256 pendingDelaySize;
-    uint256 delayStartTime;
+struct AddPositionOrder {
+    uint256 collateral;
+    uint256 size;
     uint256 acceptedPrice;
 }
 
