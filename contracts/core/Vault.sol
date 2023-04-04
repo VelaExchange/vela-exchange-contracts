@@ -262,11 +262,14 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         address _receiver
     ) external nonReentrant preventBanners(msg.sender) {
         require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "vlpAmount error");
+        if (_receiver != msg.sender) {
+            require(settingsManager.checkDelegation(_receiver, msg.sender), "Not allowed");
+        }
         require(
-            lastStakedAt[msg.sender] + settingsManager.cooldownDuration() <= block.timestamp,
+            lastStakedAt[_receiver] + settingsManager.cooldownDuration() <= block.timestamp,
             "cooldown duration not yet passed"
         );
-        IMintable(vlp).burn(msg.sender, _vlpAmount);
+        IMintable(vlp).burn(_receiver, _vlpAmount);
         uint256 usdAmount = (_vlpAmount * totalUSD) / totalVLP;
         totalVLP -= _vlpAmount;
         uint256 usdAmountFee = (usdAmount * settingsManager.unstakingFee(_tokenOut)) / BASIS_POINTS_DIVISOR;
@@ -274,9 +277,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         totalUSD -= usdAmount;
         uint256 amountOut = priceManager.usdToToken(_tokenOut, usdAmountAfterFee);
         _accountDeltaAndFeeIntoTotalUSD(true, 0, usdAmountFee);
-        _distributeFee(msg.sender, ZERO_ADDRESS, usdAmountFee);
+        _distributeFee(_receiver, ZERO_ADDRESS, usdAmountFee);
         _transferOut(_tokenOut, amountOut, _receiver);
-        emit Unstake(msg.sender, _tokenOut, _vlpAmount, amountOut);
+        emit Unstake(_receiver, _tokenOut, _vlpAmount, amountOut);
     }
 
     function withdraw(
