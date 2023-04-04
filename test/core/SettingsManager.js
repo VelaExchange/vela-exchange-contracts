@@ -48,7 +48,6 @@ describe('SettingsManager', function () {
   let cooldownDuration
   let feeRewardBasisPoints // FeeRewardBasisPoints 70%
   let closeDeltaTime
-  let delayDeltaTime
   let depositFee
   let withdrawFee
   let stakingFee
@@ -89,7 +88,6 @@ describe('SettingsManager', function () {
     fundingRateFactor = 100 //  fundingRateFactor
     feeRewardBasisPoints = 70000 // FeeRewardBasisPoints 70%
     closeDeltaTime = 2 * 60 * 60
-    delayDeltaTime = 10 * 60
     depositFee = 3000
     withdrawFee = 3000
     stakingFee = 3000
@@ -125,12 +123,6 @@ describe('SettingsManager', function () {
     const maxCloseDeltaTime = 25 * 60 * 60
     await expect(settingsManager.setCloseDeltaTime(maxCloseDeltaTime)).to.be.revertedWith('Above max')
     await settingsManager.setCloseDeltaTime(closeDeltaTime)
-  })
-
-  it('setDelayDeltaTime', async () => {
-    const maxDelayDeltaTime = 25 * 60 * 60
-    await expect(settingsManager.setDelayDeltaTime(maxDelayDeltaTime)).to.be.revertedWith('Above max')
-    await settingsManager.setDelayDeltaTime(delayDeltaTime)
   })
 
   it('setDepositFee', async () => {

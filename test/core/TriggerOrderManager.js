@@ -22,6 +22,7 @@ describe('TriggerOrderManager', function () {
   let vela
   let eVela
   let PositionVault
+  let positionManagerAddress
   let priceManager
   let settingsManager
   let triggerOrderManager
@@ -49,9 +50,11 @@ describe('TriggerOrderManager', function () {
   let cooldownDuration
 
   before(async function () {
+    positionManagerAddress = user1.address
+
     btc = await deployContract('BaseToken', ['Bitcoin', 'BTC', 0])
     btcPriceFeed = await deployContract('FastPriceFeed', [])
-
+    
     eth = await deployContract('BaseToken', ['Ethereum', 'ETH', 0])
     ethPriceFeed = await deployContract('FastPriceFeed', [])
 
@@ -151,6 +154,13 @@ describe('TriggerOrderManager', function () {
     await vaultPriceFeed.setTokenConfig(usdc.address, usdcPriceFeed.address, 8)
     await vaultPriceFeed.setTokenConfig(usdt.address, usdtPriceFeed.address, 8)
     await vaultPriceFeed.setTokenConfig(vlp.address, vlpPriceFeed.address, 8)
+    await btcPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await ethPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await dogePriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await gbpPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await eurPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await jpyPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    
     const tokens = [
       {
         name: 'btc',
@@ -237,6 +247,7 @@ describe('TriggerOrderManager', function () {
       await priceManager.setTokenConfig(token.address, token.decimals, token.maxLeverage)
     }
     await vlp.transferOwnership(Vault.address) // transferOwnership
+    await settingsManager.setPositionManager(positionManagerAddress, true)
     // await VaultUtils.setDepositFee(depositFee);
     // await VaultUtils.setStakingFee(stakingFee);
   })
@@ -402,10 +413,10 @@ describe('TriggerOrderManager', function () {
     await settingsManager.setMaxOpenInterestPerUser(USERMaxOpenInterest)
     await settingsManager.setEnableDeposit(usdt.address, true)
     await settingsManager.setEnableStaking(usdt.address, true)
-    await settingsManager.setEnableUnstaking(usdt.address, true)
+    // await settingsManager.setEnableUnstaking(usdt.address, true)
     await settingsManager.setEnableDeposit(usdc.address, true)
     await settingsManager.setEnableStaking(usdc.address, true)
-    await settingsManager.setEnableUnstaking(usdc.address, true)
+    // await settingsManager.setEnableUnstaking(usdc.address, true)
   })
 
   it('Stake Stable Coins for Vault ', async () => {
@@ -427,7 +438,7 @@ describe('TriggerOrderManager', function () {
   })
 
   it('deposit Stable Coins for Vault ', async () => {
-    await usdt.connect(wallet).approve(Vault.address, expandDecimals('100000', 18)) // approve USDT
+    // await usdt.connect(wallet).approve(Vault.address, expandDecimals('100000', 18)) // approve USDT
     await usdc.connect(wallet).approve(Vault.address, expandDecimals('100000', 18)) // approve USDC
     //  await Vault.deposit(wallet.address, usdt.address, expandDecimals('100000', 18)); // deposit USDT
     await Vault.deposit(wallet.address, usdc.address, expandDecimals('100000', 18)) // deposit USDC
@@ -461,6 +472,7 @@ describe('TriggerOrderManager', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
+    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
     const passTime = 60 * 60 * 24
     await ethers.provider.send('evm_increaseTime', [passTime])
     await ethers.provider.send('evm_mine')
@@ -565,6 +577,7 @@ describe('TriggerOrderManager', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
+    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [indexToken], [toChainlinkPrice('57000')])
     const passTime = 60 * 60 * 24
     await ethers.provider.send('evm_increaseTime', [passTime])
     await ethers.provider.send('evm_mine')
@@ -636,6 +649,8 @@ describe('TriggerOrderManager', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
+    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [indexToken], [toChainlinkPrice('57000')])
+
     const passTime = 60 * 60 * 24
     await ethers.provider.send('evm_increaseTime', [passTime])
     await ethers.provider.send('evm_mine')
@@ -802,8 +817,7 @@ describe('TriggerOrderManager', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-
-    const lastPosId = await PositionVault.lastPosId()
+    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [indexToken], [toChainlinkPrice('57000')])
   })
 
   it('addTriggerOrdersData with wrong orders or invalid for Short', async () => {

@@ -713,23 +713,6 @@ describe('Vault', function () {
     // await getUserAlivePositions(account) //todo: add test for this view function
   })
 
-  it('confirmDelayTransaction', async () => {
-    const account = wallet.address
-    const indexToken = btc.address
-    const isLong = true
-    const posId = (await PositionVault.lastPosId()) - 1
-    const raise = false
-    const positionInfo = await PositionVault.getPosition(posId)
-    const position = positionInfo[0]
-    const order = positionInfo[1]
-    const confirm = positionInfo[2]
-    const confirmDelayStatus = confirm.confirmDelayStatus
-    if (confirmDelayStatus) {
-      await expect(PositionVault.connect(user0).confirmDelayTransaction(posId)).to.be.revertedWith('not allowed')
-      await PositionVault.connect(user1).confirmDelayTransaction(posId)
-    }
-  })
-
   it('increasePosition for triggerPosition', async () => {
     const account = wallet.address
     const indexToken = btc.address

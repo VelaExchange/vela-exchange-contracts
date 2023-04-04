@@ -36,7 +36,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     uint256 public override closeDeltaTime = 1 hours;
     uint256 public override cooldownDuration = 3 hours;
-    uint256 public override delayDeltaTime = 1 minutes;
     uint256 public override feeRewardBasisPoints = 50000; // 50%
     uint256 public override liquidationFeeUsd; // 0 usd
     uint256 public override referFee = 5000; // 5%
@@ -95,7 +94,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event UpdateFunding(address indexed token, int256 fundingIndex);
     event UpdateLiquidationPendingTime(uint256 liquidationPendingTime);
     event UpdateCloseDeltaTime(uint256 deltaTime);
-    event UpdateDelayDeltaTime(uint256 deltaTime);
     event UpdateFeeManager(address indexed feeManager);
     event UpdateMaxProfitPercent(uint256 maxProfitPercent);
     event UpdateThreshold(uint256 oldThreshold, uint256 newThredhold);
@@ -221,13 +219,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         require(_deltaTime <= MAX_DELTA_TIME, "Above max");
         closeDeltaTime = _deltaTime;
         emit UpdateCloseDeltaTime(_deltaTime);
-    }
-
-    function setDelayDeltaTime(uint256 _deltaTime) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        require(_deltaTime <= MAX_DELTA_TIME, "Above max");
-        delayDeltaTime = _deltaTime;
-        emit UpdateDelayDeltaTime(_deltaTime);
     }
 
     function setDepositFee(address token, uint256 _fee) external {
