@@ -28,7 +28,6 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
 
     // Info of each pool.
     struct PoolInfo {
-        IBoringERC20 lpToken; // Address of LP token contract.
         uint256 totalLp; // Total token in Pool
         IComplexRewarder[] rewarders; // Array of rewarder contract for pools with incentives
         bool enableCooldown;
@@ -380,7 +379,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
                 "didn't pass cooldownDuration"
             );
             user.esvelaAmount -= _amount;
-            VELA.safeTransfer(msg.sender, _amount);
+            esVELA.safeTransfer(msg.sender, _amount);
         }
 
         for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
@@ -391,7 +390,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
             pool.totalLp -= _amount;
         }
 
-        emit FarmWithdraw(msg.sender, VELA, _amount);
+        emit FarmWithdraw(msg.sender, esVELA, _amount);
     }
 
     // ----- END: VELA Pool, pid=0, token esVELA -----
