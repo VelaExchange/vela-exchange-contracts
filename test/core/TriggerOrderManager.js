@@ -90,7 +90,6 @@ describe("TriggerOrderManager", function () {
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
         tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
-        vaultPriceFeed = await deployContract("VaultPriceFeed", [])
         Vault = await deployContract("Vault", [
            operator.address,
            vlp.address,
@@ -98,9 +97,9 @@ describe("TriggerOrderManager", function () {
         ]);
         PositionVault = await deployContract("PositionVault", [])
         priceManager = await deployContract("PriceManager", [
-          vaultPriceFeed.address,
           operator.address
         ])
+        vaultPriceFeed = (await ethers.getContractFactory("VaultPriceFeed")).attach(await priceManager.priceFeed())
         settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,
@@ -265,7 +264,6 @@ describe("TriggerOrderManager", function () {
            token.address,
            token.decimals,
            token.maxLeverage,
-           token.isForex
          );
        }
         await vlp.transferOwnership(Vault.address); // transferOwnership
