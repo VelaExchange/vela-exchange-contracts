@@ -380,7 +380,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         uint256 feeUsd = ((BASIS_POINTS_DIVISOR - deductFeePercent[_account]) *
             getPositionFee(_indexToken, _isLong, _sizeDelta)) / BASIS_POINTS_DIVISOR;
 
-        return (feeUsd * tokenFarm.getTier(STAKING_PID_FOR_CHARGE_FEE, _account)) / BASIS_POINTS_DIVISOR;
+        return (feeUsd * tokenFarm.getTierVela(_account)) / BASIS_POINTS_DIVISOR;
     }
 
     function getDelegates(address _master) external view override returns (address[] memory) {

@@ -92,7 +92,7 @@ describe('TriggerOrderManager', function () {
     unstakingFee = 3000
     vela = await deployContract('MintableBaseToken', ['Vela Exchange', 'VELA', 0])
     eVela = await deployContract('eVELA', [])
-    tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
+    tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
     Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
     PositionVault = await deployContract('PositionVault', [])
     priceManager = await deployContract('PriceManager', [operator.address])
@@ -261,85 +261,6 @@ describe('TriggerOrderManager', function () {
     await vusd.transferOwnership(Vault.address) // addAdmin vault
   })
 
-  it('deploy ComplexRewardPerSec and add pool info to tokenFarm', async () => {
-    const pId1 = 0
-    const pId2 = 1
-    const pId3 = 2
-    const currentTimestamp = await getBlockTime(provider)
-    const endTimestamp1 = currentTimestamp + 14 * 60 * 60 * 24 //1659716363  => delta 2,592,000
-    const endTimestamp2 = currentTimestamp + 30 * 60 * 60 * 24
-    const endTimestamp3 = currentTimestamp + 30 * 60 * 60 * 24
-    const rewardPerSec1 = expandDecimals(8267, 12)
-    const rewardPerSec2 = expandDecimals(3858, 12)
-    const rewardPerSec3 = expandDecimals(3858, 12)
-    await vela.transferOwnership(wallet.address)
-    await eVela.transferOwnership(tokenFarm.address) // transferOwnership
-    await vela.connect(wallet).mint(wallet.address, expandDecimals(10000000, 18)) // mint vela Token
-    await vela.connect(wallet).approve(tokenFarm.address, expandDecimals('1000000', 18)) // VELA approve
-    await tokenFarm.depositVelaForVesting(expandDecimals('1000000', 18))
-    const complexRewardPerSec1 = await deployContract('ComplexRewarderPerSec', [
-      eVela.address,
-      tokenFarm.address,
-      operator.address,
-    ])
-    const complexRewardPerSec2 = await deployContract('ComplexRewarderPerSec', [
-      eVela.address,
-      tokenFarm.address,
-      operator.address,
-    ])
-    const complexRewardPerSec3 = await deployContract('ComplexRewarderPerSec', [
-      eVela.address,
-      tokenFarm.address,
-      operator.address,
-    ])
-    const amount = String(ethers.constants.MaxUint256)
-    await eVela.connect(wallet).approve(complexRewardPerSec1.address, amount) // VLP approve
-    await eVela.connect(wallet).approve(complexRewardPerSec2.address, amount) // VELA approve
-    await eVela.connect(wallet).approve(complexRewardPerSec3.address, amount) // eVELA approve
-    await complexRewardPerSec1.add(pId1, currentTimestamp)
-    await complexRewardPerSec2.add(pId2, currentTimestamp)
-    await complexRewardPerSec3.add(pId3, currentTimestamp)
-    await complexRewardPerSec1.addRewardInfo(pId1, endTimestamp1, rewardPerSec1)
-    await complexRewardPerSec2.addRewardInfo(pId2, endTimestamp2, rewardPerSec2)
-    await complexRewardPerSec3.addRewardInfo(pId3, endTimestamp3, rewardPerSec3)
-    await tokenFarm.add(vlp.address, [complexRewardPerSec1.address], false)
-    await tokenFarm.add(vela.address, [complexRewardPerSec2.address], true)
-    await tokenFarm.add(eVela.address, [complexRewardPerSec3.address], false)
-  })
-
-  it('Set RewardTierInfo', async () => {
-    const levels = [
-      expandDecimals('1000', 18),
-      expandDecimals('5000', 18),
-      expandDecimals('10000', 18),
-      expandDecimals('25000', 18),
-      expandDecimals('50000', 18),
-      expandDecimals('100000', 18),
-      expandDecimals('250000', 18),
-      expandDecimals('500000', 18),
-      expandDecimals('1000000', 18),
-    ]
-    const percents = [
-      (100 - 2) * 100,
-      (100 - 3) * 100,
-      (100 - 5) * 100,
-      (100 - 10) * 100,
-      (100 - 15) * 100,
-      (100 - 20) * 100,
-      (100 - 30) * 100,
-      (100 - 40) * 100,
-      (100 - 50) * 100,
-    ]
-    await tokenFarm.updateRewardTierInfo(levels, percents)
-    const tierLevelOne = await tokenFarm.tierLevels(0)
-    const tierPercentOne = await tokenFarm.tierPercents(0)
-    const tierLevelNine = await tokenFarm.tierLevels(8)
-    const tierPercentNine = await tokenFarm.tierPercents(8)
-    expect(parseFloat(ethers.utils.formatUnits(tierLevelOne, 18))).eq(1000)
-    expect(tierPercentOne.toNumber()).eq(9800)
-    expect(parseFloat(ethers.utils.formatUnits(tierLevelNine, 18))).eq(1000000)
-    expect(tierPercentNine.toNumber()).eq(5000)
-  })
 
   it('set LiquidateThreshod for VaultUtils', async () => {
     const BTCLiquidateThreshold = 990000
