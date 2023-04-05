@@ -3,6 +3,7 @@ pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IComplexRewarder.sol";
 import "./interfaces/ITokenFarm.sol";
@@ -12,6 +13,7 @@ import {Constants} from "../access/Constants.sol";
 import "../tokens/interfaces/IMintable.sol";
 
 contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using BoringERC20 for IBoringERC20;
 
     // Info of each user.
@@ -40,7 +42,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     IBoringERC20 public immutable VELA;
     IBoringERC20 public immutable VLP;
     IOperators public immutable operators;
-
+    EnumerableSet.AddressSet private cooldownWhiteList;
     uint256 public cooldownDuration = 1 weeks;
     uint256 public totalLockedVestingAmount;
     uint256 public vestingDuration;
@@ -88,6 +90,24 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         VLP = _vlp;
         vestingDuration = _vestingDuration;
     }
+    function addDelegatesToCooldownWhiteList(address[] memory _delegates) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        for (uint256 i = 0; i < _delegates.length; ++i) {
+            EnumerableSet.add(cooldownWhiteList, _delegates[i]);
+        }
+    }
+
+    function removeDelegatesFromCooldownWhiteList(address[] memory _delegates) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        for (uint256 i = 0; i < _delegates.length; ++i) {
+            EnumerableSet.remove(cooldownWhiteList, _delegates[i]);
+        }
+    }
+
+    function checkCooldownWhiteList(address _delegate) public view returns (bool) {
+        return EnumerableSet.contains(cooldownWhiteList, _delegate);
+    }
+    
 
     // ----- START: Operator Logic -----
     // Update rewarders and enableCooldown for pools
@@ -459,10 +479,12 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         UserInfo storage user = vlpUserInfo[account];
         uint256 _amount = user.amount;
         if (_amount > 0) {
-            require(
-                !pool.enableCooldown || user.startTimestamp + cooldownDuration <= block.timestamp,
-                "didn't pass cooldownDuration"
-            );
+            if (!checkCooldownWhiteList(account)) {
+                require(
+                    !pool.enableCooldown || user.startTimestamp + cooldownDuration <= block.timestamp,
+                    "didn't pass cooldownDuration"
+                );
+            }
             pool.totalLp -= _amount;
         }
         user.amount = 0;
@@ -481,11 +503,14 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         require(user.amount >= _amount, "withdraw: user amount not enough");
 
         if (_amount > 0) {
+            if (!checkCooldownWhiteList(_account)) {
             require(
                 !pool.enableCooldown || user.startTimestamp + cooldownDuration < block.timestamp,
                 "didn't pass cooldownDuration"
             );
             user.amount -= _amount;
+                
+            }
         }
 
         for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
