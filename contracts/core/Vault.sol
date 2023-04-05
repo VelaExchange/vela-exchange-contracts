@@ -240,11 +240,9 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         }
         _accountDeltaAndFeeIntoTotalUSD(true, 0, usdAmountFee);
         _distributeFee(_account, ZERO_ADDRESS, usdAmountFee);
-        IMintable(vlp).mint(_account, mintAmount);
         lastStakedAt[_account] = block.timestamp;
         totalVLP += mintAmount;
         totalUSD += usdAmountAfterFee;
-        IERC20(vlp).approve(address(this), mintAmount);
         tokenFarm.depositVlpForAccount(_account, mintAmount);
         emit Stake(_account, _token, _amount, mintAmount);
     }

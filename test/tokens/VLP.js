@@ -60,7 +60,7 @@ describe("VLP", function () {
         );
         await vusd.transferOwnership(Vault.address);
         await vlp.transferOwnership(Vault.address);
-
+        operator.setOperator(Vault.address, 1)
         await usdc.connect(wallet).approve(Vault.address,  amount);
         await Vault.mintAndStakeVlp(wallet.address, usdc.address, amount);
     });

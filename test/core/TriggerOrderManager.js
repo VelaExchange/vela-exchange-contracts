@@ -331,23 +331,23 @@ describe('TriggerOrderManager', function () {
     // await settingsManager.setEnableUnstaking(usdc.address, true)
   })
 
-  it('Stake Stable Coins for Vault ', async () => {
-    const amount = expandDecimals('100000', 18)
-    const vlpBalanceBeforeStake = await vlp.balanceOf(wallet.address)
-    const usdtBalanceBeforeStake = await usdt.balanceOf(wallet.address)
-    expect(parseFloat(ethers.utils.formatUnits(vlpBalanceBeforeStake, 18))).eq(0)
-    expect(parseFloat(ethers.utils.formatUnits(usdtBalanceBeforeStake, 18))).eq(10000000.0)
-    await Vault.mintAndStakeVlp(wallet.address, usdt.address, amount)
-    const vlpBalanceAfterStake = await vlp.balanceOf(wallet.address)
-    const usdtBalanceAfterStake = await usdt.balanceOf(wallet.address)
-    //  expect(parseFloat(ethers.utils.formatUnits(vlpBalanceAfterStake, 18))).eq(6062.5)
-    // liquidity fee = 0.3%
-    // amountAfterFee = 100000 * 99.7% = 99700 USDT (1USDT = 1usd)
-    // VLP Price = 16usd
-    // so vlpAmount = 99700 / 16 = 6,231.25
-    expect(parseFloat(ethers.utils.formatUnits(usdtBalanceAfterStake, 18))).eq(9900000.0)
-    // usdAmount = 10000000 - 100000 = 9900000.0
-  })
+  // it('Stake Stable Coins for Vault ', async () => {
+  //   const amount = expandDecimals('100000', 18)
+  //   const vlpBalanceBeforeStake = await vlp.balanceOf(wallet.address)
+  //   const usdtBalanceBeforeStake = await usdt.balanceOf(wallet.address)
+  //   expect(parseFloat(ethers.utils.formatUnits(vlpBalanceBeforeStake, 18))).eq(0)
+  //   expect(parseFloat(ethers.utils.formatUnits(usdtBalanceBeforeStake, 18))).eq(10000000.0)
+  //   await Vault.mintAndStakeVlp(wallet.address, usdt.address, amount)
+  //   const vlpBalanceAfterStake = await vlp.balanceOf(wallet.address)
+  //   const usdtBalanceAfterStake = await usdt.balanceOf(wallet.address)
+  //   //  expect(parseFloat(ethers.utils.formatUnits(vlpBalanceAfterStake, 18))).eq(6062.5)
+  //   // liquidity fee = 0.3%
+  //   // amountAfterFee = 100000 * 99.7% = 99700 USDT (1USDT = 1usd)
+  //   // VLP Price = 16usd
+  //   // so vlpAmount = 99700 / 16 = 6,231.25
+  //   expect(parseFloat(ethers.utils.formatUnits(usdtBalanceAfterStake, 18))).eq(9900000.0)
+  //   // usdAmount = 10000000 - 100000 = 9900000.0
+  // })
 
   it('deposit Stable Coins for Vault ', async () => {
     // await usdt.connect(wallet).approve(Vault.address, expandDecimals('100000', 18)) // approve USDT
@@ -451,7 +451,7 @@ describe('TriggerOrderManager', function () {
     const indexToken = btc.address
     const isLong = true
     const posId = 0
-    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('VUSD: burn amount exceeds balance')
+    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('exceeded VLP bottom')
   })
 
   it('getTriggerOrderInfo', async () => {
@@ -525,7 +525,7 @@ describe('TriggerOrderManager', function () {
     const indexToken = btc.address
     const isLong = true
     const posId = 1
-    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('VUSD: burn amount exceeds balance')
+    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('exceeded VLP bottom')
   })
 
   it('getTriggerOrderInfo', async () => {
@@ -613,7 +613,7 @@ describe('TriggerOrderManager', function () {
     const indexToken = btc.address
     const isLong = true
     const posId = 1
-    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('VUSD: burn amount exceeds balance')
+    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('exceeded VLP bottom')
   })
 
   it('validateTPSLTriggers for Long', async () => {

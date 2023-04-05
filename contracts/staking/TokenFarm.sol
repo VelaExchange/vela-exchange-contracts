@@ -438,9 +438,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         uint256 _pid = 1;
         PoolInfo storage pool = vlpPoolInfo;
         UserInfo storage user = vlpUserInfo[_account];
-
         if (_amount > 0) {
-            VLP.safeTransferFrom(_account, address(this), _amount);
             user.amount += _amount;
             user.startTimestamp = block.timestamp;
         }
@@ -487,7 +485,6 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
                 "didn't pass cooldownDuration"
             );
             user.amount -= _amount;
-            VLP.safeTransfer(_account, _amount);
         }
 
         for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
