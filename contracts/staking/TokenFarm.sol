@@ -616,12 +616,13 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
 
     function getTierVela(address _account) external view override returns (uint256) {
         VelaUserInfo storage user = velaUserInfo[_account];
-        if (tierLevels.length == 0 || user.velaAmount < tierLevels[0]) {
+        uint256 amount = user.velaAmount + user.esvelaAmount;
+        if (tierLevels.length == 0 || amount < tierLevels[0]) {
             return BASIS_POINTS_DIVISOR;
         }
         unchecked {
             for (uint16 i = 1; i != tierLevels.length; ++i) {
-                if (user.velaAmount < tierLevels[i]) {
+                if (amount < tierLevels[i]) {
                     return tierPercents[i - 1];
                 }
             }
