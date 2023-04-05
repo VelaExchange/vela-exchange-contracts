@@ -43,7 +43,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public override referFee = 5000; // 5%
     uint256 public override triggerGasFee = 0; //100 gwei;
     uint256 public override globalGasFee = 0;
-
+    uint256 public totalOpenInterest;
     uint256 public override maxFundingRate = 10000;
     uint256 public override basisFundingRateFactor = 10000;
 
@@ -154,6 +154,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         } else {
             openInterestPerAssetPerSide[_token][_isLong] -= _amount;
         }
+        if (totalOpenInterest < _amount) {
+            totalOpenInterest = 0;
+        } else {
+            totalOpenInterest -= _amount;
+        }
         emit DecreaseOpenInterest(_token, _isLong, _amount);
     }
 
@@ -165,7 +170,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     ) external override onlyVault {
         openInterestPerUser[_sender] += _amount;
         openInterestPerAssetPerSide[_token][_isLong] += _amount;
-
+        totalOpenInterest += _amount;
         emit IncreaseOpenInterest(_token, _isLong, _amount);
     }
 
@@ -483,7 +488,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         pnl =
             pnl -
             getFundingFee(_indexToken, _isLong, _size, _fundingIndex) -
-            int256(getBorrowFee(_size, _lastIncreasedTime) + _accruedBorrowFee);
+            int256(getBorrowFee(_indexToken, _size, _lastIncreasedTime) + _accruedBorrowFee);
 
         if (pnl > 0) {
             return (true, uint256(pnl));
@@ -542,8 +547,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
                 : (int256(_size) * (_fundingIndex - fundingIndex[_indexToken])) / int256(FUNDING_RATE_PRECISION);
     }
 
-    function getBorrowFee(uint256 _sizeDelta, uint256 _lastIncreasedTime) public view override returns (uint256) {
-        return ((block.timestamp - _lastIncreasedTime) * _sizeDelta * borrowFeeFactor) / BASIS_POINTS_DIVISOR / borrowInterval;
+    function getBorrowFee(address _indexToken, uint256 _sizeDelta, uint256 _lastIncreasedTime) public view override returns (uint256) {
+        uint256 OI_Limit_asset = maxOpenInterestPerAssetPerSide[_indexToken][true] + maxOpenInterestPerAssetPerSide[_indexToken][false];
+        uint256 OI_asset = openInterestPerAssetPerSide[_indexToken][true] + openInterestPerAssetPerSide[_indexToken][false];
+        uint256 borrowingRate = borrowFeeFactor * (BASIS_POINTS_DIVISOR * totalOpenInterest / positionVault.getVaultUSDBalance() + BASIS_POINTS_DIVISOR * OI_asset / OI_Limit_asset) / 2; 
+        return ((block.timestamp - _lastIncreasedTime) * _sizeDelta * borrowingRate) / BASIS_POINTS_DIVISOR / borrowInterval / BASIS_POINTS_DIVISOR;
     }
 
     function getPositionFee(

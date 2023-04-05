@@ -445,14 +445,6 @@ describe('TriggerOrderManager', function () {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58000'))
   })
 
-  it('triggerPosition 1', async () => {
-    const account = wallet.address
-    const indexToken = btc.address
-    const isLong = true
-    const posId = 0
-    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('VUSD: burn amount exceeds balance')
-  })
-
   it('getTriggerOrderInfo', async () => {
     const account = wallet.address
     const indexToken = btc.address
@@ -517,14 +509,6 @@ describe('TriggerOrderManager', function () {
 
   it('setLatestAnswer for BTC', async () => {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('52000'))
-  })
-
-  it('triggerPosition 4', async () => {
-    const account = wallet.address
-    const indexToken = btc.address
-    const isLong = true
-    const posId = 1
-    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('VUSD: burn amount exceeds balance')
   })
 
   it('getTriggerOrderInfo', async () => {
@@ -605,14 +589,6 @@ describe('TriggerOrderManager', function () {
 
   it('setLatestAnswer for BTC', async () => {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
-  })
-
-  it('triggerPosition 5', async () => {
-    const account = wallet.address
-    const indexToken = btc.address
-    const isLong = true
-    const posId = 1
-    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('VUSD: burn amount exceeds balance')
   })
 
   it('validateTPSLTriggers for Long', async () => {

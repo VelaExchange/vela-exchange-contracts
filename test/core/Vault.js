@@ -1362,7 +1362,7 @@ describe('Vault', function () {
     await expect(Vault.addOrRemoveCollateral(posId, isPlus, position.collateral)).to.be.revertedWith(
       'maxLeverage exceeded'
     )
-    await Vault.addOrRemoveCollateral(posId, isPlus, amount)
+    await expect(Vault.addOrRemoveCollateral(posId, isPlus, amount)).to.be.revertedWith("Vault: losses exceed collateral")
   })
 
   it('decreasePosition with full amount for Long', async () => {
