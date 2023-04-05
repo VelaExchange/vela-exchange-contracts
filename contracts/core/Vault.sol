@@ -12,6 +12,7 @@ import "../tokens/interfaces/IVUSD.sol";
 import "./interfaces/IPositionVault.sol";
 import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
+import "../staking/interfaces/ITokenFarm.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IOperators.sol";
 import {Constants} from "../access/Constants.sol";
@@ -24,6 +25,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     uint256 public totalUSD;
     IPositionVault private positionVault;
     IOperators public immutable operators;
+    ITokenFarm public immutable tokenFarm;
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
     address private immutable vlp;
@@ -50,11 +52,12 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         _;
     }
 
-    constructor(address _operators, address _vlp, address _vusd) {
+    constructor(address _operators, address _vlp, address _vusd, address _tokenFarm) {
         require(Address.isContract(_operators), "operators invalid");
         operators = IOperators(_operators);
         vlp = _vlp;
         vusd = _vusd;
+        tokenFarm = ITokenFarm(_tokenFarm);
     }
 
     function accountDeltaAndFeeIntoTotalUSD(
@@ -217,7 +220,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         isInitialized = true;
     }
 
-    function stake(address _account, address _token, uint256 _amount) external nonReentrant preventBanners(msg.sender) {
+    function mintAndStakeVlp(address _account, address _token, uint256 _amount) external nonReentrant preventBanners(msg.sender) {
         require(settingsManager.isStakingEnabled(_token), "staking disabled");
         require(_amount > 0, "zero amount");
         uint256 usdAmount = priceManager.tokenToUsd(_token, _amount);
@@ -241,6 +244,8 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         lastStakedAt[_account] = block.timestamp;
         totalVLP += mintAmount;
         totalUSD += usdAmountAfterFee;
+        IERC20(vlp).approve(address(this), mintAmount);
+        tokenFarm.depositVlpForAccount(_account, mintAmount);
         emit Stake(_account, _token, _amount, mintAmount);
     }
 
@@ -257,12 +262,13 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit TakeVUSDOut(_account, _refer, _usdOut, _fee);
     }
 
-    function unstake(
+    function unstakeAndRedeemVLP(
         address _tokenOut,
         uint256 _vlpAmount,
         address _receiver
     ) external nonReentrant preventBanners(msg.sender) {
         require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "vlpAmount error");
+        tokenFarm.withdrawVlpForAccount(msg.sender, _vlpAmount);
         if (_receiver != msg.sender) {
             require(settingsManager.checkDelegation(_receiver, msg.sender), "Not allowed");
         }

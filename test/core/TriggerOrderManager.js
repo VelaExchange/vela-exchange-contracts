@@ -92,9 +92,10 @@ describe('TriggerOrderManager', function () {
     vela = await deployContract('MintableBaseToken', ['Vela Exchange', 'VELA', 0])
     eVela = await deployContract('eVELA', [])
     tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
-    Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
+    Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address, tokenFarm.address])
     PositionVault = await deployContract('PositionVault', [])
     operator.setOperator(PositionVault.address, 1)
+    operator.setOperator(Vault.address, 1)
     priceManager = await deployContract('PriceManager', [operator.address])
     settingsManager = await deployContract('SettingsManager', [
       PositionVault.address,
@@ -336,7 +337,7 @@ describe('TriggerOrderManager', function () {
     const usdtBalanceBeforeStake = await usdt.balanceOf(wallet.address)
     expect(parseFloat(ethers.utils.formatUnits(vlpBalanceBeforeStake, 18))).eq(0)
     expect(parseFloat(ethers.utils.formatUnits(usdtBalanceBeforeStake, 18))).eq(10000000.0)
-    await Vault.stake(wallet.address, usdt.address, amount)
+    await Vault.mintAndStakeVlp(wallet.address, usdt.address, amount)
     const vlpBalanceAfterStake = await vlp.balanceOf(wallet.address)
     const usdtBalanceAfterStake = await usdt.balanceOf(wallet.address)
     //  expect(parseFloat(ethers.utils.formatUnits(vlpBalanceAfterStake, 18))).eq(6062.5)

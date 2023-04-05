@@ -428,29 +428,31 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     // ----- END: both VELA and esVELA, pid=0
 
     // ----- START: VLP Pool, pid=1, token VLP -----
-    function depositVlp(uint256 _amount) external nonReentrant {
-        _depositVlp(_amount);
+
+    function depositVlpForAccount(address _account, uint256 _amount) external override nonReentrant {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        _depositVlp(_account, _amount);
     }
 
-    function _depositVlp(uint256 _amount) internal {
+    function _depositVlp(address _account, uint256 _amount) internal {
         uint256 _pid = 1;
         PoolInfo storage pool = vlpPoolInfo;
-        UserInfo storage user = vlpUserInfo[msg.sender];
+        UserInfo storage user = vlpUserInfo[_account];
 
         if (_amount > 0) {
-            VLP.safeTransferFrom(msg.sender, address(this), _amount);
+            VLP.safeTransferFrom(_account, address(this), _amount);
             user.amount += _amount;
             user.startTimestamp = block.timestamp;
         }
 
         for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
-            pool.rewarders[rewarderId].onVelaReward(_pid, msg.sender, user.amount);
+            pool.rewarders[rewarderId].onVelaReward(_pid, _account, user.amount);
         }
 
         if (_amount > 0) {
             pool.totalLp += _amount;
         }
-        emit FarmDeposit(msg.sender, VLP, _amount);
+        emit FarmDeposit(_account, VLP, _amount);
     }
 
     function emergencyWithdrawVlp() external nonReentrant {
@@ -470,10 +472,11 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     }
 
     //withdraw tokens
-    function withdrawVlp(uint256 _amount) external nonReentrant {
+    function withdrawVlpForAccount(address _account, uint256 _amount) external override nonReentrant {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         uint256 _pid = 1;
         PoolInfo storage pool = velaPoolInfo;
-        UserInfo storage user = vlpUserInfo[msg.sender];
+        UserInfo storage user = vlpUserInfo[_account];
 
         //this will make sure that user can only withdraw from his pool
         require(user.amount >= _amount, "withdraw: user amount not enough");
@@ -484,18 +487,18 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
                 "didn't pass cooldownDuration"
             );
             user.amount -= _amount;
-            VLP.safeTransfer(msg.sender, _amount);
+            VLP.safeTransfer(_account, _amount);
         }
 
         for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
-            pool.rewarders[rewarderId].onVelaReward(_pid, msg.sender, user.amount);
+            pool.rewarders[rewarderId].onVelaReward(_pid, _account, user.amount);
         }
 
         if (_amount > 0) {
             pool.totalLp -= _amount;
         }
 
-        emit FarmWithdraw(msg.sender, VLP, _amount);
+        emit FarmWithdraw(_account, VLP, _amount);
     }
 
     // ----- END: VLP Pool, pid=1, token VLP -----
@@ -610,7 +613,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
             _depositEsvela(0);
         }
         if (_vlp) {
-            _depositVlp(0);
+            _depositVlp(msg.sender, 0);
         }
     }
 
