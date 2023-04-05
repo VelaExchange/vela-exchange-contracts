@@ -429,7 +429,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
 
     // ----- START: VLP Pool, pid=1, token VLP -----
 
-    function depositVlpForAccount(address _account, uint256 _amount) external override nonReentrant {
+    function depositVlpForAccount(address _account, uint256 _amount) external override {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         _depositVlp(_account, _amount);
     }
@@ -453,27 +453,28 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit FarmDeposit(_account, VLP, _amount);
     }
 
-    function emergencyWithdrawVlp() external nonReentrant {
-        PoolInfo storage pool = velaPoolInfo;
-        UserInfo storage user = vlpUserInfo[msg.sender];
+    function emergencyWithdrawVlp(address account) external override returns (uint256) {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        PoolInfo storage pool = vlpPoolInfo;
+        UserInfo storage user = vlpUserInfo[account];
         uint256 _amount = user.amount;
         if (_amount > 0) {
             require(
                 !pool.enableCooldown || user.startTimestamp + cooldownDuration <= block.timestamp,
                 "didn't pass cooldownDuration"
             );
-            VLP.safeTransfer(msg.sender, _amount);
             pool.totalLp -= _amount;
         }
         user.amount = 0;
-        emit EmergencyWithdraw(msg.sender, VLP, _amount);
+        emit EmergencyWithdraw(account, VLP, _amount);
+        return _amount;
     }
 
     //withdraw tokens
-    function withdrawVlpForAccount(address _account, uint256 _amount) external override nonReentrant {
+    function withdrawVlpForAccount(address _account, uint256 _amount) external override {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         uint256 _pid = 1;
-        PoolInfo storage pool = velaPoolInfo;
+        PoolInfo storage pool = vlpPoolInfo;
         UserInfo storage user = vlpUserInfo[_account];
 
         //this will make sure that user can only withdraw from his pool
