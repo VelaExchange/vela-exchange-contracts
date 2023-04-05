@@ -23,6 +23,7 @@ contract Constants {
     uint256 public constant MAX_FEE_REWARD_BASIS_POINTS = BASIS_POINTS_DIVISOR; // 100%
     uint256 public constant MAX_LIQUIDATION_FEE_USD = 100 * PRICE_PRECISION; // 100 USD
     uint256 public constant MAX_PRICE_MOVEMENT_PERCENT = 10000; // 10%
+    uint256 public constant MAX_BORROW_FEE_FACTOR = 100; // 0.1% per hour
     uint256 public constant MAX_STAKING_UNSTAKING_FEE = 10000; // 10%
     uint256 public constant MAX_TOKENFARM_COOLDOWN_DURATION = 4 weeks;
     uint256 public constant MAX_TRIGGER_GAS_FEE = 1e8 gwei;

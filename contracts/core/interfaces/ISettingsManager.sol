@@ -31,6 +31,8 @@ interface ISettingsManager {
 
     function feeRewardBasisPoints() external view returns (uint256);
 
+    function borrowFeeFactor() external view returns (uint256);
+
     function maxFundingRate() external view returns (uint256);
 
     function basisFundingRateFactor() external view returns (uint256);
@@ -59,14 +61,18 @@ interface ISettingsManager {
 
     function getPnl(
         address _indexToken,
+        bool _isLong,
         uint256 _size,
         uint256 _averagePrice,
         uint256 _lastPrice,
-        int256 _fundingIndex,
-        bool _isLong
+        uint256 _lastIncreasedTime,
+        uint256 _accruedBorrowFee,
+        int256 _fundingIndex
     ) external view returns (bool, uint256);
 
     function updateFunding(address _indexToken) external;
+
+    function getBorrowFee(uint256 _sizeDelta, uint256 _lastIncreasedTime) external view returns (uint256);
 
     function getPositionFee(address _indexToken, bool _isLong, uint256 _sizeDelta) external view returns (uint256);
 
