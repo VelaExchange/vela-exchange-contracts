@@ -35,6 +35,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public override liquidationPendingTime = 10; // allow 10 seconds for manager to resolve liquidation
 
     uint256 public override closeDeltaTime = 1 hours;
+    uint256 public borrowInterval = 1 hours;
     uint256 public override cooldownDuration = 3 hours;
     uint256 public override feeRewardBasisPoints = 50000; // 50%
     uint256 public override liquidationFeeUsd; // 0 usd
@@ -80,6 +81,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetEnableStaking(address indexed token, bool isEnabled);
     event SetEnableUnstaking(address indexed token, bool isEnabled);
     event SetBorrowFeeFactor(uint256 borrowFeeFactor);
+    event SetBorrowInterval(uint256 borrowInterval);
     event SetFundingRateFactor(address indexed token, uint256 fundingRateFactor);
     event SetLiquidationFeeUsd(uint256 indexed _liquidationFeeUsd);
     event SetMarginFeeBasisPoints(address indexed token, bool isLong, uint256 marginFeeBasisPoints);
@@ -268,6 +270,14 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         borrowFeeFactor = _borrowFeeFactor;
         emit SetBorrowFeeFactor(_borrowFeeFactor);
     }
+
+    function setBorrowInterval(uint256 _borrowInterval) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        require(_borrowInterval >= MIN_BORROW_INTERVAL, "Below min");
+        borrowInterval = _borrowInterval;
+        emit SetBorrowInterval(borrowInterval);
+    }
+
 
     function setFundingRateFactor(address _token, uint256 _fundingRateFactor) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
@@ -533,7 +543,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function getBorrowFee(uint256 _sizeDelta, uint256 _lastIncreasedTime) public view override returns (uint256) {
-        return ((block.timestamp - _lastIncreasedTime) * _sizeDelta * borrowFeeFactor) / BASIS_POINTS_DIVISOR / 1 hours;
+        return ((block.timestamp - _lastIncreasedTime) * _sizeDelta * borrowFeeFactor) / BASIS_POINTS_DIVISOR / borrowInterval;
     }
 
     function getPositionFee(

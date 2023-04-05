@@ -29,6 +29,7 @@ contract Constants {
     uint256 public constant MAX_TRIGGER_GAS_FEE = 1e8 gwei;
     uint256 public constant MAX_GLOBAL_GAS_FEE = 1e8 gwei;
     uint256 public constant MAX_VESTING_DURATION = 700 days;
+    uint256 public constant MIN_BORROW_INTERVAL = 1 minutes;
     uint256 public constant MIN_LEVERAGE = 10000; // 1x
     uint256 public constant MIN_FEE_REWARD_BASIS_POINTS = 50000; // 50%
     uint256 public constant POSITION_MARKET = 0;
