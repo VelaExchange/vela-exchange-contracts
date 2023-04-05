@@ -410,34 +410,14 @@ describe('Vault', function () {
     await vela.connect(wallet).mint(wallet.address, expandDecimals(10000000, 18)) // mint vela Token
     await vela.connect(wallet).approve(tokenFarm.address, expandDecimals('1000000', 18)) // VELA approve
     await tokenFarm.depositVelaForVesting(expandDecimals('1000000', 18))
-    const complexRewardPerSec1 = await deployContract('ComplexRewarderPerSec', [
-      eVela.address,
-      tokenFarm.address,
-      operator.address,
-    ])
-    const complexRewardPerSec2 = await deployContract('ComplexRewarderPerSec', [
-      eVela.address,
-      tokenFarm.address,
-      operator.address,
-    ])
-    const complexRewardPerSec3 = await deployContract('ComplexRewarderPerSec', [
-      eVela.address,
-      tokenFarm.address,
-      operator.address,
-    ])
     const amount = String(ethers.constants.MaxUint256)
-    await eVela.connect(wallet).approve(complexRewardPerSec1.address, amount) // VLP approve
-    await eVela.connect(wallet).approve(complexRewardPerSec2.address, amount) // VELA approve
-    await eVela.connect(wallet).approve(complexRewardPerSec3.address, amount) // eVELA approve
-    await complexRewardPerSec1.add(pId1, currentTimestamp)
-    await complexRewardPerSec2.add(pId2, currentTimestamp)
-    await complexRewardPerSec3.add(pId3, currentTimestamp)
-    await complexRewardPerSec1.addRewardInfo(pId1, endTimestamp1, rewardPerSec1)
-    await complexRewardPerSec2.addRewardInfo(pId2, endTimestamp2, rewardPerSec2)
-    await complexRewardPerSec3.addRewardInfo(pId3, endTimestamp3, rewardPerSec3)
-    await tokenFarm.add(vlp.address, [complexRewardPerSec1.address], false)
-    await tokenFarm.add(vela.address, [complexRewardPerSec2.address], true)
-    await tokenFarm.add(eVela.address, [complexRewardPerSec3.address], false)
+    await eVela.connect(wallet).approve(tokenFarm.address, amount) // VLP approve
+    await tokenFarm.addPoolInfo(vlp.address, [eVela.address], false, currentTimestamp)
+    await tokenFarm.addPoolInfo(vela.address, [eVela.address], true, currentTimestamp)
+    await tokenFarm.addPoolInfo(eVela.address, [eVela.address], false, currentTimestamp)
+    await tokenFarm.addRewardInfo(pId1, endTimestamp1, [rewardPerSec1])
+    await tokenFarm.addRewardInfo(pId2, endTimestamp2, [rewardPerSec2])
+    await tokenFarm.addRewardInfo(pId3, endTimestamp3, [rewardPerSec3])
   })
 
   it('Set RewardTierInfo', async () => {
