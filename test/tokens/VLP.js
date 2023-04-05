@@ -32,15 +32,9 @@ describe("VLP", function () {
         let priceManager = await deployContract("PriceManager", [
             operator.address
         ]);
-        vaultPriceFeed = (await ethers.getContractFactory("VaultPriceFeed")).attach(await priceManager.priceFeed())
         let usdcPriceFeed = await deployContract("FastPriceFeed", [])
         await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
-        await vaultPriceFeed.setTokenConfig(usdc.address, usdcPriceFeed.address, 8)
-        await priceManager.setTokenConfig(
-            usdc.address,
-            6,
-            100 * 10000,
-        );
+        await priceManager.setTokenConfig(usdc.address, 6, 100 * 10000, usdcPriceFeed.address, 8);
         let vestingDuration = 6 * 30 * 24 * 60 * 60
         let PositionVault = await deployContract("PositionVault", []);
         let vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
