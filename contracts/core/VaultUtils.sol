@@ -121,13 +121,13 @@ contract VaultUtils is IVaultUtils, Constants {
         bool validateFlag;
         (bool hasProfit, ) = settingsManager.getPnl(
             position.indexToken,
+            position.isLong,
             position.size,
             position.averagePrice,
             _price,
             position.lastIncreasedTime,
             position.accruedBorrowFee,
-            position.fundingIndex,
-            position.isLong
+            position.fundingIndex
         );
         if (hasProfit) {
             if (
@@ -162,13 +162,13 @@ contract VaultUtils is IVaultUtils, Constants {
         if (position.averagePrice > 0) {
             (bool hasProfit, uint256 delta) = settingsManager.getPnl(
                 position.indexToken,
+                position.isLong,
                 position.size,
                 position.averagePrice,
                 price,
                 position.lastIncreasedTime,
                 position.accruedBorrowFee,
-                position.fundingIndex,
-                position.isLong
+                position.fundingIndex
             );
             uint256 migrateFeeUsd = settingsManager.collectMarginFees(
                 position.owner,
