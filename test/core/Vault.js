@@ -83,7 +83,7 @@ describe('Vault', function () {
     vela = await deployContract('Vela', [trustForwarder])
     eVela = await deployContract('eVELA', [])
     operator = await deployContract('ExchangeOperators', [])
-    tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
+    tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
     //vaultPriceFeed = await deployContract("VaultPriceFeed", [])
     Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
     PositionVault = await deployContract('PositionVault', [])
@@ -395,76 +395,7 @@ describe('Vault', function () {
     await settingsManager.setFundingRateFactor(jpy.address, JPYLongFundingRateFactor)
   })
 
-  it('deploy ComplexRewardPerSec and add pool info to tokenFarm', async () => {
-    const pId1 = 0
-    const pId2 = 1
-    const pId3 = 2
-    const currentTimestamp = await getBlockTime(provider)
-    const endTimestamp1 = currentTimestamp + 14 * 60 * 60 * 24 //1659716363  => delta 2,592,000
-    const endTimestamp2 = currentTimestamp + 30 * 60 * 60 * 24
-    const endTimestamp3 = currentTimestamp + 30 * 60 * 60 * 24
-    const rewardPerSec1 = expandDecimals(8267, 12) // 10k
-    const rewardPerSec2 = expandDecimals(3858, 12) // 10k
-    const rewardPerSec3 = expandDecimals(3858, 12) // 10k
-    await eVela.transferOwnership(tokenFarm.address) // transferOwnership
-    await vela.connect(wallet).mint(wallet.address, expandDecimals(10000000, 18)) // mint vela Token
-    await vela.connect(wallet).approve(tokenFarm.address, expandDecimals('1000000', 18)) // VELA approve
-    await tokenFarm.depositVelaForVesting(expandDecimals('1000000', 18))
-    const complexRewardPerSec1 = await deployContract('ComplexRewarderPerSec', [
-      eVela.address,
-      tokenFarm.address,
-      operator.address,
-    ])
-    const complexRewardPerSec2 = await deployContract('ComplexRewarderPerSec', [
-      eVela.address,
-      tokenFarm.address,
-      operator.address,
-    ])
-    const complexRewardPerSec3 = await deployContract('ComplexRewarderPerSec', [
-      eVela.address,
-      tokenFarm.address,
-      operator.address,
-    ])
-    const amount = String(ethers.constants.MaxUint256)
-    await eVela.connect(wallet).approve(complexRewardPerSec1.address, amount) // VLP approve
-    await eVela.connect(wallet).approve(complexRewardPerSec2.address, amount) // VELA approve
-    await eVela.connect(wallet).approve(complexRewardPerSec3.address, amount) // eVELA approve
-    await complexRewardPerSec1.add(pId1, currentTimestamp)
-    await complexRewardPerSec2.add(pId2, currentTimestamp)
-    await complexRewardPerSec3.add(pId3, currentTimestamp)
-    await complexRewardPerSec1.addRewardInfo(pId1, endTimestamp1, rewardPerSec1)
-    await complexRewardPerSec2.addRewardInfo(pId2, endTimestamp2, rewardPerSec2)
-    await complexRewardPerSec3.addRewardInfo(pId3, endTimestamp3, rewardPerSec3)
-    await tokenFarm.add(vlp.address, [complexRewardPerSec1.address], false)
-    await tokenFarm.add(vela.address, [complexRewardPerSec2.address], true)
-    await tokenFarm.add(eVela.address, [complexRewardPerSec3.address], false)
-  })
 
-  it('Set RewardTierInfo', async () => {
-    const levels = [
-      expandDecimals('1000', 18),
-      expandDecimals('5000', 18),
-      expandDecimals('10000', 18),
-      expandDecimals('25000', 18),
-      expandDecimals('50000', 18),
-      expandDecimals('100000', 18),
-      expandDecimals('250000', 18),
-      expandDecimals('500000', 18),
-      expandDecimals('1000000', 18),
-    ]
-    const percents = [
-      (100 - 2) * 1000,
-      (100 - 3) * 1000,
-      (100 - 5) * 1000,
-      (100 - 10) * 1000,
-      (100 - 15) * 1000,
-      (100 - 20) * 1000,
-      (100 - 30) * 1000,
-      (100 - 40) * 1000,
-      (100 - 50) * 1000,
-    ]
-    await tokenFarm.updateRewardTierInfo(levels, percents)
-  })
 
   it('deposit with General Token', async () => {
     const amount = expandDecimals('1', 18)
@@ -472,6 +403,7 @@ describe('Vault', function () {
     await btc.connect(wallet).approve(Vault.address, amount) // approve BTC
     await expect(Vault.deposit(wallet.address, btc.address, amount)).to.be.revertedWith('deposit not allowed') // deposit BTC
   })
+
 
   it('deposit with Stable Coins', async () => {
     const amount = expandDecimals('1000', 18)

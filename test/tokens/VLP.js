@@ -45,7 +45,7 @@ describe("VLP", function () {
         let PositionVault = await deployContract("PositionVault", []);
         let vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         let eVela = await deployContract('eVELA', [])
-        let tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
+        let tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
         let settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,

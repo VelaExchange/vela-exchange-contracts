@@ -21,9 +21,8 @@ describe("TokenFarm", function () {
     let tokenFarm;
     let operator;
     let vestingDuration
-    let complexRewardPerSec1;
-    let complexRewardPerSec2;
-    let complexRewardPerSec3;
+    let complexRewardPerSec1; //vela pool
+    let complexRewardPerSec2; //vlp pool
     let rewardPerSec1
     let rewardPerSec2
     let rewardPerSec3
@@ -38,7 +37,7 @@ describe("TokenFarm", function () {
         vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         eVela = await deployContract('eVELA', [])
         operator = await deployContract('ExchangeOperators', [])
-        tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, operator.address])
+        tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
         await eVela.transferOwnership(tokenFarm.address)
         await vela.transferOwnership(wallet.address);
         const owner = await vela.owner()
@@ -67,16 +66,13 @@ describe("TokenFarm", function () {
     });
 
     it ("deploy ComplexRewardPerSec and add pool info to tokenFarm", async () => {
-        const pId1 = 0
-        const pId2 = 1
-        const pId3 = 2
+        const pId1 = 0 //for VELA/esVELA pool
+        const pId2 = 1 //for VLP pool
         const currentTimestamp = await getBlockTime(provider);
         endTimestamp1 = currentTimestamp + 14 * 60 * 60 * 24 //1659716363  => delta 2,592,000
         endTimestamp2 = currentTimestamp + 30 * 60 * 60 * 24
-        endTimestamp3 = currentTimestamp + 30 * 60 * 60 * 24
         rewardPerSec1 = expandDecimals(8267, 12)
         rewardPerSec2 = expandDecimals(3858, 12)
-        rewardPerSec3 = expandDecimals(3858, 12)
         await vela.connect(wallet).mint(wallet.address, expandDecimals(100000, 18)); // mint vela Token
         await vela.connect(wallet).mint(user0.address, expandDecimals(100, 18)); // mint vela Token
         await vela.connect(wallet).mint(user1.address, expandDecimals(100, 18)); // mint vela Token
@@ -106,78 +102,37 @@ describe("TokenFarm", function () {
             tokenFarm.address,
             operator.address
         ])
-        complexRewardPerSec3 = await deployContract("ComplexRewarderPerSec", [
-            eVela.address,
-            tokenFarm.address,
-            operator.address
-        ])
         const amount = String(ethers.constants.MaxUint256)
-        await eVela.connect(wallet).approve(complexRewardPerSec1.address,  amount); // VLP approve
-        await eVela.connect(wallet).approve(complexRewardPerSec2.address,  amount); // VELA approve
-        await eVela.connect(wallet).approve(complexRewardPerSec3.address,  amount); // eVELA approve
+        await eVela.connect(wallet).approve(complexRewardPerSec1.address,  amount); // VELA approve
+        await eVela.connect(wallet).approve(complexRewardPerSec2.address,  amount); // VLP approve
         await complexRewardPerSec1.add(pId1, currentTimestamp)
         await expect(complexRewardPerSec1.add(pId1, currentTimestamp)).to.be.revertedWith("pool already exists")
         await complexRewardPerSec2.add(pId2, currentTimestamp)
-        await complexRewardPerSec3.add(pId3, currentTimestamp)
         expect(await complexRewardPerSec1.currentEndTimestamp(pId1)).eq(0)
         expect(await complexRewardPerSec1.poolRewardsPerSec(pId1)).eq(0)
         await complexRewardPerSec1.addRewardInfo(
-            pId1,
+            pId1, //vela and esVELA pool
             endTimestamp1,
             rewardPerSec1
         )
+        console.log("complexRewardPerSec1's esVela balance:", await eVela.balanceOf(complexRewardPerSec1.address))
         await complexRewardPerSec2.addRewardInfo(
-            pId2,
+            pId2, //vlp pool
             endTimestamp2,
             rewardPerSec2
         )
-        await complexRewardPerSec3.addRewardInfo(
-            pId3,
-            endTimestamp3,
-            rewardPerSec3
-        )
-        await tokenFarm.add(
-            vlp.address,
+        await tokenFarm.setVelaPool(
             [complexRewardPerSec1.address],
             true
         )
-        await tokenFarm.add(
-            vela.address,
+        await tokenFarm.setVlpPool(
             [complexRewardPerSec2.address],
             true
         )
-        await tokenFarm.add(
-            eVela.address,
-            [complexRewardPerSec3.address],
-            false
-        )
-        await expect(tokenFarm.add(
-            zeroAddress,
-            [complexRewardPerSec3.address],
-            false
-        )).to.be.revertedWith("add: LP token must be a valid contract")
-        await expect(tokenFarm.add(
-            eVela.address,
+        await expect(tokenFarm.setVlpPool(
             [zeroAddress],
             false
-        )).to.be.revertedWith("add: rewarder must be contract")
-        await expect(tokenFarm.add(
-            eVela.address,
-            [
-                complexRewardPerSec1.address,
-                complexRewardPerSec2.address,
-                complexRewardPerSec3.address,
-                complexRewardPerSec1.address,
-                complexRewardPerSec2.address,
-                complexRewardPerSec3.address,
-                complexRewardPerSec1.address,
-                complexRewardPerSec2.address,
-                complexRewardPerSec3.address,
-                complexRewardPerSec1.address,
-                complexRewardPerSec2.address
-            ],
-            false
-        )).to.be.revertedWith("add: too many rewarders")
+        )).to.be.revertedWith("set: rewarder must be contract")
     })
 
     it("Set RewardTierInfo", async () => {
@@ -218,88 +173,72 @@ describe("TokenFarm", function () {
         const passTime = 60 * 60 * 24 * 60
         await ethers.provider.send('evm_increaseTime', [-1 * passTime]);
         await ethers.provider.send('evm_mine');
-        const poolRewardsPerSec = await tokenFarm.poolRewardsPerSec(0)
+        const poolRewardsPerSec = await tokenFarm.poolRewardsPerSec(true)
         expect(poolRewardsPerSec.rewardsPerSec[0]).eq(0)
         await ethers.provider.send('evm_increaseTime', [passTime]);
         await ethers.provider.send('evm_mine');
-        const poolRewardsPerSec2 = await tokenFarm.poolRewardsPerSec(0)
+        const poolRewardsPerSec2 = await tokenFarm.poolRewardsPerSec(true)
         expect(poolRewardsPerSec2.rewardsPerSec[0]).gt(0)
         await ethers.provider.send('evm_increaseTime', [passTime]);
         await ethers.provider.send('evm_mine');
-        const poolRewardsPerSec3 = await tokenFarm.poolRewardsPerSec(0)
+        const poolRewardsPerSec3 = await tokenFarm.poolRewardsPerSec(true)
         expect(poolRewardsPerSec3.rewardsPerSec[0]).eq(0)
         await ethers.provider.send('evm_increaseTime', [-1 * passTime]);
         await ethers.provider.send('evm_mine');
     })
 
-    it("deposit with pId = 1, enableLock = true ", async () => {
-        const pId = 1
+    it("deposit VELA, enableLock = true ", async () => {
         const amount = expandDecimals('100', 18)
-        await expect(tokenFarm.deposit(pId, amount))
+        await expect(tokenFarm.depositVela(amount))
             .to.be.revertedWith("BoringERC20: TransferFrom failed");
         await vela.approve(tokenFarm.address, amount);
-        await tokenFarm.deposit(pId, amount)
+        await tokenFarm.depositVela(amount)
+        expect((await tokenFarm.velaUserInfo(wallet.address)).velaAmount).to.be.equal(amount)
     })
 
-    it ("withdraw with lock = false", async () => {
-        const pId = 0
+    it ("withdraw VELA, amount not enough", async () => {
         const bigAmount = expandDecimals('10000', 18)
-        await expect(tokenFarm.withdraw(pId, bigAmount))
+        await expect(tokenFarm.withdrawVela(bigAmount))
             .to.be.revertedWith("withdraw: user amount not enough");
     })
 
     it ("withdraw with lock = true", async () => {
-        const pId = 1
         const account = wallet.address
         const passTime = 60 * 10
         const amount = expandDecimals('10', 18)
         const amount2 = expandDecimals('105', 18)
         await ethers.provider.send('evm_increaseTime', [passTime]);
         await ethers.provider.send('evm_mine');
-        await expect(tokenFarm.pendingTokens(
-            4,
-            account
-        )).to.be.revertedWith("Pool does not exist")
         const pendingTokens = await tokenFarm.pendingTokens(
-            pId,
+            true, //is vela pool
             account
         )
-        await expect(tokenFarm.withdraw(pId, amount2))
+        await expect(tokenFarm.withdrawVela(amount2))
             .to.be.revertedWith("withdraw: user amount not enough")
-        if (pendingTokens.amounts[0].gte(bigNumberify(0))) {
-            await expect(tokenFarm.emergencyWithdraw(pId))
+        expect(pendingTokens.amounts[0]).gte(bigNumberify(0))
+        //console.log(pendingTokens)
+        await expect(tokenFarm.emergencyWithdrawVela())
+        .to.be.revertedWith("didn't pass cooldownDuration")
+        await expect(tokenFarm.withdrawVela(amount))
             .to.be.revertedWith("didn't pass cooldownDuration")
-            await expect(tokenFarm.withdraw(pId, amount))
-                .to.be.revertedWith("didn't pass cooldownDuration")
-        }
+    
         const passTime2 = 60 * 60 * 24 * 7
         await ethers.provider.send('evm_increaseTime', [passTime2]);
         await ethers.provider.send('evm_mine');
-        const poolTotalLp = await tokenFarm.poolTotalLp(pId)
-        const userInfo = await tokenFarm.userInfo(pId, account)
-        if (poolTotalLp.gte(amount) && poolTotalLp.gte(userInfo.amount) && userInfo.amount.gte(amount)) {
-            await tokenFarm.withdraw(pId, amount)
-        }
+        await tokenFarm.withdrawVela(amount)
     })
 
     it ("emergencyWithdraw", async () => {
-        const pId = 1
-        await tokenFarm.emergencyWithdraw(pId)
+        await tokenFarm.emergencyWithdrawVela()
     })
 
     it ("poolRewardsPerSec", async () => {
-        const pId = 1
-        const poolRewardsPerSec = await tokenFarm.poolRewardsPerSec(pId)
+        const poolRewardsPerSec = await tokenFarm.poolRewardsPerSec(false) //vlp pool
         expect(poolRewardsPerSec.rewardsPerSec[0]).eq(rewardPerSec2)
     })
 
-    it ("poolLength", async () => {
-        expect(await tokenFarm.poolLength()).eq(3)
-    })
-
     it ("poolRewarders", async () => {
-        const pId = 1
-        const poolRewarders = await tokenFarm.poolRewarders(pId)
+        const poolRewarders = await tokenFarm.poolRewarders(false)
         expect(poolRewarders[0]).eq(complexRewardPerSec2.address)
     })
 
@@ -308,11 +247,10 @@ describe("TokenFarm", function () {
     })
 
     it ("getTier check", async () => {
-        const pId = 1
         const amount_level_one = expandDecimals('5001', 18)
         await vela.approve(tokenFarm.address, amount_level_one)
-        await tokenFarm.deposit(pId, amount_level_one)
-        expect(await tokenFarm.getTier(pId, wallet.address)).eq((100 - 3) * 1000)
+        await tokenFarm.depositVela(amount_level_one)
+        expect(await tokenFarm.getTierVela(wallet.address)).eq((100 - 3) * 1000)
     })
 
     it ("depositVesting", async () => {
@@ -366,12 +304,11 @@ describe("TokenFarm", function () {
     })
 
     it("deposit with pId = 0, enableLock = true ", async () => {
-        const pId = 0
         const amount = expandDecimals('1000', 18)
-        await expect(tokenFarm.deposit(pId, amount))
+        await expect(tokenFarm.depositVlp(amount))
             .to.be.revertedWith("BoringERC20: TransferFrom failed");
         await vlp.approve(tokenFarm.address, amount);
-        await tokenFarm.deposit(pId, amount)
+        await tokenFarm.depositVlp(amount)
     })
 
     it ("getTimeElapsed 1", async () => {
@@ -417,20 +354,18 @@ describe("TokenFarm", function () {
     })
 
     it ("withdraw", async () => {
-        const pId = 0
         const amount = expandDecimals('100', 18)
-        await expect(tokenFarm.withdraw(pId, amount))
+        await expect(tokenFarm.withdrawVlp(amount))
             .to.be.revertedWith("didn't pass cooldownDuration")
     })
 
     it ("withdraw after passing cooldown duration", async () => {
-        const pId = 0
         const passTime = 60 * 60 * 24 * 365
         await ethers.provider.send('evm_increaseTime', [passTime]);
         await ethers.provider.send('evm_mine');
         const amount = expandDecimals('100', 18)
         const beforeBalance = await vlp.balanceOf(wallet.address)
-        await tokenFarm.withdraw(pId, amount)
+        await tokenFarm.withdrawVlp(amount)
         expect(await vlp.balanceOf(wallet.address)).eq(
             beforeBalance.add(amount)
         )
@@ -520,20 +455,10 @@ describe("TokenFarm", function () {
 
 
     it ("harvestMany", async () => {
-        const pIdList = [0, 1, 2]
-        const maxPIdList = [
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-            11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-            21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
-            31
-        ]
-        await expect(tokenFarm.harvestMany(maxPIdList))
-            .to.be.revertedWith("harvest many: too many pool ids")
-        await tokenFarm.harvestMany(pIdList)
+        await tokenFarm.harvestMany(true, true, true)
     })
 
     it ("set", async () => {
-        const pId = 0
         const rewarders = [complexRewardPerSec1.address]
         const maxRewarders = [
             complexRewardPerSec1.address,
@@ -549,31 +474,33 @@ describe("TokenFarm", function () {
             complexRewardPerSec1.address,
             complexRewardPerSec1.address,
         ]
-        await expect(tokenFarm.set(pId, maxRewarders))
+        await expect(tokenFarm.setVlpPool(maxRewarders, true))
             .to.be.revertedWith("set: too many rewarders")
-        await expect(tokenFarm.set(pId, [zeroAddress]))
+        await expect(tokenFarm.setVlpPool([zeroAddress], true))
             .to.be.revertedWith("set: rewarder must be contract")
-        await tokenFarm.set(pId, rewarders)
+        await tokenFarm.setVelaPool(rewarders, true)
     })
 
 
     it ("emergencyRewardWithdraw", async () => {
+        //await eVela.transfer(complexRewardPerSec1.address, expandDecimals('1000', 18)) //todo: why this is needed
         const amount = expandDecimals('10', 18)
-        const pId = 2
-        await eVela.connect(wallet).approve(
-            tokenFarm.address,  amount); // eVELA approve
-        await tokenFarm.deposit(pId, amount)
-        complexRewardPerSec3.emergencyRewardWithdraw(
-            pId,
+        await eVela.connect(wallet).approve(tokenFarm.address,  amount); // eVELA approve
+        await tokenFarm.depositEsvela(amount)
+        console.log(await eVela.balanceOf(complexRewardPerSec1.address))
+        console.log(await complexRewardPerSec1.poolInfo(0))
+        console.log(await complexRewardPerSec1.poolInfo(1))
+        await complexRewardPerSec1.emergencyRewardWithdraw(
+            0,
             0,
             wallet.address
         )
-        await expect(complexRewardPerSec3.emergencyRewardWithdraw(
-            pId,
+        await expect(complexRewardPerSec1.emergencyRewardWithdraw(
+            0,
             amount,
             wallet.address
         )).to.be.revertedWith("emergency reward withdraw: not enough reward token")
-        await complexRewardPerSec3.emergencyWithdraw(
+        await complexRewardPerSec1.emergencyWithdraw(
             amount,
             wallet.address
         )
@@ -583,7 +510,7 @@ describe("TokenFarm", function () {
         const pid = 1
         const user = wallet.address
         const amount = expandDecimals('10', 18)
-        await expect(complexRewardPerSec1.onVelaReward(pid, user, amount))
+        await expect(complexRewardPerSec2.onVelaReward(pid, user, amount))
             .to.be.revertedWith("only Distributor can call this function")
     })
 
@@ -625,15 +552,4 @@ describe("TokenFarm", function () {
         )).to.be.revertedWith("add reward info: bad new endTimestamp")
     })
 
-    it ("deposit with convert", async () => {
-        const amount = expandDecimals('100', 18)
-        expect( (await tokenFarm.poolInfo(2)).lpToken ).equal(eVela.address) //pool id=2 for eVela
-        await vela.approve(tokenFarm.address, amount)
-        let eVELA_balance_before = await eVela.balanceOf(tokenFarm.address)
-        expect(tokenFarm.depositWithConvert(2, 0)).to.be.revertedWith("zero amount")
-        expect(tokenFarm.depositWithConvert(1, amount)).to.be.revertedWith("target pool not esVELA")
-        await tokenFarm.depositWithConvert(2, amount)
-        let eVELA_balance_after = await eVela.balanceOf(tokenFarm.address)
-        expect(eVELA_balance_after.sub(eVELA_balance_before)).eq(amount)
-    })
 });
