@@ -48,6 +48,18 @@ describe('TriggerOrderManager', function () {
   let vlpPriceFeed
   let cooldownDuration
 
+  async function expectMarketOrderSuccess(token, price) {
+    expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
+    const now = await priceManager.now()
+    await priceManager.setPrice(token.address, now, toChainlinkPrice(price))
+    const tx = await PositionVault.connect(user1).executeOpenMarketOrders(
+      1,
+    )
+    const receipt = await tx.wait()
+    const errorEvent = receipt.events.find((event) => event.event === 'MarketOrderExecutionError')
+    expect(errorEvent).to.be.undefined
+  }
+
   before(async function () {
     positionManagerAddress = user1.address
 
@@ -383,7 +395,7 @@ describe('TriggerOrderManager', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const passTime = 60 * 60 * 24
     await ethers.provider.send('evm_increaseTime', [passTime])
     await ethers.provider.send('evm_mine')
@@ -488,7 +500,7 @@ describe('TriggerOrderManager', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [indexToken], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const passTime = 60 * 60 * 24
     await ethers.provider.send('evm_increaseTime', [passTime])
     await ethers.provider.send('evm_mine')
@@ -560,7 +572,7 @@ describe('TriggerOrderManager', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [indexToken], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
 
     const passTime = 60 * 60 * 24
     await ethers.provider.send('evm_increaseTime', [passTime])
@@ -728,7 +740,7 @@ describe('TriggerOrderManager', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [indexToken], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
   })
 
   it('addTriggerOrdersData with wrong orders or invalid for Short', async () => {

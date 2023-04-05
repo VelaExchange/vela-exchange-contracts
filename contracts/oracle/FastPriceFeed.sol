@@ -6,7 +6,7 @@ import "./interfaces/IPriceFeed.sol";
 
 contract FastPriceFeed is IPriceFeed {
     address public gov;
-    address public override aggregator;
+    uint256 public ts;
     uint256 public answer;
     string public override description = "FastPriceFeed";
     uint256 public decimals;
@@ -18,7 +18,7 @@ contract FastPriceFeed is IPriceFeed {
 
     event SetAdmin(address indexed account, bool isAdmin);
     event SetDecription(string description);
-    event SetLatestAnswer(uint256 answer);
+    event SetAnswer(uint256 ts, uint256 answer);
 
     constructor() {
         gov = msg.sender;
@@ -37,13 +37,20 @@ contract FastPriceFeed is IPriceFeed {
         emit SetDecription(_description);
     }
 
-    function setLatestAnswer(uint256 _answer) external override {
+    function setAnswer(uint256 _ts, uint256 _answer) public override {
         require(isAdmin[msg.sender], "PriceFeed: forbidden");
-        roundId = roundId + 1;
-        answer = _answer;
-        answers[roundId] = _answer;
-        latestAts[roundId] = block.timestamp;
-        emit SetLatestAnswer(_answer);
+        if(_ts >= ts) {
+            roundId = roundId + 1;
+            answer = _answer;
+            ts = _ts;
+            answers[roundId] = _answer;
+            latestAts[roundId] = _ts;
+            emit SetAnswer(_ts, _answer);
+        }
+    }
+
+    function setLatestAnswer(uint256 _answer) external {
+        setAnswer(block.timestamp, _answer);
     }
 
     function latestAnswer() external view override returns (uint256) {

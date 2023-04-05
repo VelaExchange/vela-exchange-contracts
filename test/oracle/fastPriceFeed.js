@@ -53,10 +53,6 @@ describe('FastPriceFeed', function () {
     expect(roundLatestAt).eq(latestAt)
   })
 
-  it('aggregator', async () => {
-    expect(await btcPriceFeed.aggregator()).eq(zeroAddress)
-  })
-
   it('latestRound', async () => {
     expect(await btcPriceFeed.latestRound()).eq(1)
   })

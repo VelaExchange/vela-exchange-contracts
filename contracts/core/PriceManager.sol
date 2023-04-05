@@ -70,21 +70,25 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         return (price * PRICE_PRECISION) / (10 ** _priceDecimals);
     }
 
-    function setPrice(address _token, uint256 _answer) public {
+    function setPrice(address _token, uint256 _ts, uint256 _answer) public {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         address priceFeedAddress = priceFeeds[_token];
         require(priceFeedAddress != address(0), "VaultPriceFeed: invalid price feed");
 
         // TODO: verify the price against pyth oracle before setting it, do not set if deviation > a certain percentage
 
-        IPriceFeed(priceFeedAddress).setLatestAnswer(_answer);
+        IPriceFeed(priceFeedAddress).setAnswer(_ts, _answer);
     }
 
-    function setLatestPrices(address[] calldata _tokens, uint256[] calldata _answers) external override {
+    function setLatestPrices(address[] calldata _tokens, uint256[] calldata _tses, uint256[] calldata _answers) external override {
         require(_tokens.length == _answers.length, "VaultPriceFeed: length mismatch");
 
         for (uint256 i = 0; i < _tokens.length; ++i) {
-            setPrice(_tokens[i], _answers[i]);
+            setPrice(_tokens[i], _tses[i], _answers[i]);
         }
+    }
+
+    function now() external view returns(uint256){
+        return block.timestamp;
     }
 }

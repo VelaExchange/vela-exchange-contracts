@@ -15,6 +15,7 @@ use(solidity)
 describe('Vault', function () {
   const provider = waffle.provider
   const [wallet, user0, user1, user2, user3] = provider.getWallets()
+  let now = parseInt(+new Date()/1000)
   let trustForwarder
   let Vault
   let VaultUtils
@@ -542,22 +543,23 @@ describe('Vault', function () {
 
   async function expectMarketOrderFail(token, price, errorReason) {
     expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
-    const tx = await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(
+    const now = await priceManager.now()
+    await priceManager.setPrice(token.address, now, toChainlinkPrice(price))
+    const tx = await PositionVault.connect(user1).executeOpenMarketOrders(
       1,
-      [token.address],
-      [toChainlinkPrice(price)]
     )
     const receipt = await tx.wait()
+    //console.log(receipt)
     const errorEvent = receipt.events.find((event) => event.event === 'MarketOrderExecutionError')
     expect(errorEvent.args.err).eq(errorReason)
   }
 
   async function expectMarketOrderSuccess(token, price) {
     expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
-    const tx = await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(
+    const now = await priceManager.now()
+    await priceManager.setPrice(token.address, now, toChainlinkPrice(price))
+    const tx = await PositionVault.connect(user1).executeOpenMarketOrders(
       1,
-      [token.address],
-      [toChainlinkPrice(price)]
     )
     const receipt = await tx.wait()
     const errorEvent = receipt.events.find((event) => event.event === 'MarketOrderExecutionError')
@@ -594,14 +596,7 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
-    const tx2 = await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(
-      1,
-      [btc.address],
-      [toChainlinkPrice('57000')]
-    )
-    const receipt2 = await tx2.wait()
-    expect(receipt2.events.find((event) => event.event === 'MarketOrderExecutionError')).to.be.undefined
+    await expectMarketOrderSuccess(btc, '57000')
     //console.log(await PositionVault.getPosition((await PositionVault.lastPosId())-1))
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime])
@@ -659,7 +654,8 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('Trigger Not Open')
@@ -721,7 +717,8 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const stepType = 1
@@ -806,7 +803,8 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const stepType = 0

@@ -3,8 +3,6 @@
 pragma solidity 0.8.9;
 
 interface IPriceFeed {
-    function aggregator() external view returns (address);
-
     function description() external view returns (string memory);
 
     function getRoundData(uint80 roundId) external view returns (uint80, uint256, uint256, uint256, uint80);
@@ -13,5 +11,5 @@ interface IPriceFeed {
 
     function latestRound() external view returns (uint80);
 
-    function setLatestAnswer(uint256 _answer) external;
+    function setAnswer(uint256 _ts, uint256 _answer) external;
 }
