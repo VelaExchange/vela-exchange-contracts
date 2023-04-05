@@ -490,18 +490,13 @@ describe("TokenFarm", function () {
         console.log(await eVela.balanceOf(complexRewardPerSec1.address))
         console.log(await complexRewardPerSec1.poolInfo(0))
         console.log(await complexRewardPerSec1.poolInfo(1))
-        await complexRewardPerSec1.emergencyRewardWithdraw(
-            0,
-            0,
-            wallet.address
-        )
         await expect(complexRewardPerSec1.emergencyRewardWithdraw(
             0,
             amount,
             wallet.address
         )).to.be.revertedWith("emergency reward withdraw: not enough reward token")
         await complexRewardPerSec1.emergencyWithdraw(
-            amount,
+            0,
             wallet.address
         )
     })
