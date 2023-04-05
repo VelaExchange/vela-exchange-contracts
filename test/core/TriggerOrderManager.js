@@ -46,7 +46,6 @@ describe('TriggerOrderManager', function () {
   let usdcPriceFeed
   let usdtPriceFeed
   let vlpPriceFeed
-  let vaultPriceFeed
   let cooldownDuration
 
   before(async function () {
@@ -95,8 +94,8 @@ describe('TriggerOrderManager', function () {
     tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
     Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
     PositionVault = await deployContract('PositionVault', [])
+    operator.setOperator(PositionVault.address, 1)
     priceManager = await deployContract('PriceManager', [operator.address])
-    vaultPriceFeed = (await ethers.getContractFactory('VaultPriceFeed')).attach(await priceManager.priceFeed())
     settingsManager = await deployContract('SettingsManager', [
       PositionVault.address,
       operator.address,
@@ -145,21 +144,12 @@ describe('TriggerOrderManager', function () {
     await usdtPriceFeed.setLatestAnswer(toChainlinkPrice(1))
     await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
     await vlpPriceFeed.setLatestAnswer(toChainlinkPrice(16))
-    await vaultPriceFeed.setTokenConfig(btc.address, btcPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(eth.address, ethPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(gbp.address, gbpPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(eur.address, eurPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(doge.address, dogePriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(jpy.address, jpyPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(usdc.address, usdcPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(usdt.address, usdtPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(vlp.address, vlpPriceFeed.address, 8)
-    await btcPriceFeed.setAdmin(vaultPriceFeed.address, true)
-    await ethPriceFeed.setAdmin(vaultPriceFeed.address, true)
-    await dogePriceFeed.setAdmin(vaultPriceFeed.address, true)
-    await gbpPriceFeed.setAdmin(vaultPriceFeed.address, true)
-    await eurPriceFeed.setAdmin(vaultPriceFeed.address, true)
-    await jpyPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await btcPriceFeed.setAdmin(priceManager.address, true)
+    await ethPriceFeed.setAdmin(priceManager.address, true)
+    await dogePriceFeed.setAdmin(priceManager.address, true)
+    await gbpPriceFeed.setAdmin(priceManager.address, true)
+    await eurPriceFeed.setAdmin(priceManager.address, true)
+    await jpyPriceFeed.setAdmin(priceManager.address, true)
     
     const tokens = [
       {
@@ -244,7 +234,7 @@ describe('TriggerOrderManager', function () {
       },
     ]
     for (const token of tokens) {
-      await priceManager.setTokenConfig(token.address, token.decimals, token.maxLeverage)
+      await priceManager.setTokenConfig(token.address, token.decimals, token.maxLeverage, token.priceFeed, token.priceDecimals)
     }
     await vlp.transferOwnership(Vault.address) // transferOwnership
     await settingsManager.setPositionManager(positionManagerAddress, true)
@@ -381,7 +371,7 @@ describe('TriggerOrderManager', function () {
     const positionType = 0
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -486,7 +476,7 @@ describe('TriggerOrderManager', function () {
     const isLong = true
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -558,7 +548,7 @@ describe('TriggerOrderManager', function () {
     const isLong = true
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -726,7 +716,7 @@ describe('TriggerOrderManager', function () {
     const isLong = false
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount

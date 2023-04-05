@@ -44,7 +44,6 @@ describe('SettingsManager', function () {
   let usdcPriceFeed
   let usdtPriceFeed
   let vlpPriceFeed
-  let vaultPriceFeed
   let cooldownDuration
   let feeRewardBasisPoints // FeeRewardBasisPoints 70%
   let closeDeltaTime
@@ -98,7 +97,6 @@ describe('SettingsManager', function () {
     Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
     PositionVault = await deployContract('PositionVault', [])
     priceManager = await deployContract('PriceManager', [operator.address])
-    vaultPriceFeed = (await ethers.getContractFactory('VaultPriceFeed')).attach(await priceManager.priceFeed())
     settingsManager = await deployContract('SettingsManager', [
       PositionVault.address,
       operator.address,

@@ -35,7 +35,6 @@ describe('PriceManager', function () {
   let usdcPriceFeed
   let usdtPriceFeed
   let vlpPriceFeed
-  let vaultPriceFeed
   let cooldownDuration
   let feeRewardBasisPoints // FeeRewardBasisPoints 70%
 
@@ -81,7 +80,6 @@ describe('PriceManager', function () {
     priceManager = await deployContract('PriceManager', [
       operator.address, // operator
     ])
-    vaultPriceFeed = (await ethers.getContractFactory('VaultPriceFeed')).attach(await priceManager.priceFeed())
     //================= PriceFeed Prices Initialization ==================
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice(60000))
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice(56300))
@@ -95,32 +93,21 @@ describe('PriceManager', function () {
     await jpyPriceFeed.setLatestAnswer('1600000') // 0.016
     await usdtPriceFeed.setLatestAnswer(toChainlinkPrice(1))
     await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
-    await vaultPriceFeed.setTokenConfig(btc.address, btcPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(eth.address, ethPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(gbp.address, gbpPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(eur.address, eurPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(doge.address, dogePriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(jpy.address, jpyPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(usdc.address, usdcPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(usdt.address, usdtPriceFeed.address, 8)
 
     const cryptoMaxLeverage = 100 * 10000
     const forexMaxLeverage = 100 * 10000
-    await expect(priceManager.setTokenConfig(zeroAddress, 18, cryptoMaxLeverage)).to.be.revertedWith('Address is wrong')
-    await expect(priceManager.setTokenConfig(btc.address, 18, 1)).to.be.revertedWith(
+    await expect(priceManager.setTokenConfig(zeroAddress, 18, cryptoMaxLeverage, btcPriceFeed.address, 8)).to.be.revertedWith('Address is wrong')
+    await expect(priceManager.setTokenConfig(btc.address, 18, 1, btcPriceFeed.address, 8)).to.be.revertedWith(
       'Max Leverage should be greater than Min Leverage'
     )
-    await priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage)
-    await expect(priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage)).to.be.revertedWith(
-      'already initialized'
-    )
-    await priceManager.setTokenConfig(eth.address, 18, cryptoMaxLeverage)
-    await priceManager.setTokenConfig(gbp.address, 18, forexMaxLeverage)
-    await priceManager.setTokenConfig(eur.address, 18, forexMaxLeverage)
-    await priceManager.setTokenConfig(doge.address, 18, cryptoMaxLeverage)
-    await priceManager.setTokenConfig(jpy.address, 18, forexMaxLeverage)
-    await priceManager.setTokenConfig(usdc.address, 18, cryptoMaxLeverage)
-    await priceManager.setTokenConfig(usdt.address, 18, cryptoMaxLeverage)
+    await priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage, btcPriceFeed.address, 8)
+    await priceManager.setTokenConfig(eth.address, 18, cryptoMaxLeverage, ethPriceFeed.address, 8)
+    await priceManager.setTokenConfig(gbp.address, 18, forexMaxLeverage, gbpPriceFeed.address, 8)
+    await priceManager.setTokenConfig(eur.address, 18, forexMaxLeverage, eurPriceFeed.address, 8)
+    await priceManager.setTokenConfig(doge.address, 18, cryptoMaxLeverage, dogePriceFeed.address, 8)
+    await priceManager.setTokenConfig(jpy.address, 18, forexMaxLeverage, jpyPriceFeed.address, 8)
+    await priceManager.setTokenConfig(usdc.address, 18, cryptoMaxLeverage, usdcPriceFeed.address, 8)
+    await priceManager.setTokenConfig(usdt.address, 18, cryptoMaxLeverage, usdtPriceFeed.address, 8)
   })
 
   it('usdToToken 0', async () => {
@@ -152,12 +139,16 @@ describe('PriceManager', function () {
   })
 
   it('getLastPrice', async () => {
+    await expect(priceManager.getLastPrice(zeroAddress)).to.be.revertedWith('VaultPriceFeed: invalid price feed')
+    const lastPrice = await priceManager.getLastPrice(btc.address)
+
     const _indexToken = btc.address
-    const lastPrice = await priceManager.getLastPrice(_indexToken)
+    await priceManager.getLastPrice(_indexToken)
   })
 
   it('setMaxLeverage', async () => {
     await priceManager.setMaxLeverage(eth.address, 50 * 10000)
     expect(parseInt(await priceManager.maxLeverage(eth.address))).to.be.equal(50 * 10000)
   })
+
 })

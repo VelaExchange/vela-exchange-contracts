@@ -87,36 +87,36 @@ describe('Vault', function () {
     //vaultPriceFeed = await deployContract("VaultPriceFeed", [])
     Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
     PositionVault = await deployContract('PositionVault', [])
+    operator.setOperator(PositionVault.address, 1)
     priceManager = await deployContract('PriceManager', [operator.address])
-    vaultPriceFeed = (await ethers.getContractFactory('VaultPriceFeed')).attach(await priceManager.priceFeed())
 
     btc = await deployContract('BaseToken', ['Bitcoin', 'BTC', expandDecimals('10', 18)])
     btcPriceFeed = await deployContract('FastPriceFeed', [])
-    await btcPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await btcPriceFeed.setAdmin(priceManager.address, true)
 
     eth = await deployContract('BaseToken', ['Ethereum', 'ETH', 0])
     ethPriceFeed = await deployContract('FastPriceFeed', [])
-    await ethPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await ethPriceFeed.setAdmin(priceManager.address, true)
 
     doge = await deployContract('BaseToken', ['Dogecoin', 'DOGE', 0])
     dogePriceFeed = await deployContract('FastPriceFeed', [])
-    await dogePriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await dogePriceFeed.setAdmin(priceManager.address, true)
 
     gbp = await deployContract('BaseToken', ['Pound Sterling', 'GBP', 0])
     gbpPriceFeed = await deployContract('FastPriceFeed', [])
-    await gbpPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await gbpPriceFeed.setAdmin(priceManager.address, true)
 
     eur = await deployContract('BaseToken', ['Euro', 'EUR', 0])
     eurPriceFeed = await deployContract('FastPriceFeed', [])
-    await eurPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await eurPriceFeed.setAdmin(priceManager.address, true)
 
     jpy = await deployContract('BaseToken', ['Japanese Yan', 'JPY', 0])
     jpyPriceFeed = await deployContract('FastPriceFeed', [])
-    await jpyPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await jpyPriceFeed.setAdmin(priceManager.address, true)
 
     usdc = await deployContract('BaseToken', ['USD Coin', 'USDC', expandDecimals('10000000', 18)])
     usdcPriceFeed = await deployContract('FastPriceFeed', [])
-    await usdcPriceFeed.setAdmin(vaultPriceFeed.address, true)
+    await usdcPriceFeed.setAdmin(priceManager.address, true)
 
     await expect(
       deployContract('SettingsManager', [zeroAddress, operator.address, vusd.address, tokenFarm.address])
@@ -222,13 +222,6 @@ describe('Vault', function () {
     await eurPriceFeed.setLatestAnswer(toChainlinkPrice(1))
     await jpyPriceFeed.setLatestAnswer('1600000') // 0.016
     await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
-    await vaultPriceFeed.setTokenConfig(btc.address, btcPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(eth.address, ethPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(gbp.address, gbpPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(eur.address, eurPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(doge.address, dogePriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(jpy.address, jpyPriceFeed.address, 8)
-    await vaultPriceFeed.setTokenConfig(usdc.address, usdcPriceFeed.address, 8)
     const tokens = [
       {
         name: 'btc',
@@ -302,7 +295,7 @@ describe('Vault', function () {
       },
     ]
     for (const token of tokens) {
-      await priceManager.setTokenConfig(token.address, token.decimals, token.maxLeverage)
+      await priceManager.setTokenConfig(token.address, token.decimals, token.maxLeverage, token.priceFeed, token.priceDecimals)
       await settingsManager.setDepositFee(token.address, depositFee)
       await settingsManager.setWithdrawFee(token.address, withdrawFee)
       await settingsManager.setStakingFee(token.address, stakingFee)
@@ -578,7 +571,7 @@ describe('Vault', function () {
     const isLong = true
     const referAddress = ethers.constants.AddressZero
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const orderType = 0 // M
     const collateral = amountIn
@@ -640,7 +633,7 @@ describe('Vault', function () {
     const posId = (await PositionVault.lastPosId()) - 1
     const amountIn = expandDecimals('10', 30)
     const toUsdAmount = expandDecimals('100', 30)
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     await Vault.addPosition(posId, amountIn, toUsdAmount, expectedMarketPrice)
     // await getUserAlivePositions(account) //todo: add test for this view function
   })
@@ -653,7 +646,7 @@ describe('Vault', function () {
     const isLong = true
     const referAddress = ethers.constants.AddressZero
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const orderType = 0 // M
     const collateral = amountIn
@@ -716,7 +709,7 @@ describe('Vault', function () {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -801,7 +794,7 @@ describe('Vault', function () {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -883,7 +876,7 @@ describe('Vault', function () {
     const isLong = false
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -966,7 +959,7 @@ describe('Vault', function () {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -1317,7 +1310,7 @@ describe('Vault', function () {
     const isLong = true
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -1381,7 +1374,7 @@ describe('Vault', function () {
     const isLong = true
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -1513,7 +1506,7 @@ describe('Vault', function () {
     const referAddress = ethers.constants.AddressZero
     await settingsManager.setReferEnabled(true)
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const orderType = 0 // M
     const collateral = amountIn
@@ -1555,7 +1548,7 @@ describe('Vault', function () {
     const isLong = true
     const referAddress = ethers.constants.AddressZero
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const orderType = 0 // M
     const collateral = amountIn
@@ -1609,7 +1602,7 @@ describe('Vault', function () {
     const isLong = true
     const referAddress = user0.address
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -1645,7 +1638,7 @@ describe('Vault', function () {
     const isLong = true
     const referAddress = user0.address
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -1673,7 +1666,7 @@ describe('Vault', function () {
     const isLong = true
     const referAddress = user0.address
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -1704,7 +1697,7 @@ describe('Vault', function () {
     const isLong = false
     const referAddress = user0.address
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -1739,8 +1732,8 @@ describe('Vault', function () {
     const isLong = false
     const referAddress = user0.address
     const orderType = 0 // M
-    const expectedMarketPrice = await vaultPriceFeed.getLastPrice(indexToken)
-    const expectedCryptoMarketPrice = await vaultPriceFeed.getLastPrice(btc.address)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
+    const expectedCryptoMarketPrice = await priceManager.getLastPrice(btc.address)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -1777,7 +1770,7 @@ describe('Vault', function () {
     const isLong = false
     const referAddress = user0.address
     const orderType = 0 // M
-    const expectedCryptoMarketPrice = await vaultPriceFeed.getLastPrice(btc.address)
+    const expectedCryptoMarketPrice = await priceManager.getLastPrice(btc.address)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
@@ -1809,7 +1802,7 @@ describe('Vault', function () {
     const isLong = false
     const referAddress = user0.address
     const orderType = 0 // M
-    const expectedCryptoMarketPrice = await vaultPriceFeed.getLastPrice(btc.address)
+    const expectedCryptoMarketPrice = await priceManager.getLastPrice(btc.address)
     const slippage = 1000 // 1%
     const collateral = amountIn
     const size = toUsdAmount
