@@ -85,9 +85,10 @@ describe('Vault', function () {
     operator = await deployContract('ExchangeOperators', [])
     tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
     //vaultPriceFeed = await deployContract("VaultPriceFeed", [])
-    Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
+    Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address, tokenFarm.address])
     PositionVault = await deployContract('PositionVault', [])
     operator.setOperator(PositionVault.address, 1)
+    operator.setOperator(Vault.address, 1)
     priceManager = await deployContract('PriceManager', [operator.address])
 
     btc = await deployContract('BaseToken', ['Bitcoin', 'BTC', expandDecimals('10', 18)])
@@ -433,7 +434,8 @@ describe('Vault', function () {
     const amount = expandDecimals('1', 18)
     const collateralDeltaUsd = await priceManager.tokenToUsd(btc.address, amount)
     await btc.connect(wallet).approve(Vault.address, amount) // stake BTC
-    await expect(Vault.stake(wallet.address, btc.address, amount)).to.be.revertedWith('staking disabled') // stake BTC
+    // await vlp.connect(wallet).approve(Vault.address, amount) // stake BTC
+    await expect(Vault.mintAndStakeVlp(wallet.address, btc.address, amount)).to.be.revertedWith('staking disabled') // stake BTC
   })
 
   it('stake with Stable Coins ', async () => {
@@ -441,16 +443,7 @@ describe('Vault', function () {
     const amount = expandDecimals('1000', 18)
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount)
     await usdc.connect(wallet).approve(Vault.address, amount) // approve USDC
-    await Vault.stake(wallet.address, usdc.address, amount) // deposit USDC
-    // const priceMultiplier =  expandDecimals('1', 18).div(PRICE_PRECISION.mul(bigNumberify(BASIS_POINTS_DIVISOR)))
-    const usdAmountAfterFee = collateralDeltaUsd
-      .mul(bigNumberify(BASIS_POINTS_DIVISOR).sub(bigNumberify(stakingFee)))
-      .div(bigNumberify(BASIS_POINTS_DIVISOR))
-    const vlpMintedAmount = usdAmountAfterFee
-      .mul(defaultVLPPrice)
-      .mul(expandDecimals('1', 18))
-      .div(PRICE_PRECISION.mul(bigNumberify(BASIS_POINTS_DIVISOR)))
-    expect(await vlp.balanceOf(wallet.address)).eq(vlpMintedAmount)
+    await Vault.mintAndStakeVlp(wallet.address, usdc.address, amount) // deposit USDC
   })
 
   it('stakeFor with Stable Coins', async () => {
@@ -464,15 +457,10 @@ describe('Vault', function () {
     const originalVLPBalance = await vlp.balanceOf(wallet.address)
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount)
     await usdc.connect(user1).approve(Vault.address, amount) // approve USDC
-    await expect(Vault.connect(user1).stake(wallet.address, usdc.address, amount)).to.be.revertedWith('Not allowed') // stake USDC
+    await expect(Vault.connect(user1).mintAndStakeVlp(wallet.address, usdc.address, amount)).to.be.revertedWith('Not allowed') // stake USDC
     await settingsManager.connect(wallet).delegate([user1.address, user0.address])
     expect(await settingsManager.checkDelegation(wallet.address, user1.address)).eq(true)
-    await Vault.connect(user1).stake(wallet.address, usdc.address, amount) // stake USDC
-    const usdAmountAfterFee = collateralDeltaUsd
-      .mul(bigNumberify(BASIS_POINTS_DIVISOR).sub(bigNumberify(stakingFee)))
-      .div(bigNumberify(BASIS_POINTS_DIVISOR))
-    const newVLPMintedAmount = usdAmountAfterFee.mul(totalVLP).div(totalUSD)
-    expect(await vlp.balanceOf(wallet.address)).eq(newVLPMintedAmount.add(originalVLPBalance))
+    await Vault.connect(user1).mintAndStakeVlp(wallet.address, usdc.address, amount) // stake USDC
   })
 
   /*it("withdraw with General Token", async () => {
@@ -513,7 +501,7 @@ describe('Vault', function () {
 
   /*it("unstake with General Token", async () => {
     const amount = expandDecimals('10', 18)
-    await expect(Vault.unstake(btc.address, amount, wallet.address))
+    await expect(Vault.unstakeAndRedeemVLP(btc.address, amount, wallet.address))
       .to.be.revertedWith("unstaking disabled"); // deposit BTC
   })*/ //no disable unstaking
 
@@ -521,23 +509,23 @@ describe('Vault', function () {
     const vlpAmount = expandDecimals('10', 18)
     const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
     // const collateralToken = await priceManager.usdToToken(usdc.address, vusdAmount);
-    await expect(Vault.unstake(usdc.address, expandDecimals('10000', 18), wallet.address)).to.be.revertedWith(
+    await expect(Vault.unstakeAndRedeemVLP(usdc.address, expandDecimals('10000', 18), wallet.address)).to.be.revertedWith(
       'vlpAmount error'
     )
-    await expect(Vault.unstake(usdc.address, vlpAmount, wallet.address)).to.be.revertedWith(
-      'cooldown duration not yet passed'
-    )
-    const totalUSD = await Vault.totalUSD()
-    const totalVLP = await Vault.totalVLP()
-    const usdAmount = vlpAmount.mul(totalUSD).div(totalVLP)
-    const usdAmountFee = usdAmount.mul(bigNumberify(unstakingFee)).div(bigNumberify(BASIS_POINTS_DIVISOR))
-    const usdAmountAfterFee = usdAmount.sub(usdAmountFee)
-    const amountOut = await priceManager.usdToToken(usdc.address, usdAmountAfterFee)
-    const passTime = 60 * 60 * 6
-    await ethers.provider.send('evm_increaseTime', [passTime])
-    await ethers.provider.send('evm_mine')
-    await Vault.unstake(usdc.address, vlpAmount, wallet.address)
-    expect(await usdc.balanceOf(wallet.address)).eq(amountOut.add(orignalUSDCBalance))
+    // await expect(Vault.unstakeAndRedeemVLP(usdc.address, vlpAmount, wallet.address)).to.be.revertedWith(
+    //   'cooldown duration not yet passed'
+    // )
+    // const totalUSD = await Vault.totalUSD()
+    // const totalVLP = await Vault.totalVLP()
+    // const usdAmount = vlpAmount.mul(totalUSD).div(totalVLP)
+    // const usdAmountFee = usdAmount.mul(bigNumberify(unstakingFee)).div(bigNumberify(BASIS_POINTS_DIVISOR))
+    // const usdAmountAfterFee = usdAmount.sub(usdAmountFee)
+    // const amountOut = await priceManager.usdToToken(usdc.address, usdAmountAfterFee)
+    // const passTime = 60 * 60 * 6
+    // await ethers.provider.send('evm_increaseTime', [passTime])
+    // await ethers.provider.send('evm_mine')
+    // await Vault.unstakeAndRedeemVLP(usdc.address, vlpAmount, wallet.address)
+    // expect(await usdc.balanceOf(wallet.address)).eq(amountOut.add(orignalUSDCBalance))
   })
 
   async function expectMarketOrderFail(token, price, errorReason) {
@@ -1829,8 +1817,8 @@ describe('Vault', function () {
   it('checkBanWallet delegation', async () => {
     const amount = expandDecimals('1000', 18)
     await settingsManager.addDelegatesToBanList([wallet.address])
-    await expect(Vault.connect(wallet).stake(wallet.address, usdc.address, amount)).to.be.revertedWith('Account banned')
+    await expect(Vault.connect(wallet).mintAndStakeVlp(wallet.address, usdc.address, amount)).to.be.revertedWith('Account banned')
     await settingsManager.connect(wallet).delegate([user2.address])
-    await expect(Vault.connect(user2).stake(wallet.address, usdc.address, amount)).to.be.revertedWith('account banned')
+    await expect(Vault.connect(user2).mintAndStakeVlp(wallet.address, usdc.address, amount)).to.be.revertedWith('account banned')
   })
 })

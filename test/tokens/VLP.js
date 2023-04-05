@@ -24,10 +24,16 @@ describe("VLP", function () {
         let usdc = await deployContract("BaseToken", ["USD Coin", "USDC", expandDecimals('10000000', 6)])
         let vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0]);
         operator = await deployContract('ExchangeOperators', [])
+        let vestingDuration = 6 * 30 * 24 * 60 * 60
+        let PositionVault = await deployContract("PositionVault", []);
+        let vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
+        let eVela = await deployContract('eVELA', [])
+        let tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
         let Vault = await deployContract("Vault", [
             operator.address,
             vlp.address,
-            vusd.address
+            vusd.address,
+            tokenFarm.address
         ]);
         let priceManager = await deployContract("PriceManager", [
             operator.address
@@ -35,11 +41,7 @@ describe("VLP", function () {
         let usdcPriceFeed = await deployContract("FastPriceFeed", [])
         await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
         await priceManager.setTokenConfig(usdc.address, 6, 100 * 10000, usdcPriceFeed.address, 8);
-        let vestingDuration = 6 * 30 * 24 * 60 * 60
-        let PositionVault = await deployContract("PositionVault", []);
-        let vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
-        let eVela = await deployContract('eVELA', [])
-        let tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
+
         let settingsManager = await deployContract("SettingsManager",
           [
             PositionVault.address,
@@ -58,9 +60,9 @@ describe("VLP", function () {
         );
         await vusd.transferOwnership(Vault.address);
         await vlp.transferOwnership(Vault.address);
-
+        operator.setOperator(Vault.address, 1)
         await usdc.connect(wallet).approve(Vault.address,  amount);
-        await Vault.stake(wallet.address, usdc.address, amount);
+        await Vault.mintAndStakeVlp(wallet.address, usdc.address, amount);
     });
 
     it ("id", async () => {

@@ -3,6 +3,7 @@ pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IComplexRewarder.sol";
 import "./interfaces/ITokenFarm.sol";
@@ -12,6 +13,7 @@ import {Constants} from "../access/Constants.sol";
 import "../tokens/interfaces/IMintable.sol";
 
 contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using BoringERC20 for IBoringERC20;
 
     // Info of each user.
@@ -40,7 +42,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     IBoringERC20 public immutable VELA;
     IBoringERC20 public immutable VLP;
     IOperators public immutable operators;
-
+    EnumerableSet.AddressSet private cooldownWhiteList;
     uint256 public cooldownDuration = 1 weeks;
     uint256 public totalLockedVestingAmount;
     uint256 public vestingDuration;
@@ -88,6 +90,24 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         VLP = _vlp;
         vestingDuration = _vestingDuration;
     }
+    function addDelegatesToCooldownWhiteList(address[] memory _delegates) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        for (uint256 i = 0; i < _delegates.length; ++i) {
+            EnumerableSet.add(cooldownWhiteList, _delegates[i]);
+        }
+    }
+
+    function removeDelegatesFromCooldownWhiteList(address[] memory _delegates) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        for (uint256 i = 0; i < _delegates.length; ++i) {
+            EnumerableSet.remove(cooldownWhiteList, _delegates[i]);
+        }
+    }
+
+    function checkCooldownWhiteList(address _delegate) public view returns (bool) {
+        return EnumerableSet.contains(cooldownWhiteList, _delegate);
+    }
+    
 
     // ----- START: Operator Logic -----
     // Update rewarders and enableCooldown for pools
@@ -428,74 +448,80 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     // ----- END: both VELA and esVELA, pid=0
 
     // ----- START: VLP Pool, pid=1, token VLP -----
-    function depositVlp(uint256 _amount) external nonReentrant {
-        _depositVlp(_amount);
+
+    function depositVlpForAccount(address _account, uint256 _amount) external override {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        _depositVlp(_account, _amount);
     }
 
-    function _depositVlp(uint256 _amount) internal {
+    function _depositVlp(address _account, uint256 _amount) internal {
         uint256 _pid = 1;
         PoolInfo storage pool = vlpPoolInfo;
-        UserInfo storage user = vlpUserInfo[msg.sender];
-
+        UserInfo storage user = vlpUserInfo[_account];
         if (_amount > 0) {
-            VLP.safeTransferFrom(msg.sender, address(this), _amount);
             user.amount += _amount;
             user.startTimestamp = block.timestamp;
         }
 
         for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
-            pool.rewarders[rewarderId].onVelaReward(_pid, msg.sender, user.amount);
+            pool.rewarders[rewarderId].onVelaReward(_pid, _account, user.amount);
         }
 
         if (_amount > 0) {
             pool.totalLp += _amount;
         }
-        emit FarmDeposit(msg.sender, VLP, _amount);
+        emit FarmDeposit(_account, VLP, _amount);
     }
 
-    function emergencyWithdrawVlp() external nonReentrant {
-        PoolInfo storage pool = velaPoolInfo;
-        UserInfo storage user = vlpUserInfo[msg.sender];
+    function emergencyWithdrawVlp(address account) external override returns (uint256) {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        PoolInfo storage pool = vlpPoolInfo;
+        UserInfo storage user = vlpUserInfo[account];
         uint256 _amount = user.amount;
         if (_amount > 0) {
-            require(
-                !pool.enableCooldown || user.startTimestamp + cooldownDuration <= block.timestamp,
-                "didn't pass cooldownDuration"
-            );
-            VLP.safeTransfer(msg.sender, _amount);
+            if (!checkCooldownWhiteList(account)) {
+                require(
+                    !pool.enableCooldown || user.startTimestamp + cooldownDuration <= block.timestamp,
+                    "didn't pass cooldownDuration"
+                );
+            }
             pool.totalLp -= _amount;
         }
         user.amount = 0;
-        emit EmergencyWithdraw(msg.sender, VLP, _amount);
+        emit EmergencyWithdraw(account, VLP, _amount);
+        return _amount;
     }
 
     //withdraw tokens
-    function withdrawVlp(uint256 _amount) external nonReentrant {
+    function withdrawVlpForAccount(address _account, uint256 _amount) external override {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         uint256 _pid = 1;
-        PoolInfo storage pool = velaPoolInfo;
-        UserInfo storage user = vlpUserInfo[msg.sender];
+        PoolInfo storage pool = vlpPoolInfo;
+        UserInfo storage user = vlpUserInfo[_account];
 
         //this will make sure that user can only withdraw from his pool
         require(user.amount >= _amount, "withdraw: user amount not enough");
 
         if (_amount > 0) {
+            if (!checkCooldownWhiteList(_account)) {
             require(
                 !pool.enableCooldown || user.startTimestamp + cooldownDuration < block.timestamp,
                 "didn't pass cooldownDuration"
             );
             user.amount -= _amount;
-            VLP.safeTransfer(msg.sender, _amount);
+                
+            }
         }
 
         for (uint256 rewarderId = 0; rewarderId < pool.rewarders.length; ++rewarderId) {
-            pool.rewarders[rewarderId].onVelaReward(_pid, msg.sender, user.amount);
+            pool.rewarders[rewarderId].onVelaReward(_pid, _account, user.amount);
         }
 
         if (_amount > 0) {
             pool.totalLp -= _amount;
         }
 
-        emit FarmWithdraw(msg.sender, VLP, _amount);
+        emit FarmWithdraw(_account, VLP, _amount);
     }
 
     // ----- END: VLP Pool, pid=1, token VLP -----
@@ -610,7 +636,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
             _depositEsvela(0);
         }
         if (_vlp) {
-            _depositVlp(0);
+            _depositVlp(msg.sender, 0);
         }
     }
 

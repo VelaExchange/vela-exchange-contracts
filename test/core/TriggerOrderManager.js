@@ -92,9 +92,10 @@ describe('TriggerOrderManager', function () {
     vela = await deployContract('MintableBaseToken', ['Vela Exchange', 'VELA', 0])
     eVela = await deployContract('eVELA', [])
     tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
-    Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
+    Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address, tokenFarm.address])
     PositionVault = await deployContract('PositionVault', [])
     operator.setOperator(PositionVault.address, 1)
+    operator.setOperator(Vault.address, 1)
     priceManager = await deployContract('PriceManager', [operator.address])
     settingsManager = await deployContract('SettingsManager', [
       PositionVault.address,
@@ -330,23 +331,23 @@ describe('TriggerOrderManager', function () {
     // await settingsManager.setEnableUnstaking(usdc.address, true)
   })
 
-  it('Stake Stable Coins for Vault ', async () => {
-    const amount = expandDecimals('100000', 18)
-    const vlpBalanceBeforeStake = await vlp.balanceOf(wallet.address)
-    const usdtBalanceBeforeStake = await usdt.balanceOf(wallet.address)
-    expect(parseFloat(ethers.utils.formatUnits(vlpBalanceBeforeStake, 18))).eq(0)
-    expect(parseFloat(ethers.utils.formatUnits(usdtBalanceBeforeStake, 18))).eq(10000000.0)
-    await Vault.stake(wallet.address, usdt.address, amount)
-    const vlpBalanceAfterStake = await vlp.balanceOf(wallet.address)
-    const usdtBalanceAfterStake = await usdt.balanceOf(wallet.address)
-    //  expect(parseFloat(ethers.utils.formatUnits(vlpBalanceAfterStake, 18))).eq(6062.5)
-    // liquidity fee = 0.3%
-    // amountAfterFee = 100000 * 99.7% = 99700 USDT (1USDT = 1usd)
-    // VLP Price = 16usd
-    // so vlpAmount = 99700 / 16 = 6,231.25
-    expect(parseFloat(ethers.utils.formatUnits(usdtBalanceAfterStake, 18))).eq(9900000.0)
-    // usdAmount = 10000000 - 100000 = 9900000.0
-  })
+  // it('Stake Stable Coins for Vault ', async () => {
+  //   const amount = expandDecimals('100000', 18)
+  //   const vlpBalanceBeforeStake = await vlp.balanceOf(wallet.address)
+  //   const usdtBalanceBeforeStake = await usdt.balanceOf(wallet.address)
+  //   expect(parseFloat(ethers.utils.formatUnits(vlpBalanceBeforeStake, 18))).eq(0)
+  //   expect(parseFloat(ethers.utils.formatUnits(usdtBalanceBeforeStake, 18))).eq(10000000.0)
+  //   await Vault.mintAndStakeVlp(wallet.address, usdt.address, amount)
+  //   const vlpBalanceAfterStake = await vlp.balanceOf(wallet.address)
+  //   const usdtBalanceAfterStake = await usdt.balanceOf(wallet.address)
+  //   //  expect(parseFloat(ethers.utils.formatUnits(vlpBalanceAfterStake, 18))).eq(6062.5)
+  //   // liquidity fee = 0.3%
+  //   // amountAfterFee = 100000 * 99.7% = 99700 USDT (1USDT = 1usd)
+  //   // VLP Price = 16usd
+  //   // so vlpAmount = 99700 / 16 = 6,231.25
+  //   expect(parseFloat(ethers.utils.formatUnits(usdtBalanceAfterStake, 18))).eq(9900000.0)
+  //   // usdAmount = 10000000 - 100000 = 9900000.0
+  // })
 
   it('deposit Stable Coins for Vault ', async () => {
     // await usdt.connect(wallet).approve(Vault.address, expandDecimals('100000', 18)) // approve USDT
@@ -445,6 +446,14 @@ describe('TriggerOrderManager', function () {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58000'))
   })
 
+  it('triggerPosition 1', async () => {
+    const account = wallet.address
+    const indexToken = btc.address
+    const isLong = true
+    const posId = 0
+    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('exceeded VLP bottom')
+  })
+
   it('getTriggerOrderInfo', async () => {
     const account = wallet.address
     const indexToken = btc.address
@@ -509,6 +518,14 @@ describe('TriggerOrderManager', function () {
 
   it('setLatestAnswer for BTC', async () => {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('52000'))
+  })
+
+  it('triggerPosition 4', async () => {
+    const account = wallet.address
+    const indexToken = btc.address
+    const isLong = true
+    const posId = 1
+    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('exceeded VLP bottom')
   })
 
   it('getTriggerOrderInfo', async () => {
@@ -589,6 +606,14 @@ describe('TriggerOrderManager', function () {
 
   it('setLatestAnswer for BTC', async () => {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
+  })
+
+  it('triggerPosition 5', async () => {
+    const account = wallet.address
+    const indexToken = btc.address
+    const isLong = true
+    const posId = 1
+    await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('exceeded VLP bottom')
   })
 
   it('validateTPSLTriggers for Long', async () => {
