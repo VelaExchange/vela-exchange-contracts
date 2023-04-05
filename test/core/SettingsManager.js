@@ -94,7 +94,7 @@ describe('SettingsManager', function () {
     vela = await deployContract('MintableBaseToken', ['Vela Exchange', 'VELA', 0])
     eVela = await deployContract('eVELA', [])
     tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
-    Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
+    Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address, tokenFarm.address])
     PositionVault = await deployContract('PositionVault', [])
     priceManager = await deployContract('PriceManager', [operator.address])
     settingsManager = await deployContract('SettingsManager', [
