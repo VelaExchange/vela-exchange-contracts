@@ -564,9 +564,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         if (position.size == 0) {
             position.averagePrice = _price;
             position.fundingIndex = settingsManager.fundingIndex(_indexToken);
-        }
-
-        if (position.size > 0 && _sizeDelta > 0) {
+        } else {
             position.averagePrice =
                 (position.size * position.averagePrice + _sizeDelta * _price) /
                 (position.size + _sizeDelta);
@@ -576,6 +574,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     int256(_sizeDelta) *
                     settingsManager.fundingIndex(_indexToken)) /
                 int256(position.size + _sizeDelta);
+            position.accruedBorrowFee += settingsManager.getBorrowFee(position.indexToken, position.size, position.lastIncreasedTime);
         }
         uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
         uint256 _amountInAfterFee = _amountIn - fee;
@@ -606,15 +605,24 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         {
             (bool _hasProfit, uint256 delta) = settingsManager.getPnl(
                 _indexToken,
+                _isLong,
                 position.size,
                 position.averagePrice,
                 _price,
-                position.fundingIndex,
-                _isLong
+                position.lastIncreasedTime,
+                position.accruedBorrowFee,
+                position.fundingIndex
             );
             hasProfit = _hasProfit;
             // get the proportional change in pnl
             adjustedDelta = (_sizeDelta * delta) / position.size;
+
+            uint256 countedBorrowFee = (_sizeDelta * position.accruedBorrowFee) / position.size;
+            if (position.accruedBorrowFee > countedBorrowFee) {
+                position.accruedBorrowFee -= countedBorrowFee;
+            } else {
+                position.accruedBorrowFee = 0;
+            }
         }
 
         uint256 usdOut;
@@ -651,9 +659,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         return (usdOut, fee);
     }
 
-    function getPosition(
-        uint256 _posId
-    ) external view override returns (Position memory, Order memory) {
+    function getPosition(uint256 _posId) external view override returns (Position memory, Order memory) {
         Position memory position = positions[_posId];
         Order memory order = orders[_posId];
         return (position, order);

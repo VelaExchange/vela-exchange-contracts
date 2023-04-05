@@ -105,15 +105,17 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         // put a require here to call something like positionVault.getPositionProfit(_posId)
         // compare to maxProfitPercent and totalUSD, if the position profit > max profit % of totalUSD, close
-        (Position memory position,) = positionVault.getPosition(_posId);
+        (Position memory position, ) = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(position.indexToken);
         (bool isProfit, uint256 pnl) = settingsManager.getPnl(
             position.indexToken,
+            position.isLong,
             position.size,
             position.averagePrice,
             price,
-            position.fundingIndex,
-            position.isLong
+            position.lastIncreasedTime,
+            position.accruedBorrowFee,
+            position.fundingIndex
         );
         require(
             isProfit && pnl >= (totalUSD * settingsManager.maxProfitPercent()) / BASIS_POINTS_DIVISOR,
@@ -134,7 +136,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     function _closePosition(uint256 _posId) internal {
-        (Position memory pos,) = positionVault.getPosition(_posId);
+        (Position memory pos, ) = positionVault.getPosition(_posId);
         positionVault.decreasePosition(msg.sender, pos.size, _posId);
     }
 
