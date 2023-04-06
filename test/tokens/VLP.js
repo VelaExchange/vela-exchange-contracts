@@ -25,6 +25,8 @@ describe("VLP", function () {
         let vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0]);
         operator = await deployContract('ExchangeOperators', [])
         let vestingDuration = 6 * 30 * 24 * 60 * 60
+        let LiquidateVault = await deployContract("LiquidateVault", []);
+        let OrderVault = await deployContract("OrderVault", []);
         let PositionVault = await deployContract("PositionVault", []);
         let vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         let eVela = await deployContract('eVELA', [])
@@ -56,6 +58,7 @@ describe("VLP", function () {
             priceManager.address,
             settingsManager.address,
             PositionVault.address,
+            OrderVault.address
         );
         await vusd.transferOwnership(Vault.address);
         await vlp.transferOwnership(Vault.address);

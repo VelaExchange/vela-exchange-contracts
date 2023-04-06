@@ -158,11 +158,11 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         }
     }
 
-    // function cancelPendingOrders(uint256[] memory _posIds) external preventBanners(msg.sender) {
-    //     for (uint i = 0; i < _posIds.length; i++) {
-    //         positionVault.cancelPendingOrder(msg.sender, _posIds[i]);
-    //     }
-    // }
+    function cancelPendingOrders(uint256[] memory _posIds) external preventBanners(msg.sender) {
+        for (uint i = 0; i < _posIds.length; i++) {
+            orderVault.cancelPendingOrder(msg.sender, _posIds[i]);
+        }
+    }
 
     function deposit(
         address _account,
@@ -243,7 +243,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         }
         _accountDeltaAndFeeIntoTotalUSD(true, 0, usdAmountFee);
         _distributeFee(_account, ZERO_ADDRESS, usdAmountFee);
-         IMintable(vlp).mint(_account, mintAmount);
+        IMintable(vlp).mint(_account, mintAmount);
         lastStakedAt[_account] = block.timestamp;
         totalVLP += mintAmount;
         totalUSD += usdAmountAfterFee;

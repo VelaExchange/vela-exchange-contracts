@@ -3,8 +3,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "./interfaces/IPositionVault.sol";
+import "./interfaces/ILiquidateVault.sol";
 import "./interfaces/IOrderVault.sol";
+import "./interfaces/IPositionVault.sol";
 import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
 import "./interfaces/IVaultUtils.sol";
@@ -12,6 +13,7 @@ import {Constants} from "../access/Constants.sol";
 import {Position, Order, OrderStatus} from "./structs.sol";
 
 contract VaultUtils is IVaultUtils, Constants {
+    ILiquidateVault private liquidateVault;
     IOrderVault private  orderVault;
     IPositionVault private immutable positionVault;
     IPriceManager private priceManager;
@@ -36,13 +38,19 @@ contract VaultUtils is IVaultUtils, Constants {
     event LiquidatePosition(uint256 posId, int256 realisedPnl, uint256 markPrice, uint256 feeUsd);
     event SetDepositFee(address indexed token, uint256 indexed fee);
 
-    modifier onlyVault() {
-        require(msg.sender == address(positionVault), "Only vault");
+    modifier onlyPositionVault() {
+        require(msg.sender == address(positionVault), "Only position vault");
         _;
     }
 
-    constructor(address _positionVault, address _orderVault, address _priceManager, address _settingsManager) {
+    modifier onlyLiquidateVault() {
+        require(msg.sender == address(liquidateVault), "Only position vault");
+        _;
+    }
+
+    constructor(address _liquidateVault, address _orderVault, address _positionVault, address _priceManager, address _settingsManager) {
         require(Address.isContract(_positionVault), "vault invalid");
+        liquidateVault = ILiquidateVault(_liquidateVault);
         orderVault = IOrderVault(_orderVault);
         positionVault = IPositionVault(_positionVault);
         priceManager = IPriceManager(_priceManager);
@@ -54,10 +62,10 @@ contract VaultUtils is IVaultUtils, Constants {
         address _indexToken,
         bool _isLong,
         uint256 _posId
-    ) external override onlyVault {
+    ) external override onlyPositionVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
         Position memory position = positionVault.getPosition(_posId);
-        uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size - position.collateral, position.size, position.lastIncreasedTime);
+        uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
         emit ClosePosition(_posId, position.realisedPnl, price, migrateFeeUsd);
     }
 
@@ -68,7 +76,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _posId,
         uint256 _sizeDelta,
         uint256 _fee
-    ) external override onlyVault {
+    ) external override onlyPositionVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
         Position memory position = positionVault.getPosition(_posId);
         uint256 _collateralDelta = (position.collateral * _sizeDelta) / position.size;
@@ -90,7 +98,7 @@ contract VaultUtils is IVaultUtils, Constants {
         uint256 _collateralDelta,
         uint256 _sizeDelta,
         uint256 _fee
-    ) external override onlyVault {
+    ) external override onlyPositionVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
         Position memory position = positionVault.getPosition(_posId);
         emit IncreasePosition(
@@ -105,10 +113,10 @@ contract VaultUtils is IVaultUtils, Constants {
     function emitLiquidatePositionEvent(
         uint256 _posId,
         uint256 _delta
-    ) external override onlyVault {
+    ) external override onlyLiquidateVault {
         Position memory position = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(position.indexToken);
-        uint256 migrateFeeUsd = settingsManager.collectMarginFees(position.owner, position.indexToken, position.isLong, position.size - position.collateral, position.size, position.lastIncreasedTime);
+        uint256 migrateFeeUsd = settingsManager.collectMarginFees(position.owner, position.indexToken, position.isLong, position.size);
         emit LiquidatePosition(_posId, (-1) * int256(_delta), price, migrateFeeUsd);
     }
 

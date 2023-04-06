@@ -411,7 +411,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 usdOut = adjustedDelta;
                 position.realisedPnl += int256(adjustedDelta);
             } else {
-                position.collateral -= adjustedDelta;
+                if (position.collateral < adjustedDelta) {
+                    position.collateral = 0;
+                } else {
+                    position.collateral -= adjustedDelta;
+                }
                 position.realisedPnl -= int256(adjustedDelta);
             }
         }

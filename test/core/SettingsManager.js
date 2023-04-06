@@ -21,6 +21,8 @@ describe('SettingsManager', function () {
   let vlp
   let vela
   let eVela
+  let LiquidateVault
+  let OrderVault
   let PositionVault
   let priceManager
   let settingsManager
@@ -95,6 +97,8 @@ describe('SettingsManager', function () {
     eVela = await deployContract('eVELA', [])
     tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
     Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
+    LiquidateVault = await deployContract('LiquidateVault', [])
+    OrderVault = await deployContract('OrderVault', [])
     PositionVault = await deployContract('PositionVault', [])
     priceManager = await deployContract('PriceManager', [operator.address])
     settingsManager = await deployContract('SettingsManager', [
@@ -103,6 +107,39 @@ describe('SettingsManager', function () {
       vusd.address,
       tokenFarm.address,
     ])
+    triggerOrderManager = await deployContract('TriggerOrderManager', [
+      PositionVault.address,
+      priceManager.address,
+      settingsManager.address,
+    ])
+    VaultUtils = await deployContract('VaultUtils', [
+      LiquidateVault.address,
+      OrderVault.address,
+      PositionVault.address,
+      priceManager.address,
+      settingsManager.address,
+    ])
+    await PositionVault.initialize(
+      OrderVault.address,
+      priceManager.address,
+      settingsManager.address,
+      triggerOrderManager.address,
+      Vault.address,
+      VaultUtils.address
+    )
+    await OrderVault.initialize(
+      priceManager.address,
+      PositionVault.address,
+      settingsManager.address,
+      Vault.address,
+      VaultUtils.address
+    )
+    await LiquidateVault.initialize(
+      PositionVault.address,
+      settingsManager.address,
+      Vault.address,
+      VaultUtils.address
+    )
   })
 
   it('setVaultSettings', async () => {
