@@ -15,12 +15,16 @@ interface IPositionVault {
         uint256 _acceptedPrice
     ) external;
 
-    function addTrailingStop(address _account, uint256 _posId, uint256[] memory _params) external;
-
-    function cancelPendingOrder(address _account, uint256 _posId) external;
-
-    function decreasePosition(address _account, uint256 _sizeDelta, uint256 _posId) external;
-
+    function decreasePosition(uint256 _posId, address _account, uint256 _sizeDelta) external;
+    function increasePosition(
+        uint256 _posId,
+        address _account,
+        address _indexToken,
+        bool _isLong,
+        uint256 _price,
+        uint256 _amountIn,
+        uint256 _sizeDelta
+    ) external;
     function newPositionOrder(
         address _account,
         address _indexToken,
@@ -29,8 +33,9 @@ interface IPositionVault {
         uint256[] memory _params,
         address _refer
     ) external;
-
-    function getPosition(uint256 _posId) external view returns (Position memory, Order memory);
+    function removeUserAlivePosition(address _user, uint256 _posId) external;
+    function getPosition(uint256 _posId) external view returns (Position memory);
+    function getUserPositionIds(address _account) external view returns (uint256[] memory);
 
     function getVaultUSDBalance() external view returns (uint256);
 }

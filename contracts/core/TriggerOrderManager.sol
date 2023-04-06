@@ -59,7 +59,7 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         uint256 _posId
     ) external override onlyVault returns (bool, uint256, uint256) {
         PositionTrigger storage order = triggerOrders[_posId];
-        (Position memory position,) = positionVault.getPosition(_posId);
+        Position memory position = positionVault.getPosition(_posId);
         require(order.status == TriggerStatus.OPEN, "Trigger Not Open");
         uint256 price = priceManager.getLastPrice(_token);
         for (uint256 i = 0; i < order.triggers.length; i++) {
@@ -92,7 +92,7 @@ contract TriggerOrderManager is ITriggerOrderManager, ReentrancyGuard, Constants
         uint256[] memory _prices,
         uint256[] memory _amountPercents
     ) external payable nonReentrant {
-        (Position memory position,) = positionVault.getPosition(_posId);
+        Position memory position = positionVault.getPosition(_posId);
         require(position.size > 0, "position size should be greater than zero");
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
         (bool success, ) = payable(settingsManager.feeManager()).call{ value: msg.value }("");
