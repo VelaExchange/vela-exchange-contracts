@@ -113,6 +113,8 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             position.size,
             position.averagePrice,
             price,
+            position.lastIncreasedTime,
+            position.accruedBorrowFee,
             position.fundingIndex
         );
         require(
@@ -217,7 +219,11 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         isInitialized = true;
     }
 
-    function mintAndStakeVlp(address _account, address _token, uint256 _amount) external nonReentrant preventBanners(msg.sender) {
+    function mintAndStakeVlp(
+        address _account,
+        address _token,
+        uint256 _amount
+    ) external nonReentrant preventBanners(msg.sender) {
         require(settingsManager.isStakingEnabled(_token), "staking disabled");
         require(_amount > 0, "zero amount");
         uint256 usdAmount = priceManager.tokenToUsd(_token, _amount);

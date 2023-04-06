@@ -119,9 +119,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.owner,
             position.indexToken,
             position.isLong,
-            position.size - position.collateral,
-            _sizeDelta,
-            position.lastIncreasedTime
+            _sizeDelta
         );
         checkSlippage(position.isLong, _acceptedPrice, price);
         _increasePosition(
@@ -335,9 +333,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.owner,
             position.indexToken,
             position.isLong,
-            position.size - position.collateral,
-            order.size,
-            position.lastIncreasedTime
+            order.size
         );
         uint256 price = priceManager.getLastPrice(position.indexToken);
         checkSlippage(position.isLong, order.lmtPrice, price);
@@ -423,9 +419,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     _account,
                     position.indexToken,
                     position.isLong,
-                    position.size - position.collateral,
-                    order.size,
-                    position.lastIncreasedTime
+                    order.size
                 );
                 uint256 price = priceManager.getLastPrice(position.indexToken);
                 _increasePosition(
@@ -446,9 +440,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     _account,
                     position.indexToken,
                     position.isLong,
-                    position.size - position.collateral,
-                    order.size,
-                    position.lastIncreasedTime
+                    order.size
                 );
                 uint256 price = priceManager.getLastPrice(position.indexToken);
                 _increasePosition(
@@ -531,11 +523,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         Position storage position = positions[_posId];
         require(position.size > 0, "position size is zero");
         settingsManager.decreaseOpenInterest(_indexToken, _account, _isLong, _sizeDelta);
-        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(
-            _posId,
-            _price,
-            _sizeDelta
-        );
+        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(_posId, _price, _sizeDelta);
         if (position.size != _sizeDelta) {
             position.size -= _sizeDelta;
             vaultUtils.validateMinLeverage(position.size, position.collateral);
@@ -579,8 +567,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     int256(_sizeDelta) *
                     settingsManager.fundingIndex(_indexToken)) /
                 int256(position.size + _sizeDelta);
+            position.accruedBorrowFee += settingsManager.getBorrowFee(position.size, position.lastIncreasedTime);
         }
-        uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size - position.collateral, _sizeDelta, position.lastIncreasedTime);
+        uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
         uint256 _amountInAfterFee = _amountIn - fee;
         position.collateral += _amountInAfterFee;
         position.size += _sizeDelta;
@@ -594,11 +583,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         vaultUtils.emitIncreasePositionEvent(_account, _indexToken, _isLong, _posId, _amountIn, _sizeDelta, fee);
     }
 
-    function _updatePnlAndUsdOut (
+    function _updatePnlAndUsdOut(
         uint256 _posId,
         bool hasProfit,
         uint256 adjustedDelta,
-       uint256 _sizeDelta,
+        uint256 _sizeDelta,
         uint256 fee
     ) internal returns (uint256) {
         Position storage position = positions[_posId];
@@ -637,11 +626,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         return usdOut;
     }
 
-    function _reduceCollateral(
-        uint256 _posId,
-        uint256 _price,
-        uint256 _sizeDelta
-    ) internal returns (uint256, uint256) {
+    function _reduceCollateral(uint256 _posId, uint256 _price, uint256 _sizeDelta) internal returns (uint256, uint256) {
         Position storage position = positions[_posId];
         uint256 adjustedDelta;
         (bool _hasProfit, uint256 delta) = settingsManager.getPnl(
@@ -650,18 +635,28 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.size,
             position.averagePrice,
             _price,
+            position.lastIncreasedTime,
+            position.accruedBorrowFee,
             position.fundingIndex
         );
         // get the proportional change in pnl
         adjustedDelta = (_sizeDelta * delta) / position.size;
-        uint256 fee = settingsManager.collectMarginFees(position.owner, position.indexToken, position.isLong, position.size - position.collateral, _sizeDelta, position.lastIncreasedTime);
-        uint256 usdOut = _updatePnlAndUsdOut(
-            _posId,
-            _hasProfit,
-            adjustedDelta,
-            _sizeDelta,
-            fee
+        if (position.accruedBorrowFee > 0) {
+            uint256 countedBorrowFee = (_sizeDelta * position.accruedBorrowFee) / position.size;
+            if (position.accruedBorrowFee > countedBorrowFee) {
+                position.accruedBorrowFee -= countedBorrowFee;
+            } else {
+                position.accruedBorrowFee = 0;
+            }
+        }
+
+        uint256 fee = settingsManager.collectMarginFees(
+            position.owner,
+            position.indexToken,
+            position.isLong,
+            _sizeDelta
         );
+        uint256 usdOut = _updatePnlAndUsdOut(_posId, _hasProfit, adjustedDelta, _sizeDelta, fee);
         vaultUtils.validateDecreasePosition(_posId, _price, true);
         return (usdOut, fee);
     }

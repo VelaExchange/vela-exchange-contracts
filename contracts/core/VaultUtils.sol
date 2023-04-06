@@ -54,7 +54,7 @@ contract VaultUtils is IVaultUtils, Constants {
     ) external override onlyVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
         (Position memory position, ) = positionVault.getPosition(_posId);
-        uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size - position.collateral, position.size, position.lastIncreasedTime);
+        uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
         emit ClosePosition(_posId, position.realisedPnl, price, migrateFeeUsd);
     }
 
@@ -108,7 +108,7 @@ contract VaultUtils is IVaultUtils, Constants {
     ) external override onlyVault {
         uint256 price = priceManager.getLastPrice(_indexToken);
         (Position memory position, ) = positionVault.getPosition(_posId);
-        uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size - position.collateral, position.size, position.lastIncreasedTime);
+        uint256 migrateFeeUsd = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size);
         emit LiquidatePosition(_posId, (-1) * int256(_delta), price, migrateFeeUsd);
     }
 
@@ -125,6 +125,8 @@ contract VaultUtils is IVaultUtils, Constants {
             position.size,
             position.averagePrice,
             _price,
+            position.lastIncreasedTime,
+            position.accruedBorrowFee,
             position.fundingIndex
         );
         if (hasProfit) {
@@ -164,15 +166,15 @@ contract VaultUtils is IVaultUtils, Constants {
                 position.size,
                 position.averagePrice,
                 price,
+                position.lastIncreasedTime,
+                position.accruedBorrowFee,
                 position.fundingIndex
             );
             uint256 migrateFeeUsd = settingsManager.collectMarginFees(
                 position.owner,
                 position.indexToken,
                 position.isLong,
-                position.size - position.collateral,
-                position.size,
-                position.lastIncreasedTime
+                position.size
             );
             if (!hasProfit && position.collateral < delta) {
                 if (_raise) {
