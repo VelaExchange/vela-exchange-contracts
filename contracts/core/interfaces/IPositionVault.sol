@@ -16,15 +16,6 @@ interface IPositionVault {
     ) external;
 
     function decreasePosition(uint256 _posId, address _account, uint256 _sizeDelta) external;
-    function increasePosition(
-        uint256 _posId,
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _price,
-        uint256 _amountIn,
-        uint256 _sizeDelta
-    ) external;
     function newPositionOrder(
         address _account,
         address _indexToken,

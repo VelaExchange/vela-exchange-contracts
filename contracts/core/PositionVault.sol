@@ -251,10 +251,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         _executeOpenMarketOrders(numOfOrders);
     }
 
-    function getNumOfUnexecutedMarketOrders() external view returns (uint256) {
-        return openMarketQueuePosIds.length - openMarketQueueIndex;
-    }
-
     function triggerForOpenOrders(address _account, uint256 _posId) external nonReentrant {
         Position memory position = positions[_posId];
         settingsManager.updateFunding(position.indexToken);
@@ -336,6 +332,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         }
     }
 
+    function getNumOfUnexecutedMarketOrders() external view returns (uint256) {
+        return openMarketQueuePosIds.length - openMarketQueueIndex;
+    }
+
     function _decreasePosition(
         uint256 _posId,
         uint256 _price,
@@ -365,26 +365,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         } else if (usdOutFee != 0) {
             vault.distributeFee(position.owner, position.refer, usdOutFee);
         }
-    }
-
-    function increasePosition(
-        uint256 _posId,
-        address _account,
-        address _indexToken,
-        bool _isLong,
-        uint256 _price,
-        uint256 _amountIn,
-        uint256 _sizeDelta
-    ) external override {
-        _increasePosition(
-            _posId,
-            _account,
-            _indexToken,
-            _isLong,
-            _price,
-            _amountIn,
-            _sizeDelta
-        );
     }
 
     function _increasePosition(
