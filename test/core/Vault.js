@@ -1328,10 +1328,7 @@ describe('Vault', function () {
     const amount = expandDecimals('5', 30)
     const positionInfo = await PositionVault.getPosition(posId)
     const position = positionInfo[0]
-    await expect(Vault.addOrRemoveCollateral(posId, isPlus, position.collateral)).to.be.revertedWith(
-      'maxLeverage exceeded'
-    )
-    await expect(Vault.addOrRemoveCollateral(posId, isPlus, amount)).to.be.revertedWith("Vault: losses exceed collateral")
+    await expect(Vault.addOrRemoveCollateral(posId, isPlus, position.collateral)).to.be.revertedWith("maxLeverage exceeded")
   })
 
   it('decreasePosition with full amount for Long', async () => {

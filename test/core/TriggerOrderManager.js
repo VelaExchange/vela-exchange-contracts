@@ -798,6 +798,6 @@ describe('TriggerOrderManager', function () {
     const passTime = 60 * 60 * 2
     await ethers.provider.send('evm_increaseTime', [passTime])
     await ethers.provider.send('evm_mine')
-    await PositionVault.triggerForTPSL(account, pId)
+    await expect(PositionVault.triggerForTPSL(account, pId)).to.be.revertedWith("maxLeverage exceeded")
   })
 })

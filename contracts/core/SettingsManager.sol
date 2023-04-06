@@ -35,7 +35,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public override liquidationPendingTime = 10; // allow 10 seconds for manager to resolve liquidation
 
     uint256 public override closeDeltaTime = 1 hours;
-    uint256 public borrowInterval = 1 hours;
     uint256 public override cooldownDuration = 3 hours;
     uint256 public override feeRewardBasisPoints = 50000; // 50%
     uint256 public override liquidationFeeUsd; // 0 usd
@@ -81,7 +80,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetEnableStaking(address indexed token, bool isEnabled);
     event SetEnableUnstaking(address indexed token, bool isEnabled);
     event SetBorrowFeeFactor(uint256 borrowFeeFactor);
-    event SetBorrowInterval(uint256 borrowInterval);
     event SetFundingRateFactor(address indexed token, uint256 fundingRateFactor);
     event SetLiquidationFeeUsd(uint256 indexed _liquidationFeeUsd);
     event SetMarginFeeBasisPoints(address indexed token, bool isLong, uint256 marginFeeBasisPoints);
@@ -275,14 +273,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         borrowFeeFactor = _borrowFeeFactor;
         emit SetBorrowFeeFactor(_borrowFeeFactor);
     }
-
-    function setBorrowInterval(uint256 _borrowInterval) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        require(_borrowInterval >= MIN_BORROW_INTERVAL, "Below min");
-        borrowInterval = _borrowInterval;
-        emit SetBorrowInterval(borrowInterval);
-    }
-
 
     function setFundingRateFactor(address _token, uint256 _fundingRateFactor) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
@@ -488,7 +478,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         pnl =
             pnl -
             getFundingFee(_indexToken, _isLong, _size, _fundingIndex) -
-            int256(getBorrowFee(_indexToken, _size, _lastIncreasedTime) + _accruedBorrowFee);
+            int256(getBorrowFee(_size, _lastIncreasedTime) + _accruedBorrowFee);
 
         if (pnl > 0) {
             return (true, uint256(pnl));
@@ -547,11 +537,9 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
                 : (int256(_size) * (_fundingIndex - fundingIndex[_indexToken])) / int256(FUNDING_RATE_PRECISION);
     }
 
-    function getBorrowFee(address _indexToken, uint256 _sizeDelta, uint256 _lastIncreasedTime) public view override returns (uint256) {
-        uint256 OI_Limit_asset = maxOpenInterestPerAssetPerSide[_indexToken][true] + maxOpenInterestPerAssetPerSide[_indexToken][false];
-        uint256 OI_asset = openInterestPerAssetPerSide[_indexToken][true] + openInterestPerAssetPerSide[_indexToken][false];
-        uint256 borrowingRate = borrowFeeFactor * (BASIS_POINTS_DIVISOR * totalOpenInterest / positionVault.getVaultUSDBalance() + BASIS_POINTS_DIVISOR * OI_asset / OI_Limit_asset) / 2; 
-        return ((block.timestamp - _lastIncreasedTime) * _sizeDelta * borrowingRate) / BASIS_POINTS_DIVISOR / borrowInterval / BASIS_POINTS_DIVISOR;
+    function getBorrowFee(uint256 _borrowedSize, uint256 _lastIncreasedTime) public view override returns (uint256) {
+        return
+            ((block.timestamp - _lastIncreasedTime) * _borrowedSize * borrowFeeFactor) / BASIS_POINTS_DIVISOR / 1 hours;
     }
 
     function getPositionFee(

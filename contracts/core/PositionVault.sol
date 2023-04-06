@@ -519,14 +519,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         Position storage position = positions[_posId];
         require(position.size > 0, "position size is zero");
         settingsManager.decreaseOpenInterest(_indexToken, _account, _isLong, _sizeDelta);
-        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(
-            _account,
-            _indexToken,
-            _sizeDelta,
-            _price,
-            _isLong,
-            _posId
-        );
+        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(_posId, _price, _sizeDelta);
         if (position.size != _sizeDelta) {
             position.size -= _sizeDelta;
             vaultUtils.validateMinLeverage(position.size, position.collateral);
@@ -570,7 +563,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     int256(_sizeDelta) *
                     settingsManager.fundingIndex(_indexToken)) /
                 int256(position.size + _sizeDelta);
-            position.accruedBorrowFee += settingsManager.getBorrowFee(position.indexToken, position.size, position.lastIncreasedTime);
+            position.accruedBorrowFee += settingsManager.getBorrowFee(position.size, position.lastIncreasedTime);
         }
         uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
         uint256 _amountInAfterFee = _amountIn - fee;
@@ -586,44 +579,16 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         vaultUtils.emitIncreasePositionEvent(_account, _indexToken, _isLong, _posId, _amountIn, _sizeDelta, fee);
     }
 
-    function _reduceCollateral(
-        address _account,
-        address _indexToken,
+    function _updatePnlAndUsdOut(
+        uint256 _posId,
+        bool hasProfit,
+        uint256 adjustedDelta,
         uint256 _sizeDelta,
-        uint256 _price,
-        bool _isLong,
-        uint256 _posId
-    ) internal returns (uint256, uint256) {
+        uint256 fee
+    ) internal returns (uint256) {
         Position storage position = positions[_posId];
-        bool hasProfit;
-        uint256 adjustedDelta;
-        // scope variables to avoid stack too deep errors
-        {
-            (bool _hasProfit, uint256 delta) = settingsManager.getPnl(
-                _indexToken,
-                _isLong,
-                position.size,
-                position.averagePrice,
-                _price,
-                position.lastIncreasedTime,
-                position.accruedBorrowFee,
-                position.fundingIndex
-            );
-            hasProfit = _hasProfit;
-            // get the proportional change in pnl
-            adjustedDelta = (_sizeDelta * delta) / position.size;
-
-            uint256 countedBorrowFee = (_sizeDelta * position.accruedBorrowFee) / position.size;
-            if (position.accruedBorrowFee > countedBorrowFee) {
-                position.accruedBorrowFee -= countedBorrowFee;
-            } else {
-                position.accruedBorrowFee = 0;
-            }
-        }
-
         uint256 usdOut;
         // transfer profits
-        uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
         if (adjustedDelta > 0) {
             if (hasProfit) {
                 usdOut = adjustedDelta;
@@ -633,7 +598,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 position.realisedPnl -= int256(adjustedDelta);
             }
         }
-
         // if the position will be closed, then transfer the remaining collateral out
         if (position.size == _sizeDelta) {
             usdOut += position.collateral;
@@ -649,8 +613,46 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         // if the usdOut is more or equal than the fee then deduct the fee from the usdOut directly
         // else deduct the fee from the position's collateral
         if (usdOut < fee) {
-            position.collateral -= fee;
+            if (position.collateral < fee) {
+                position.collateral = 0;
+            } else {
+                position.collateral -= fee;
+            }
         }
+        return usdOut;
+    }
+
+    function _reduceCollateral(uint256 _posId, uint256 _price, uint256 _sizeDelta) internal returns (uint256, uint256) {
+        Position storage position = positions[_posId];
+        uint256 adjustedDelta;
+        (bool _hasProfit, uint256 delta) = settingsManager.getPnl(
+            position.indexToken,
+            position.isLong,
+            position.size,
+            position.averagePrice,
+            _price,
+            position.lastIncreasedTime,
+            position.accruedBorrowFee,
+            position.fundingIndex
+        );
+        // get the proportional change in pnl
+        adjustedDelta = (_sizeDelta * delta) / position.size;
+        if (position.accruedBorrowFee > 0) {
+            uint256 countedBorrowFee = (_sizeDelta * position.accruedBorrowFee) / position.size;
+            if (position.accruedBorrowFee > countedBorrowFee) {
+                position.accruedBorrowFee -= countedBorrowFee;
+            } else {
+                position.accruedBorrowFee = 0;
+            }
+        }
+
+        uint256 fee = settingsManager.collectMarginFees(
+            position.owner,
+            position.indexToken,
+            position.isLong,
+            _sizeDelta
+        );
+        uint256 usdOut = _updatePnlAndUsdOut(_posId, _hasProfit, adjustedDelta, _sizeDelta, fee);
         vaultUtils.validateDecreasePosition(_posId, _price, true);
         return (usdOut, fee);
     }
