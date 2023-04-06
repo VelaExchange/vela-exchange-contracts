@@ -15,6 +15,7 @@ use(solidity)
 describe('Vault', function () {
   const provider = waffle.provider
   const [wallet, user0, user1, user2, user3] = provider.getWallets()
+  let now = parseInt(+new Date()/1000)
   let trustForwarder
   let Vault
   let VaultUtils
@@ -47,18 +48,18 @@ describe('Vault', function () {
 
   let BASIS_POINTS_DIVISOR
   let PRICE_PRECISION
-  let btcPriceFeed
-  let ethPriceFeed
-  let dogePriceFeed
-  let gbpPriceFeed
-  let eurPriceFeed
-  let jpyPriceFeed
-  let usdcPriceFeed
+  let priceFeed
   let vaultPriceFeed
   let cooldownDuration
   let feeRewardBasisPoints // FeeRewardBasisPoints 70%
 
   let snapshot
+
+  let btcPriceFeed = { // mock object
+    setLatestAnswer: async function(price){
+      await priceFeed.setLatestAnswer(btc.address, price)
+    }
+  }
 
   before(async function () {
     trustForwarder = user3.address
@@ -91,33 +92,15 @@ describe('Vault', function () {
     operator.setOperator(Vault.address, 1)
     priceManager = await deployContract('PriceManager', [operator.address])
 
+    priceFeed = await deployContract('FastPriceFeed', [])
+    await priceFeed.setAdmin(priceManager.address, true)
     btc = await deployContract('BaseToken', ['Bitcoin', 'BTC', expandDecimals('10', 18)])
-    btcPriceFeed = await deployContract('FastPriceFeed', [])
-    await btcPriceFeed.setAdmin(priceManager.address, true)
-
     eth = await deployContract('BaseToken', ['Ethereum', 'ETH', 0])
-    ethPriceFeed = await deployContract('FastPriceFeed', [])
-    await ethPriceFeed.setAdmin(priceManager.address, true)
-
     doge = await deployContract('BaseToken', ['Dogecoin', 'DOGE', 0])
-    dogePriceFeed = await deployContract('FastPriceFeed', [])
-    await dogePriceFeed.setAdmin(priceManager.address, true)
-
     gbp = await deployContract('BaseToken', ['Pound Sterling', 'GBP', 0])
-    gbpPriceFeed = await deployContract('FastPriceFeed', [])
-    await gbpPriceFeed.setAdmin(priceManager.address, true)
-
     eur = await deployContract('BaseToken', ['Euro', 'EUR', 0])
-    eurPriceFeed = await deployContract('FastPriceFeed', [])
-    await eurPriceFeed.setAdmin(priceManager.address, true)
-
     jpy = await deployContract('BaseToken', ['Japanese Yan', 'JPY', 0])
-    jpyPriceFeed = await deployContract('FastPriceFeed', [])
-    await jpyPriceFeed.setAdmin(priceManager.address, true)
-
     usdc = await deployContract('BaseToken', ['USD Coin', 'USDC', expandDecimals('10000000', 18)])
-    usdcPriceFeed = await deployContract('FastPriceFeed', [])
-    await usdcPriceFeed.setAdmin(priceManager.address, true)
 
     await expect(
       deployContract('SettingsManager', [zeroAddress, operator.address, vusd.address, tokenFarm.address])
@@ -212,24 +195,25 @@ describe('Vault', function () {
       VaultUtils.address
     )
     //================= PriceFeed Prices Initialization ==================
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(60000))
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(56300))
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(57000))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(4000))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(3920))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(4180))
-    await dogePriceFeed.setLatestAnswer(toChainlinkPrice(5))
-    await gbpPriceFeed.setLatestAnswer(toChainlinkPrice(15))
-    await eurPriceFeed.setLatestAnswer(toChainlinkPrice(1))
-    await jpyPriceFeed.setLatestAnswer('1600000') // 0.016
-    await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(60000))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(56300))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(57000))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(4000))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(3920))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(4180))
+    await priceFeed.setLatestAnswer(doge.address, toChainlinkPrice(5))
+    await priceFeed.setLatestAnswer(gbp.address, toChainlinkPrice(15))
+    await priceFeed.setLatestAnswer(eur.address, toChainlinkPrice(1))
+    await priceFeed.setLatestAnswer(jpy.address, '1600000') // 0.016
+    await priceFeed.setLatestAnswer(usdc.address, toChainlinkPrice(1))
+    await priceFeed.setAdmin(priceManager.address, true)
     const tokens = [
       {
         name: 'btc',
         address: btc.address,
         decimals: 18,
         isForex: false,
-        priceFeed: btcPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 30 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -239,7 +223,7 @@ describe('Vault', function () {
         address: eth.address,
         decimals: 18,
         isForex: false,
-        priceFeed: ethPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 30 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -249,7 +233,7 @@ describe('Vault', function () {
         address: doge.address,
         decimals: 18,
         isForex: false,
-        priceFeed: dogePriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 30 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -259,7 +243,7 @@ describe('Vault', function () {
         address: gbp.address,
         decimals: 18,
         isForex: true,
-        priceFeed: gbpPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 8, // 0.008% 80 / 100000
@@ -269,7 +253,7 @@ describe('Vault', function () {
         address: eur.address,
         decimals: 18,
         isForex: true,
-        priceFeed: eurPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 8, // 0.008% 80 / 100000
@@ -279,7 +263,7 @@ describe('Vault', function () {
         address: jpy.address,
         decimals: 18,
         isForex: true,
-        priceFeed: jpyPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 8, // 0.008% 80 / 100000
@@ -289,7 +273,7 @@ describe('Vault', function () {
         address: usdc.address,
         decimals: 18,
         isForex: true,
-        priceFeed: usdcPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -530,22 +514,23 @@ describe('Vault', function () {
 
   async function expectMarketOrderFail(token, price, errorReason) {
     expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
-    const tx = await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(
+    const now = await priceManager.now()
+    await priceManager.setPrice(token.address, now, toChainlinkPrice(price))
+    const tx = await PositionVault.connect(user1).executeOpenMarketOrders(
       1,
-      [token.address],
-      [toChainlinkPrice(price)]
     )
     const receipt = await tx.wait()
+    //console.log(receipt)
     const errorEvent = receipt.events.find((event) => event.event === 'MarketOrderExecutionError')
     expect(errorEvent.args.err).eq(errorReason)
   }
 
   async function expectMarketOrderSuccess(token, price) {
     expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
-    const tx = await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(
+    const now = await priceManager.now()
+    await priceManager.setPrice(token.address, now, toChainlinkPrice(price))
+    const tx = await PositionVault.connect(user1).executeOpenMarketOrders(
       1,
-      [token.address],
-      [toChainlinkPrice(price)]
     )
     const receipt = await tx.wait()
     const errorEvent = receipt.events.find((event) => event.event === 'MarketOrderExecutionError')
@@ -582,14 +567,7 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
-    const tx2 = await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(
-      1,
-      [btc.address],
-      [toChainlinkPrice('57000')]
-    )
-    const receipt2 = await tx2.wait()
-    expect(receipt2.events.find((event) => event.event === 'MarketOrderExecutionError')).to.be.undefined
+    await expectMarketOrderSuccess(btc, '57000')
     //console.log(await PositionVault.getPosition((await PositionVault.lastPosId())-1))
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime])
@@ -647,7 +625,8 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('Trigger Not Open')
@@ -709,7 +688,8 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const stepType = 1
@@ -794,7 +774,8 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const stepType = 0
