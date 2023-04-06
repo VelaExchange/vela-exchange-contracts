@@ -15,6 +15,7 @@ use(solidity)
 describe('Vault', function () {
   const provider = waffle.provider
   const [wallet, user0, user1, user2, user3] = provider.getWallets()
+  let now = parseInt(+new Date()/1000)
   let trustForwarder
   let Vault
   let VaultUtils
@@ -47,18 +48,18 @@ describe('Vault', function () {
 
   let BASIS_POINTS_DIVISOR
   let PRICE_PRECISION
-  let btcPriceFeed
-  let ethPriceFeed
-  let dogePriceFeed
-  let gbpPriceFeed
-  let eurPriceFeed
-  let jpyPriceFeed
-  let usdcPriceFeed
+  let priceFeed
   let vaultPriceFeed
   let cooldownDuration
   let feeRewardBasisPoints // FeeRewardBasisPoints 70%
 
   let snapshot
+
+  let btcPriceFeed = { // mock object
+    setLatestAnswer: async function(price){
+      await priceFeed.setLatestAnswer(btc.address, price)
+    }
+  }
 
   before(async function () {
     trustForwarder = user3.address
@@ -85,39 +86,21 @@ describe('Vault', function () {
     operator = await deployContract('ExchangeOperators', [])
     tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
     //vaultPriceFeed = await deployContract("VaultPriceFeed", [])
-    Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address, tokenFarm.address])
+    Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
     PositionVault = await deployContract('PositionVault', [])
     operator.setOperator(PositionVault.address, 1)
     operator.setOperator(Vault.address, 1)
     priceManager = await deployContract('PriceManager', [operator.address])
 
+    priceFeed = await deployContract('FastPriceFeed', [])
+    await priceFeed.setAdmin(priceManager.address, true)
     btc = await deployContract('BaseToken', ['Bitcoin', 'BTC', expandDecimals('10', 18)])
-    btcPriceFeed = await deployContract('FastPriceFeed', [])
-    await btcPriceFeed.setAdmin(priceManager.address, true)
-
     eth = await deployContract('BaseToken', ['Ethereum', 'ETH', 0])
-    ethPriceFeed = await deployContract('FastPriceFeed', [])
-    await ethPriceFeed.setAdmin(priceManager.address, true)
-
     doge = await deployContract('BaseToken', ['Dogecoin', 'DOGE', 0])
-    dogePriceFeed = await deployContract('FastPriceFeed', [])
-    await dogePriceFeed.setAdmin(priceManager.address, true)
-
     gbp = await deployContract('BaseToken', ['Pound Sterling', 'GBP', 0])
-    gbpPriceFeed = await deployContract('FastPriceFeed', [])
-    await gbpPriceFeed.setAdmin(priceManager.address, true)
-
     eur = await deployContract('BaseToken', ['Euro', 'EUR', 0])
-    eurPriceFeed = await deployContract('FastPriceFeed', [])
-    await eurPriceFeed.setAdmin(priceManager.address, true)
-
     jpy = await deployContract('BaseToken', ['Japanese Yan', 'JPY', 0])
-    jpyPriceFeed = await deployContract('FastPriceFeed', [])
-    await jpyPriceFeed.setAdmin(priceManager.address, true)
-
     usdc = await deployContract('BaseToken', ['USD Coin', 'USDC', expandDecimals('10000000', 18)])
-    usdcPriceFeed = await deployContract('FastPriceFeed', [])
-    await usdcPriceFeed.setAdmin(priceManager.address, true)
 
     await expect(
       deployContract('SettingsManager', [zeroAddress, operator.address, vusd.address, tokenFarm.address])
@@ -212,24 +195,25 @@ describe('Vault', function () {
       VaultUtils.address
     )
     //================= PriceFeed Prices Initialization ==================
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(60000))
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(56300))
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(57000))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(4000))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(3920))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(4180))
-    await dogePriceFeed.setLatestAnswer(toChainlinkPrice(5))
-    await gbpPriceFeed.setLatestAnswer(toChainlinkPrice(15))
-    await eurPriceFeed.setLatestAnswer(toChainlinkPrice(1))
-    await jpyPriceFeed.setLatestAnswer('1600000') // 0.016
-    await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(60000))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(56300))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(57000))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(4000))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(3920))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(4180))
+    await priceFeed.setLatestAnswer(doge.address, toChainlinkPrice(5))
+    await priceFeed.setLatestAnswer(gbp.address, toChainlinkPrice(15))
+    await priceFeed.setLatestAnswer(eur.address, toChainlinkPrice(1))
+    await priceFeed.setLatestAnswer(jpy.address, '1600000') // 0.016
+    await priceFeed.setLatestAnswer(usdc.address, toChainlinkPrice(1))
+    await priceFeed.setAdmin(priceManager.address, true)
     const tokens = [
       {
         name: 'btc',
         address: btc.address,
         decimals: 18,
         isForex: false,
-        priceFeed: btcPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 30 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -239,7 +223,7 @@ describe('Vault', function () {
         address: eth.address,
         decimals: 18,
         isForex: false,
-        priceFeed: ethPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 30 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -249,7 +233,7 @@ describe('Vault', function () {
         address: doge.address,
         decimals: 18,
         isForex: false,
-        priceFeed: dogePriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 30 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -259,7 +243,7 @@ describe('Vault', function () {
         address: gbp.address,
         decimals: 18,
         isForex: true,
-        priceFeed: gbpPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 8, // 0.008% 80 / 100000
@@ -269,7 +253,7 @@ describe('Vault', function () {
         address: eur.address,
         decimals: 18,
         isForex: true,
-        priceFeed: eurPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 8, // 0.008% 80 / 100000
@@ -279,7 +263,7 @@ describe('Vault', function () {
         address: jpy.address,
         decimals: 18,
         isForex: true,
-        priceFeed: jpyPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 8, // 0.008% 80 / 100000
@@ -289,7 +273,7 @@ describe('Vault', function () {
         address: usdc.address,
         decimals: 18,
         isForex: true,
-        priceFeed: usdcPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -435,7 +419,7 @@ describe('Vault', function () {
     const collateralDeltaUsd = await priceManager.tokenToUsd(btc.address, amount)
     await btc.connect(wallet).approve(Vault.address, amount) // stake BTC
     // await vlp.connect(wallet).approve(Vault.address, amount) // stake BTC
-    await expect(Vault.mintAndStakeVlp(wallet.address, btc.address, amount)).to.be.revertedWith('staking disabled') // stake BTC
+    await expect(Vault.stake(wallet.address, btc.address, amount)).to.be.revertedWith('staking disabled') // stake BTC
   })
 
   it('stake with Stable Coins ', async () => {
@@ -443,7 +427,7 @@ describe('Vault', function () {
     const amount = expandDecimals('1000', 18)
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount)
     await usdc.connect(wallet).approve(Vault.address, amount) // approve USDC
-    await Vault.mintAndStakeVlp(wallet.address, usdc.address, amount) // deposit USDC
+    await Vault.stake(wallet.address, usdc.address, amount) // deposit USDC
   })
 
   it('stakeFor with Stable Coins', async () => {
@@ -457,10 +441,10 @@ describe('Vault', function () {
     const originalVLPBalance = await vlp.balanceOf(wallet.address)
     const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount)
     await usdc.connect(user1).approve(Vault.address, amount) // approve USDC
-    await expect(Vault.connect(user1).mintAndStakeVlp(wallet.address, usdc.address, amount)).to.be.revertedWith('Not allowed') // stake USDC
+    await expect(Vault.connect(user1).stake(wallet.address, usdc.address, amount)).to.be.revertedWith('Not allowed') // stake USDC
     await settingsManager.connect(wallet).delegate([user1.address, user0.address])
     expect(await settingsManager.checkDelegation(wallet.address, user1.address)).eq(true)
-    await Vault.connect(user1).mintAndStakeVlp(wallet.address, usdc.address, amount) // stake USDC
+    await Vault.connect(user1).stake(wallet.address, usdc.address, amount) // stake USDC
   })
 
   /*it("withdraw with General Token", async () => {
@@ -501,7 +485,7 @@ describe('Vault', function () {
 
   /*it("unstake with General Token", async () => {
     const amount = expandDecimals('10', 18)
-    await expect(Vault.unstakeAndRedeemVLP(btc.address, amount, wallet.address))
+    await expect(Vault.unstake(btc.address, amount, wallet.address))
       .to.be.revertedWith("unstaking disabled"); // deposit BTC
   })*/ //no disable unstaking
 
@@ -509,10 +493,10 @@ describe('Vault', function () {
     const vlpAmount = expandDecimals('10', 18)
     const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
     // const collateralToken = await priceManager.usdToToken(usdc.address, vusdAmount);
-    await expect(Vault.unstakeAndRedeemVLP(usdc.address, expandDecimals('10000', 18), wallet.address)).to.be.revertedWith(
+    await expect(Vault.unstake(usdc.address, expandDecimals('10000', 18), wallet.address)).to.be.revertedWith(
       'vlpAmount error'
     )
-    // await expect(Vault.unstakeAndRedeemVLP(usdc.address, vlpAmount, wallet.address)).to.be.revertedWith(
+    // await expect(Vault.unstake(usdc.address, vlpAmount, wallet.address)).to.be.revertedWith(
     //   'cooldown duration not yet passed'
     // )
     // const totalUSD = await Vault.totalUSD()
@@ -524,28 +508,29 @@ describe('Vault', function () {
     // const passTime = 60 * 60 * 6
     // await ethers.provider.send('evm_increaseTime', [passTime])
     // await ethers.provider.send('evm_mine')
-    // await Vault.unstakeAndRedeemVLP(usdc.address, vlpAmount, wallet.address)
+    // await Vault.unstake(usdc.address, vlpAmount, wallet.address)
     // expect(await usdc.balanceOf(wallet.address)).eq(amountOut.add(orignalUSDCBalance))
   })
 
   async function expectMarketOrderFail(token, price, errorReason) {
     expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
-    const tx = await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(
+    const now = await priceManager.now()
+    await priceManager.setPrice(token.address, now, toChainlinkPrice(price))
+    const tx = await PositionVault.connect(user1).executeOpenMarketOrders(
       1,
-      [token.address],
-      [toChainlinkPrice(price)]
     )
     const receipt = await tx.wait()
+    //console.log(receipt)
     const errorEvent = receipt.events.find((event) => event.event === 'MarketOrderExecutionError')
     expect(errorEvent.args.err).eq(errorReason)
   }
 
   async function expectMarketOrderSuccess(token, price) {
     expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
-    const tx = await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(
+    const now = await priceManager.now()
+    await priceManager.setPrice(token.address, now, toChainlinkPrice(price))
+    const tx = await PositionVault.connect(user1).executeOpenMarketOrders(
       1,
-      [token.address],
-      [toChainlinkPrice(price)]
     )
     const receipt = await tx.wait()
     const errorEvent = receipt.events.find((event) => event.event === 'MarketOrderExecutionError')
@@ -582,14 +567,7 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
-    const tx2 = await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(
-      1,
-      [btc.address],
-      [toChainlinkPrice('57000')]
-    )
-    const receipt2 = await tx2.wait()
-    expect(receipt2.events.find((event) => event.event === 'MarketOrderExecutionError')).to.be.undefined
+    await expectMarketOrderSuccess(btc, '57000')
     //console.log(await PositionVault.getPosition((await PositionVault.lastPosId())-1))
     const passTime = 60 * 60 * 1
     await ethers.provider.send('evm_increaseTime', [passTime])
@@ -647,7 +625,8 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     await expect(PositionVault.triggerForTPSL(account, posId)).to.be.revertedWith('Trigger Not Open')
@@ -709,7 +688,8 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const stepType = 1
@@ -794,7 +774,8 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
+    await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const stepType = 0
@@ -1814,8 +1795,8 @@ describe('Vault', function () {
   it('checkBanWallet delegation', async () => {
     const amount = expandDecimals('1000', 18)
     await settingsManager.addDelegatesToBanList([wallet.address])
-    await expect(Vault.connect(wallet).mintAndStakeVlp(wallet.address, usdc.address, amount)).to.be.revertedWith('Account banned')
+    await expect(Vault.connect(wallet).stake(wallet.address, usdc.address, amount)).to.be.revertedWith('Account banned')
     await settingsManager.connect(wallet).delegate([user2.address])
-    await expect(Vault.connect(user2).mintAndStakeVlp(wallet.address, usdc.address, amount)).to.be.revertedWith('account banned')
+    await expect(Vault.connect(user2).stake(wallet.address, usdc.address, amount)).to.be.revertedWith('account banned')
   })
 })
