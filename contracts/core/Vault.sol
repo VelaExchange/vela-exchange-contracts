@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../tokens/interfaces/IMintable.sol";
 import "../tokens/interfaces/IVUSD.sol";
 import "./interfaces/IPositionVault.sol";
+import "./interfaces/ILiquidateVault.sol";
 import "./interfaces/IOrderVault.sol";
 import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
@@ -25,6 +26,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     uint256 public totalUSD;
     IPositionVault private positionVault;
     IOrderVault private orderVault;
+    ILiquidateVault private liquidateVault;
     IOperators public immutable operators;
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
@@ -43,7 +45,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     event TransferBounty(address indexed account, uint256 amount);
 
     modifier onlyVault() {
-        require(msg.sender == address(positionVault), "Only vault");
+        require(msg.sender == address(positionVault) || msg.sender == address(liquidateVault), "Only vault");
         _;
     }
 
@@ -210,7 +212,8 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         IPriceManager _priceManager,
         ISettingsManager _settingsManager,
         IPositionVault _positionVault,
-        IOrderVault _orderVault
+        IOrderVault _orderVault,
+        ILiquidateVault _liquidateVault
     ) external {
         require(!isInitialized, "Not initialized");
         require(Address.isContract(address(_priceManager)), "priceManager invalid");
@@ -220,6 +223,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         settingsManager = _settingsManager;
         positionVault = _positionVault;
         orderVault = _orderVault;
+        liquidateVault = _liquidateVault;
         isInitialized = true;
     }
 

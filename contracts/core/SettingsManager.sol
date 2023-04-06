@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/ISettingsManager.sol";
+import "./interfaces/ILiquidateVault.sol";
 import "./interfaces/IPositionVault.sol";
 import "./interfaces/IOperators.sol";
 import "../staking/interfaces/ITokenFarm.sol";
@@ -16,6 +17,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     using EnumerableSet for EnumerableSet.AddressSet;
     address public immutable vusd;
     IPositionVault public immutable positionVault;
+    ILiquidateVault public liquidateVault;
     IOperators public immutable operators;
     ITokenFarm public immutable tokenFarm;
 
@@ -101,15 +103,16 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event UpdateThreshold(uint256 oldThreshold, uint256 newThredhold);
 
     modifier onlyVault() {
-        require(msg.sender == address(positionVault), "Only vault");
+        require(msg.sender == address(positionVault) || msg.sender == address(liquidateVault), "Only vault");
         _;
     }
 
-    constructor(address _positionVault, address _operators, address _vusd, address _tokenFarm) {
+    constructor(address _liquidateVault, address _positionVault, address _operators, address _vusd, address _tokenFarm) {
         require(Address.isContract(_positionVault), "vault invalid");
         require(Address.isContract(_operators), "operators invalid");
         require(Address.isContract(_vusd), "VUSD invalid");
         require(Address.isContract(_tokenFarm), "tokenFarm invalid");
+        liquidateVault = ILiquidateVault(_liquidateVault);
         positionVault = IPositionVault(_positionVault);
         operators = IOperators(_operators);
         tokenFarm = ITokenFarm(_tokenFarm);

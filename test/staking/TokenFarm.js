@@ -56,11 +56,13 @@ describe("TokenFarm", function () {
             vlp.address,
             vusd.address
         ]);
+        let priceManager = await deployContract('PriceManager', [operator.address])
         LiquidateVault = await deployContract('LiquidateVault', [])
         OrderVault = await deployContract('OrderVault', [])
-        PositionVault = await deployContract("PositionVault", []);
+        PositionVault = await deployContract("PositionVault", [vault.address, priceManager.address]);
         let settingsManager = await deployContract("SettingsManager",
           [
+            LiquidateVault.address,
             PositionVault.address,
             operator.address,
             vusd.address,

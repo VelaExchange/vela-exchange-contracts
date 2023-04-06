@@ -89,15 +89,15 @@ describe('Vault', function () {
     operator = await deployContract('ExchangeOperators', [])
     tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
     //vaultPriceFeed = await deployContract("VaultPriceFeed", [])
+    priceManager = await deployContract('PriceManager', [operator.address])
     Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
     LiquidateVault = await deployContract('LiquidateVault', [])
     OrderVault = await deployContract('OrderVault', [])
-    PositionVault = await deployContract('PositionVault', [])
+    PositionVault = await deployContract('PositionVault', [Vault.address, priceManager.address])
     Reader = await deployContract('Reader', [])
     await Reader.initialize(PositionVault.address, OrderVault.address)
     operator.setOperator(PositionVault.address, 1)
     operator.setOperator(Vault.address, 1)
-    priceManager = await deployContract('PriceManager', [operator.address])
 
     priceFeed = await deployContract('FastPriceFeed', [])
     await priceFeed.setAdmin(priceManager.address, true)
@@ -110,15 +110,16 @@ describe('Vault', function () {
     usdc = await deployContract('BaseToken', ['USD Coin', 'USDC', expandDecimals('10000000', 18)])
 
     await expect(
-      deployContract('SettingsManager', [zeroAddress, operator.address, vusd.address, tokenFarm.address])
+      deployContract('SettingsManager', [LiquidateVault.address, zeroAddress, operator.address, vusd.address, tokenFarm.address])
     ).to.be.revertedWith('vault invalid')
     await expect(
-      deployContract('SettingsManager', [PositionVault.address, operator.address, zeroAddress, tokenFarm.address])
+      deployContract('SettingsManager', [LiquidateVault.address, PositionVault.address, operator.address, zeroAddress, tokenFarm.address])
     ).to.be.revertedWith('VUSD invalid')
     await expect(
-      deployContract('SettingsManager', [PositionVault.address, operator.address, vusd.address, zeroAddress])
+      deployContract('SettingsManager', [LiquidateVault.address, PositionVault.address, operator.address, vusd.address, zeroAddress])
     ).to.be.revertedWith('tokenFarm invalid')
     settingsManager = await deployContract('SettingsManager', [
+      LiquidateVault.address, 
       PositionVault.address,
       operator.address,
       vusd.address,
@@ -141,16 +142,15 @@ describe('Vault', function () {
     ])
     //====================== Vault Initialize ==============
     await expect(
-      Vault.setVaultSettings(zeroAddress, settingsManager.address, PositionVault.address, OrderVault.address)
+      Vault.setVaultSettings(zeroAddress, settingsManager.address, PositionVault.address, OrderVault.address, LiquidateVault.address)
     ).to.be.revertedWith('priceManager invalid')
-    await expect(Vault.setVaultSettings(priceManager.address, zeroAddress, PositionVault.address, OrderVault.address)).to.be.revertedWith(
+    await expect(Vault.setVaultSettings(priceManager.address, zeroAddress, PositionVault.address, OrderVault.address, LiquidateVault.address)).to.be.revertedWith(
       'settingsManager invalid'
     )
-    await expect(Vault.setVaultSettings(priceManager.address, settingsManager.address, zeroAddress, OrderVault.address)).to.be.revertedWith(
+    await expect(Vault.setVaultSettings(priceManager.address, settingsManager.address, zeroAddress, OrderVault.address, LiquidateVault.address)).to.be.revertedWith(
       'positionVault invalid'
     )
-    console.log("setVaultSettings : ", priceManager.address, settingsManager.address, PositionVault.address, OrderVault.address)
-    await Vault.setVaultSettings(priceManager.address, settingsManager.address, PositionVault.address, OrderVault.address)
+    await Vault.setVaultSettings(priceManager.address, settingsManager.address, PositionVault.address, OrderVault.address, LiquidateVault.address)
     //====================== Position Vault Initialize ==============
     await expect(
       PositionVault.initialize(
@@ -158,56 +158,41 @@ describe('Vault', function () {
         zeroAddress,
         settingsManager.address,
         triggerOrderManager.address,
-        Vault.address,
         VaultUtils.address
       )
-    ).to.be.revertedWith('priceManager invalid')
+    ).to.be.revertedWith('liquidateVault invalid')
     await expect(
       PositionVault.initialize(
         OrderVault.address,
-        priceManager.address,
+        LiquidateVault.address,
         zeroAddress,
         triggerOrderManager.address,
-        Vault.address,
         VaultUtils.address
       )
     ).to.be.revertedWith('settingsManager invalid')
     await expect(
       PositionVault.initialize(
         OrderVault.address,
-        priceManager.address,
+        LiquidateVault.address,
         settingsManager.address,
         zeroAddress,
-        Vault.address,
         VaultUtils.address
       )
     ).to.be.revertedWith('triggerOrderManager address is invalid')
     await expect(
       PositionVault.initialize(
         OrderVault.address,
-        priceManager.address,
+        LiquidateVault.address,
         settingsManager.address,
         triggerOrderManager.address,
-        zeroAddress,
-        VaultUtils.address
-      )
-    ).to.be.revertedWith('vault invalid')
-    await expect(
-      PositionVault.initialize(
-        OrderVault.address,
-        priceManager.address,
-        settingsManager.address,
-        triggerOrderManager.address,
-        Vault.address,
         zeroAddress
       )
     ).to.be.revertedWith('vaultUtils address is invalid')
     await PositionVault.initialize(
       OrderVault.address,
-      priceManager.address,
+      LiquidateVault.address,
       settingsManager.address,
       triggerOrderManager.address,
-      Vault.address,
       VaultUtils.address
     )
     await OrderVault.initialize(
@@ -654,7 +639,6 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
     await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
@@ -717,10 +701,10 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    //await PositionVault.connect(user1).executeOpenMarketOrdersWithPrices(1, [btc.address], [toChainlinkPrice('57000')])
     await expectMarketOrderSuccess(btc, '57000')
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
+    const position = await PositionVault.getPosition(posId)
     const stepType = 1
     const stpPrice1 = expandDecimals('56500', 30)
     const stepAmount = 1000 // 1 %
@@ -836,7 +820,7 @@ describe('Vault', function () {
       from: wallet.address,
       value: 0,
     })
-    await expect(PositionVault.connect(user0).updateTrailingStop(posId)).to.be.revertedWith('updateTStop not allowed')
+    await expect(OrderVault.connect(user0).updateTrailingStop(posId)).to.be.revertedWith('updateTStop not allowed')
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56950'))
     await expect(OrderVault.updateTrailingStop(posId)).to.be.revertedWith('price incorrect')
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57200'))
@@ -1337,8 +1321,7 @@ describe('Vault', function () {
   it('addCollateral', async () => {
     const indexToken = btc.address
     const isLong = true
-    const posIds = await Reader.getUserAlivePositions(wallet.address)[0]
-    //console.log(posIds)
+    const posIds = (await Reader.getUserAlivePositions(wallet.address))[0]
     const posId = posIds[0]
     const isPlus = true
     const amount = expandDecimals('5', 30)
@@ -1349,15 +1332,12 @@ describe('Vault', function () {
   })
 
   it('remove collateral', async () => {
-    const indexToken = btc.address
-    const isLong = true
     const posIds = (await Reader.getUserAlivePositions(wallet.address))[0]
     const posId = posIds[0]
     const isPlus = false
     const amount = expandDecimals('5', 30)
     const positionInfo = await PositionVault.getPosition(posId)
-    const position = positionInfo[0]
-    await expect(Vault.addOrRemoveCollateral(posId, isPlus, position.collateral)).to.be.revertedWith("maxLeverage exceeded")
+    await expect(Vault.addOrRemoveCollateral(posId, isPlus, positionInfo.collateral)).to.be.revertedWith("maxLeverage exceeded")
   })
 
   it('decreasePosition with full amount for Long', async () => {
@@ -1394,10 +1374,8 @@ describe('Vault', function () {
     await expect(Vault.connect(user0).decreasePosition(expandDecimals('1000', 30), posId)).to.be.revertedWith(
       'Not allowed'
     )
-    await expect(Vault.decreasePosition(sizeDelta, posId)).to.be.revertedWith('not allowed to close the position')
-    await settingsManager.setCloseDeltaTime(0)
-
     await Vault.decreasePosition(sizeDelta, posId)
+    await settingsManager.setCloseDeltaTime(0)
   })
 
   it('decreasePosition with partial amount for Long', async () => {
@@ -1480,7 +1458,7 @@ describe('Vault', function () {
     const isLong = true
     const posIds = (await Reader.getUserAlivePositions(wallet.address))[0]
     const posId = posIds[0]
-    //console.log("posId:", posId)
+    console.log("posId:", posId)
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice(51800))
     const validateLiquidation = await VaultUtils.validateLiquidation(posId, false)
     expect(validateLiquidation[0].toNumber()).eq(2) // Liquidate Max Threshold

@@ -82,14 +82,15 @@ describe('TriggerOrderManager', function () {
     vela = await deployContract('MintableBaseToken', ['Vela Exchange', 'VELA', 0])
     eVela = await deployContract('eVELA', [])
     tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
+    priceManager = await deployContract('PriceManager', [operator.address])
     Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
     LiquidateVault = await deployContract('LiquidateVault', [])
     OrderVault = await deployContract('OrderVault', [])
-    PositionVault = await deployContract('PositionVault', [])
+    PositionVault = await deployContract('PositionVault', [Vault.address, priceManager.address])
     operator.setOperator(PositionVault.address, 1)
     operator.setOperator(Vault.address, 1)
-    priceManager = await deployContract('PriceManager', [operator.address])
     settingsManager = await deployContract('SettingsManager', [
+      LiquidateVault.address,
       PositionVault.address,
       operator.address,
       vusd.address,
@@ -117,13 +118,12 @@ describe('TriggerOrderManager', function () {
       settingsManager.address,
     ])
     //====================== Vault Initialize ==============
-    await Vault.setVaultSettings(priceManager.address, settingsManager.address, PositionVault.address, OrderVault.address)
+    await Vault.setVaultSettings(priceManager.address, settingsManager.address, PositionVault.address, OrderVault.address, LiquidateVault.address)
     await PositionVault.initialize(
       OrderVault.address,
-      priceManager.address,
+      LiquidateVault.address,
       settingsManager.address,
       triggerOrderManager.address,
-      Vault.address,
       VaultUtils.address
     )
     await OrderVault.initialize(

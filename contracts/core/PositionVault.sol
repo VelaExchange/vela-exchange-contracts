@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../tokens/interfaces/IMintable.sol";
 import "../tokens/interfaces/IVUSD.sol";
+import "./interfaces/ILiquidateVault.sol";
 import "./interfaces/IPositionVault.sol";
 import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
@@ -24,7 +25,8 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
     ITriggerOrderManager private triggerOrderManager;
-    IVault private vault;
+    IVault immutable private vault;
+    ILiquidateVault private liquidateVault;
     IOrderVault private orderVault;
     IVaultUtils private vaultUtils;
 
@@ -42,11 +44,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     event MarketOrderExecutionError(uint256 indexed posId, address indexed account, string err);
 
     modifier onlyVault() {
-        require(msg.sender == address(vault), "Only vault");
+        require(msg.sender == address(vault) || msg.sender == address(liquidateVault), "Only vault");
         _;
     }
 
-    constructor() {}
+    constructor(address _vault, address _priceManager) {
+        vault = IVault(_vault);
+        priceManager = IPriceManager(_priceManager);
+    }
 
     function addOrRemoveCollateral(
         address _account,
@@ -118,23 +123,20 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     function initialize(
         IOrderVault _orderVault,
-        IPriceManager _priceManager,
+        ILiquidateVault _liquidateVault,
         ISettingsManager _settingsManager,
         ITriggerOrderManager _triggerOrderManager,
-        IVault _vault,
         IVaultUtils _vaultUtils
     ) external {
         require(!isInitialized, "Not initialized");
-        require(Address.isContract(address(_priceManager)), "priceManager invalid");
         require(Address.isContract(address(_settingsManager)), "settingsManager invalid");
         require(Address.isContract(address(_triggerOrderManager)), "triggerOrderManager address is invalid");
-        require(Address.isContract(address(_vault)), "vault invalid");
+        require(Address.isContract(address(_liquidateVault)), "liquidateVault invalid");
         require(Address.isContract(address(_vaultUtils)), "vaultUtils address is invalid");
+        liquidateVault = _liquidateVault;
         orderVault = _orderVault;
-        priceManager = _priceManager;
         settingsManager = _settingsManager;
         triggerOrderManager = _triggerOrderManager;
-        vault = _vault;
         vaultUtils = _vaultUtils;
         isInitialized = true;
     } 
@@ -338,7 +340,12 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             _price,
             _sizeDelta
         );
-        if (position.size != _sizeDelta) {
+        if (usdOutFee <= usdOut) {
+            vault.takeVUSDOut(position.owner, position.refer, usdOutFee, usdOut);
+        } else if (usdOutFee != 0) {
+            vault.distributeFee(position.owner, position.refer, usdOutFee);
+        }
+        if (position.size > _sizeDelta) {
             position.size -= _sizeDelta;
             vaultUtils.validateMinLeverage(position.size, position.collateral);
             vaultUtils.validateMaxLeverage(position.indexToken, position.size, position.collateral);
@@ -347,11 +354,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             vaultUtils.emitClosePositionEvent(position.owner, position.indexToken, position.isLong, _posId);
             _removeUserAlivePosition(position.owner, _posId);
             orderVault.removeOrder(_posId);
-        }
-        if (usdOutFee <= usdOut) {
-            vault.takeVUSDOut(position.owner, position.refer, usdOutFee, usdOut);
-        } else if (usdOutFee != 0) {
-            vault.distributeFee(position.owner, position.refer, usdOutFee);
         }
     }
 
