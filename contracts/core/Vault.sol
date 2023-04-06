@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../tokens/interfaces/IMintable.sol";
 import "../tokens/interfaces/IVUSD.sol";
 import "./interfaces/IPositionVault.sol";
+import "./interfaces/IOrderVault.sol";
 import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
 import "./interfaces/IVault.sol";
@@ -23,6 +24,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     uint256 public totalVLP;
     uint256 public totalUSD;
     IPositionVault private positionVault;
+    IOrderVault private orderVault;
     IOperators public immutable operators;
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
@@ -94,18 +96,18 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
 
-        positionVault.addTrailingStop(msg.sender, _posId, _params);
+        orderVault.addTrailingStop(msg.sender, _posId, _params);
     }
 
     function cancelPendingOrder(uint256 _posId) public nonReentrant preventBanners(msg.sender) {
-        positionVault.cancelPendingOrder(msg.sender, _posId);
+        orderVault.cancelPendingOrder(msg.sender, _posId);
     }
 
     function forceClosePosition(uint256 _posId) external payable nonReentrant {
         require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
         // put a require here to call something like positionVault.getPositionProfit(_posId)
         // compare to maxProfitPercent and totalUSD, if the position profit > max profit % of totalUSD, close
-        (Position memory position, ) = positionVault.getPosition(_posId);
+        Position memory position = positionVault.getPosition(_posId);
         uint256 price = priceManager.getLastPrice(position.indexToken);
         (bool isProfit, uint256 pnl) = settingsManager.getPnl(
             position.indexToken,
@@ -121,7 +123,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             isProfit && pnl >= (totalUSD * settingsManager.maxProfitPercent()) / BASIS_POINTS_DIVISOR,
             "not allowed"
         );
-        positionVault.decreasePosition(position.owner, position.size, _posId);
+        positionVault.decreasePosition(_posId, position.owner, position.size);
     }
 
     function decreasePosition(
@@ -132,12 +134,12 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
 
-        positionVault.decreasePosition(msg.sender, _sizeDelta, _posId);
+        positionVault.decreasePosition(_posId, msg.sender, _sizeDelta);
     }
 
     function _closePosition(uint256 _posId) internal {
-        (Position memory pos, ) = positionVault.getPosition(_posId);
-        positionVault.decreasePosition(msg.sender, pos.size, _posId);
+        Position memory pos = positionVault.getPosition(_posId);
+        positionVault.decreasePosition(_posId, msg.sender, pos.size);
     }
 
     function closePosition(uint256 _posId) external payable nonReentrant preventBanners(msg.sender) {
@@ -156,11 +158,11 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         }
     }
 
-    function cancelPendingOrders(uint256[] memory _posIds) external preventBanners(msg.sender) {
-        for (uint i = 0; i < _posIds.length; i++) {
-            positionVault.cancelPendingOrder(msg.sender, _posIds[i]);
-        }
-    }
+    // function cancelPendingOrders(uint256[] memory _posIds) external preventBanners(msg.sender) {
+    //     for (uint i = 0; i < _posIds.length; i++) {
+    //         positionVault.cancelPendingOrder(msg.sender, _posIds[i]);
+    //     }
+    // }
 
     function deposit(
         address _account,
@@ -207,7 +209,8 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     function setVaultSettings(
         IPriceManager _priceManager,
         ISettingsManager _settingsManager,
-        IPositionVault _positionVault
+        IPositionVault _positionVault,
+        IOrderVault _orderVault
     ) external {
         require(!isInitialized, "Not initialized");
         require(Address.isContract(address(_priceManager)), "priceManager invalid");
@@ -216,6 +219,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         priceManager = _priceManager;
         settingsManager = _settingsManager;
         positionVault = _positionVault;
+        orderVault = _orderVault;
         isInitialized = true;
     }
 

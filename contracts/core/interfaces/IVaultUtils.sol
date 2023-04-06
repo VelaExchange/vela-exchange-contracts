@@ -27,9 +27,6 @@ interface IVaultUtils {
     ) external;
 
     function emitLiquidatePositionEvent(
-        address _account,
-        address _indexToken,
-        bool _isLong,
         uint256 _posId,
         uint256 _delta
     ) external;
