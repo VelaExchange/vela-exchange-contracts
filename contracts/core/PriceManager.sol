@@ -64,7 +64,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
 
         IPriceFeed priceFeed = IPriceFeed(priceFeedAddress);
 
-        uint256 price = priceFeed.latestAnswer();
+        uint256 price = priceFeed.latestAnswer(_token);
         require(price > 0, "VaultPriceFeed: could not fetch price");
         uint256 _priceDecimals = priceDecimals[_token];
         return (price * PRICE_PRECISION) / (10 ** _priceDecimals);
@@ -77,7 +77,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
 
         // TODO: verify the price against pyth oracle before setting it, do not set if deviation > a certain percentage
 
-        IPriceFeed(priceFeedAddress).setAnswer(_ts, _answer);
+        IPriceFeed(priceFeedAddress).setAnswer(_token, _ts, _answer);
     }
 
     function setLatestPrices(address[] calldata _tokens, uint256[] calldata _tses, uint256[] calldata _answers) external override {
