@@ -26,42 +26,21 @@ describe('PriceManager', function () {
   let usdc
   let usdt
   let operator
-  let btcPriceFeed
-  let ethPriceFeed
-  let dogePriceFeed
-  let gbpPriceFeed
-  let eurPriceFeed
-  let jpyPriceFeed
-  let usdcPriceFeed
-  let usdtPriceFeed
+  let priceFeed
   let vlpPriceFeed
   let cooldownDuration
   let feeRewardBasisPoints // FeeRewardBasisPoints 70%
 
   before(async function () {
+    priceFeed = await deployContract('FastPriceFeed', [])
     btc = await deployContract('BaseToken', ['Bitcoin', 'BTC', 0])
-    btcPriceFeed = await deployContract('FastPriceFeed', [])
-
     eth = await deployContract('BaseToken', ['Ethereum', 'ETH', 0])
-    ethPriceFeed = await deployContract('FastPriceFeed', [])
-
     doge = await deployContract('BaseToken', ['Dogecoin', 'DOGE', 0])
-    dogePriceFeed = await deployContract('FastPriceFeed', [])
-
     gbp = await deployContract('BaseToken', ['Pound Sterling', 'GBP', 0])
-    gbpPriceFeed = await deployContract('FastPriceFeed', [])
-
     eur = await deployContract('BaseToken', ['Euro', 'EUR', 0])
-    eurPriceFeed = await deployContract('FastPriceFeed', [])
-
     jpy = await deployContract('BaseToken', ['Japanese Yan', 'JPY', 0])
-    jpyPriceFeed = await deployContract('FastPriceFeed', [])
-
     usdt = await deployContract('BaseToken', ['Tether USD', 'USDT', expandDecimals('10000000', 18)])
-    usdtPriceFeed = await deployContract('FastPriceFeed', [])
-
     usdc = await deployContract('BaseToken', ['USD Coin', 'USDC', expandDecimals('10000000', 18)])
-    usdcPriceFeed = await deployContract('FastPriceFeed', [])
     vlpPriceFeed = await deployContract('FastPriceFeed', [])
     vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0])
     vlp = await deployContract('VLP', [])
@@ -81,33 +60,33 @@ describe('PriceManager', function () {
       operator.address, // operator
     ])
     //================= PriceFeed Prices Initialization ==================
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(60000))
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(56300))
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(57000))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(4000))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(3920))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(4180))
-    await dogePriceFeed.setLatestAnswer(toChainlinkPrice(5))
-    await gbpPriceFeed.setLatestAnswer(toChainlinkPrice(15))
-    await eurPriceFeed.setLatestAnswer(toChainlinkPrice(1))
-    await jpyPriceFeed.setLatestAnswer('1600000') // 0.016
-    await usdtPriceFeed.setLatestAnswer(toChainlinkPrice(1))
-    await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(60000))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(56300))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(57000))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(4000))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(3920))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(4180))
+    await priceFeed.setLatestAnswer(doge.address, toChainlinkPrice(5))
+    await priceFeed.setLatestAnswer(gbp.address, toChainlinkPrice(15))
+    await priceFeed.setLatestAnswer(eur.address, toChainlinkPrice(1))
+    await priceFeed.setLatestAnswer(jpy.address, '1600000') // 0.016
+    await priceFeed.setLatestAnswer(usdt.address, toChainlinkPrice(1))
+    await priceFeed.setLatestAnswer(usdc.address, toChainlinkPrice(1))
 
     const cryptoMaxLeverage = 100 * 10000
     const forexMaxLeverage = 100 * 10000
-    await expect(priceManager.setTokenConfig(zeroAddress, 18, cryptoMaxLeverage, btcPriceFeed.address, 8)).to.be.revertedWith('Address is wrong')
-    await expect(priceManager.setTokenConfig(btc.address, 18, 1, btcPriceFeed.address, 8)).to.be.revertedWith(
+    await expect(priceManager.setTokenConfig(zeroAddress, 18, cryptoMaxLeverage, priceFeed.address, 8)).to.be.revertedWith('Address is wrong')
+    await expect(priceManager.setTokenConfig(btc.address, 18, 1, priceFeed.address, 8)).to.be.revertedWith(
       'Max Leverage should be greater than Min Leverage'
     )
-    await priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage, btcPriceFeed.address, 8)
-    await priceManager.setTokenConfig(eth.address, 18, cryptoMaxLeverage, ethPriceFeed.address, 8)
-    await priceManager.setTokenConfig(gbp.address, 18, forexMaxLeverage, gbpPriceFeed.address, 8)
-    await priceManager.setTokenConfig(eur.address, 18, forexMaxLeverage, eurPriceFeed.address, 8)
-    await priceManager.setTokenConfig(doge.address, 18, cryptoMaxLeverage, dogePriceFeed.address, 8)
-    await priceManager.setTokenConfig(jpy.address, 18, forexMaxLeverage, jpyPriceFeed.address, 8)
-    await priceManager.setTokenConfig(usdc.address, 18, cryptoMaxLeverage, usdcPriceFeed.address, 8)
-    await priceManager.setTokenConfig(usdt.address, 18, cryptoMaxLeverage, usdtPriceFeed.address, 8)
+    await priceManager.setTokenConfig(btc.address, 18, cryptoMaxLeverage, priceFeed.address, 8)
+    await priceManager.setTokenConfig(eth.address, 18, cryptoMaxLeverage, priceFeed.address, 8)
+    await priceManager.setTokenConfig(gbp.address, 18, forexMaxLeverage, priceFeed.address, 8)
+    await priceManager.setTokenConfig(eur.address, 18, forexMaxLeverage, priceFeed.address, 8)
+    await priceManager.setTokenConfig(doge.address, 18, cryptoMaxLeverage, priceFeed.address, 8)
+    await priceManager.setTokenConfig(jpy.address, 18, forexMaxLeverage, priceFeed.address, 8)
+    await priceManager.setTokenConfig(usdc.address, 18, cryptoMaxLeverage, priceFeed.address, 8)
+    await priceManager.setTokenConfig(usdt.address, 18, cryptoMaxLeverage, priceFeed.address, 8)
   })
 
   it('usdToToken 0', async () => {

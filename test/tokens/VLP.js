@@ -33,7 +33,7 @@ describe("VLP", function () {
             operator.address
         ]);
         let usdcPriceFeed = await deployContract("FastPriceFeed", [])
-        await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
+        await usdcPriceFeed.setLatestAnswer(usdc.address, toChainlinkPrice(1))
         await priceManager.setTokenConfig(usdc.address, 6, 100 * 10000, usdcPriceFeed.address, 8);
         let vestingDuration = 6 * 30 * 24 * 60 * 60
         let PositionVault = await deployContract("PositionVault", []);

@@ -37,15 +37,7 @@ describe('TriggerOrderManager', function () {
   let jpy
   let usdc
   let usdt
-  let btcPriceFeed
-  let ethPriceFeed
-  let dogePriceFeed
-  let gbpPriceFeed
-  let eurPriceFeed
-  let jpyPriceFeed
-  let usdcPriceFeed
-  let usdtPriceFeed
-  let vlpPriceFeed
+  let priceFeed
   let cooldownDuration
 
   async function expectMarketOrderSuccess(token, price) {
@@ -62,31 +54,15 @@ describe('TriggerOrderManager', function () {
 
   before(async function () {
     positionManagerAddress = user1.address
-
+    priceFeed = await deployContract('FastPriceFeed', [])
     btc = await deployContract('BaseToken', ['Bitcoin', 'BTC', 0])
-    btcPriceFeed = await deployContract('FastPriceFeed', [])
-    
     eth = await deployContract('BaseToken', ['Ethereum', 'ETH', 0])
-    ethPriceFeed = await deployContract('FastPriceFeed', [])
-
     doge = await deployContract('BaseToken', ['Dogecoin', 'DOGE', 0])
-    dogePriceFeed = await deployContract('FastPriceFeed', [])
-
     gbp = await deployContract('BaseToken', ['Pound Sterling', 'GBP', 0])
-    gbpPriceFeed = await deployContract('FastPriceFeed', [])
-
     eur = await deployContract('BaseToken', ['Euro', 'EUR', 0])
-    eurPriceFeed = await deployContract('FastPriceFeed', [])
-
     jpy = await deployContract('BaseToken', ['Japanese Yan', 'JPY', 0])
-    jpyPriceFeed = await deployContract('FastPriceFeed', [])
-
     usdt = await deployContract('BaseToken', ['Tether USD', 'USDT', expandDecimals('10000000', 18)])
-    usdtPriceFeed = await deployContract('FastPriceFeed', [])
-
     usdc = await deployContract('BaseToken', ['USD Coin', 'USDC', expandDecimals('10000000', 18)])
-    usdcPriceFeed = await deployContract('FastPriceFeed', [])
-    vlpPriceFeed = await deployContract('FastPriceFeed', [])
     vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0])
     vlp = await deployContract('VLP', [])
     operator = await deployContract('ExchangeOperators', [])
@@ -143,33 +119,26 @@ describe('TriggerOrderManager', function () {
       VaultUtils.address
     )
     //================= PriceFeed Prices Initialization ==================
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(60000))
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(56300))
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice(57000))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(4000))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(3920))
-    await ethPriceFeed.setLatestAnswer(toChainlinkPrice(4180))
-    await dogePriceFeed.setLatestAnswer(toChainlinkPrice(5))
-    await gbpPriceFeed.setLatestAnswer(toChainlinkPrice(15))
-    await eurPriceFeed.setLatestAnswer(toChainlinkPrice(1))
-    await jpyPriceFeed.setLatestAnswer('1600000') // 0.016
-    await usdtPriceFeed.setLatestAnswer(toChainlinkPrice(1))
-    await usdcPriceFeed.setLatestAnswer(toChainlinkPrice(1))
-    await vlpPriceFeed.setLatestAnswer(toChainlinkPrice(16))
-    await btcPriceFeed.setAdmin(priceManager.address, true)
-    await ethPriceFeed.setAdmin(priceManager.address, true)
-    await dogePriceFeed.setAdmin(priceManager.address, true)
-    await gbpPriceFeed.setAdmin(priceManager.address, true)
-    await eurPriceFeed.setAdmin(priceManager.address, true)
-    await jpyPriceFeed.setAdmin(priceManager.address, true)
-    
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(60000))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(56300))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(57000))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(4000))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(3920))
+    await priceFeed.setLatestAnswer(eth.address, toChainlinkPrice(4180))
+    await priceFeed.setLatestAnswer(doge.address, toChainlinkPrice(5))
+    await priceFeed.setLatestAnswer(gbp.address, toChainlinkPrice(15))
+    await priceFeed.setLatestAnswer(eur.address, toChainlinkPrice(1))
+    await priceFeed.setLatestAnswer(jpy.address, '1600000') // 0.016
+    await priceFeed.setLatestAnswer(usdt.address, toChainlinkPrice(1))
+    await priceFeed.setLatestAnswer(usdc.address, toChainlinkPrice(1))
+    await priceFeed.setAdmin(priceManager.address, true)
     const tokens = [
       {
         name: 'btc',
         address: btc.address,
         decimals: 18,
         isForex: false,
-        priceFeed: btcPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 30 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -179,7 +148,7 @@ describe('TriggerOrderManager', function () {
         address: eth.address,
         decimals: 18,
         isForex: false,
-        priceFeed: ethPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 30 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -189,7 +158,7 @@ describe('TriggerOrderManager', function () {
         address: doge.address,
         decimals: 18,
         isForex: false,
-        priceFeed: dogePriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 30 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -199,7 +168,7 @@ describe('TriggerOrderManager', function () {
         address: gbp.address,
         decimals: 18,
         isForex: true,
-        priceFeed: gbpPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 8, // 0.008% 80 / 100000
@@ -209,7 +178,7 @@ describe('TriggerOrderManager', function () {
         address: eur.address,
         decimals: 18,
         isForex: true,
-        priceFeed: eurPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 8, // 0.008% 80 / 100000
@@ -219,7 +188,7 @@ describe('TriggerOrderManager', function () {
         address: jpy.address,
         decimals: 18,
         isForex: true,
-        priceFeed: jpyPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 8, // 0.008% 80 / 100000
@@ -229,7 +198,7 @@ describe('TriggerOrderManager', function () {
         address: usdc.address,
         decimals: 18,
         isForex: true,
-        priceFeed: usdcPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -239,7 +208,7 @@ describe('TriggerOrderManager', function () {
         address: usdt.address,
         decimals: 18,
         isForex: true,
-        priceFeed: usdtPriceFeed.address,
+        priceFeed: priceFeed.address,
         priceDecimals: 8,
         maxLeverage: 100 * 10000,
         marginFeeBasisPoints: 80, // 0.08% 80 / 100000
@@ -403,7 +372,7 @@ describe('TriggerOrderManager', function () {
 
   it('setLatestAnswer for BTC', async () => {
     const lastBtcPrice = await priceManager.getLastPrice(btc.address)
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57002'))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('57002'))
   })
 
   it('addTriggerOrders 1', async () => {
@@ -454,7 +423,7 @@ describe('TriggerOrderManager', function () {
   })
 
   it('setLatestAnswer for BTC', async () => {
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58000'))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('58000'))
   })
 
   it('triggerPosition 1', async () => {
@@ -474,11 +443,7 @@ describe('TriggerOrderManager', function () {
   })
 
   it('setLatestAnswer for BTC', async () => {
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
-  })
-
-  it('setLatestAnswer for BTC', async () => {
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('57000'))
   })
 
   it('increasePosition for StopLoss', async () => {
@@ -528,7 +493,7 @@ describe('TriggerOrderManager', function () {
   })
 
   it('setLatestAnswer for BTC', async () => {
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice('52000'))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('52000'))
   })
 
   it('triggerPosition 4', async () => {
@@ -548,7 +513,7 @@ describe('TriggerOrderManager', function () {
   })
 
   it('setLatestAnswer for BTC', async () => {
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('57000'))
   })
 
   // note: this test is completely duplicated from another test in this file
@@ -616,7 +581,7 @@ describe('TriggerOrderManager', function () {
   })
 
   it('setLatestAnswer for BTC', async () => {
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice('58500'))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('58500'))
   })
 
   it('triggerPosition 5', async () => {
@@ -644,7 +609,7 @@ describe('TriggerOrderManager', function () {
   })
 
   it('setLatestAnswer for BTC', async () => {
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('57000'))
   })
 
   it('addTriggerOrdersData with wrong orders or invalid data for Long', async () => {
@@ -718,7 +683,7 @@ describe('TriggerOrderManager', function () {
   })
 
   it('setLatestAnswer for BTC', async () => {
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57000'))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('57000'))
   })
 
   it('increasePosition for Short', async () => {
@@ -813,7 +778,7 @@ describe('TriggerOrderManager', function () {
     await expect(PositionVault.triggerForTPSL(account, pId)).to.be.revertedWith('trigger not ready')
   })
   it('setLatestAnswer for BTC', async () => {
-    await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56200'))
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('56200'))
   })
 
   it('validateTPSL for Short after rising price', async () => {
