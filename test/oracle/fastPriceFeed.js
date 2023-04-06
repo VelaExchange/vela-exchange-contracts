@@ -15,10 +15,12 @@ use(solidity)
 describe('FastPriceFeed', function () {
   const provider = waffle.provider
   const [wallet, user0, user1, user2, user3] = provider.getWallets()
+  let btc
   let btcPriceFeed
   let latestAt
 
   before(async function () {
+    btc = await deployContract('BaseToken', ['Bitcoin', 'BTC', 0])
     btcPriceFeed = await deployContract('FastPriceFeed', [])
   })
 
@@ -35,29 +37,25 @@ describe('FastPriceFeed', function () {
   })
 
   it('setLatestAnswer', async () => {
-    await expect(btcPriceFeed.connect(user0).setLatestAnswer(toChainlinkPrice(60000))).to.be.revertedWith(
+    await expect(btcPriceFeed.connect(user0).setLatestAnswer(btc.address, toChainlinkPrice(60000))).to.be.revertedWith(
       'PriceFeed: forbidden'
     )
-    await btcPriceFeed.connect(user1).setLatestAnswer(toChainlinkPrice(60000))
-    const answer = await btcPriceFeed.latestAnswer()
+    await btcPriceFeed.connect(user1).setLatestAnswer(btc.address, toChainlinkPrice(60000))
+    const answer = await btcPriceFeed.latestAnswer(btc.address)
     latestAt = await getBlockTime(provider)
     expect(parseFloat(ethers.utils.formatUnits(answer, 8))).eq(60000)
   })
 
   it('getRoundData', async () => {
     const roundId = 1
-    const roundData = await btcPriceFeed.getRoundData(roundId)
+    const roundData = await btcPriceFeed.getRoundData(btc.address, roundId)
     const answer = roundData[1]
     const roundLatestAt = roundData[2]
     expect(answer).eq(toChainlinkPrice(60000))
     expect(roundLatestAt).eq(latestAt)
   })
 
-  it('aggregator', async () => {
-    expect(await btcPriceFeed.aggregator()).eq(zeroAddress)
-  })
-
   it('latestRound', async () => {
-    expect(await btcPriceFeed.latestRound()).eq(1)
+    expect(await btcPriceFeed.latestRound(btc.address)).eq(1)
   })
 })

@@ -125,6 +125,8 @@ contract VaultUtils is IVaultUtils, Constants {
             position.size,
             position.averagePrice,
             _price,
+            position.lastIncreasedTime,
+            position.accruedBorrowFee,
             position.fundingIndex
         );
         if (hasProfit) {
@@ -164,15 +166,15 @@ contract VaultUtils is IVaultUtils, Constants {
                 position.size,
                 position.averagePrice,
                 price,
+                position.lastIncreasedTime,
+                position.accruedBorrowFee,
                 position.fundingIndex
             );
             uint256 migrateFeeUsd = settingsManager.collectMarginFees(
                 position.owner,
                 position.indexToken,
                 position.isLong,
-                position.size - position.collateral,
-                position.size,
-                position.lastIncreasedTime
+                position.size
             );
             if (!hasProfit && position.collateral < delta) {
                 if (_raise) {
