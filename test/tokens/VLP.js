@@ -32,8 +32,7 @@ describe("VLP", function () {
         let Vault = await deployContract("Vault", [
             operator.address,
             vlp.address,
-            vusd.address,
-            tokenFarm.address
+            vusd.address
         ]);
         let priceManager = await deployContract("PriceManager", [
             operator.address
@@ -62,7 +61,7 @@ describe("VLP", function () {
         await vlp.transferOwnership(Vault.address);
         operator.setOperator(Vault.address, 1)
         await usdc.connect(wallet).approve(Vault.address,  amount);
-        await Vault.mintAndStakeVlp(wallet.address, usdc.address, amount);
+        await Vault.stake(wallet.address, usdc.address, amount);
     });
 
     it ("id", async () => {

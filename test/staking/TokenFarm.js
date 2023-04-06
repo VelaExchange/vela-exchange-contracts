@@ -51,8 +51,7 @@ describe("TokenFarm", function () {
         let vault = await deployContract("Vault", [
             operator.address,
             vlp.address,
-            vusd.address,
-            tokenFarm.address
+            vusd.address
         ]);
         let PositionVault = await deployContract("PositionVault", []);
         let settingsManager = await deployContract("SettingsManager",
