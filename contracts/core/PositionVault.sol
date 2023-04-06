@@ -119,7 +119,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.owner,
             position.indexToken,
             position.isLong,
-            _sizeDelta
+            position.size - position.collateral,
+            _sizeDelta,
+            position.lastIncreasedTime
         );
         checkSlippage(position.isLong, _acceptedPrice, price);
         _increasePosition(
@@ -333,7 +335,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.owner,
             position.indexToken,
             position.isLong,
-            order.size
+            position.size - position.collateral,
+            order.size,
+            position.lastIncreasedTime
         );
         uint256 price = priceManager.getLastPrice(position.indexToken);
         checkSlippage(position.isLong, order.lmtPrice, price);
@@ -419,7 +423,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     _account,
                     position.indexToken,
                     position.isLong,
-                    order.size
+                    position.size - position.collateral,
+                    order.size,
+                    position.lastIncreasedTime
                 );
                 uint256 price = priceManager.getLastPrice(position.indexToken);
                 _increasePosition(
@@ -440,7 +446,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     _account,
                     position.indexToken,
                     position.isLong,
-                    order.size
+                    position.size - position.collateral,
+                    order.size,
+                    position.lastIncreasedTime
                 );
                 uint256 price = priceManager.getLastPrice(position.indexToken);
                 _increasePosition(
@@ -574,9 +582,8 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     int256(_sizeDelta) *
                     settingsManager.fundingIndex(_indexToken)) /
                 int256(position.size + _sizeDelta);
-            position.accruedBorrowFee += settingsManager.getBorrowFee(position.indexToken, position.size, position.lastIncreasedTime);
         }
-        uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
+        uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size - position.collateral, _sizeDelta, position.lastIncreasedTime);
         uint256 _amountInAfterFee = _amountIn - fee;
         position.collateral += _amountInAfterFee;
         position.size += _sizeDelta;
@@ -609,25 +616,17 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                 position.size,
                 position.averagePrice,
                 _price,
-                position.lastIncreasedTime,
-                position.accruedBorrowFee,
                 position.fundingIndex
             );
             hasProfit = _hasProfit;
             // get the proportional change in pnl
             adjustedDelta = (_sizeDelta * delta) / position.size;
 
-            uint256 countedBorrowFee = (_sizeDelta * position.accruedBorrowFee) / position.size;
-            if (position.accruedBorrowFee > countedBorrowFee) {
-                position.accruedBorrowFee -= countedBorrowFee;
-            } else {
-                position.accruedBorrowFee = 0;
-            }
         }
 
         uint256 usdOut;
         // transfer profits
-        uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
+        uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, position.size - position.collateral, _sizeDelta, position.lastIncreasedTime);
         if (adjustedDelta > 0) {
             if (hasProfit) {
                 usdOut = adjustedDelta;

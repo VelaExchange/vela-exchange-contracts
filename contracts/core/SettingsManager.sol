@@ -399,10 +399,14 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         address _account,
         address _indexToken,
         bool _isLong,
-        uint256 _sizeDelta
+        uint256 _borrowedAmount,
+        uint256 _sizeDelta,
+        uint256 _lastIncreasedTime
     ) external view override returns (uint256) {
+        uint256 positionFee = getPositionFee(_indexToken, _isLong, _sizeDelta);
+        uint256 borrowFee = getBorrowFee(_indexToken, _borrowedAmount, _lastIncreasedTime);
         uint256 feeUsd = ((BASIS_POINTS_DIVISOR - deductFeePercent[_account]) *
-            getPositionFee(_indexToken, _isLong, _sizeDelta)) / BASIS_POINTS_DIVISOR;
+            (positionFee + borrowFee)) / BASIS_POINTS_DIVISOR;
 
         return (feeUsd * tokenFarm.getTierVela(_account)) / BASIS_POINTS_DIVISOR;
     }
@@ -464,8 +468,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         uint256 _size,
         uint256 _averagePrice,
         uint256 _lastPrice,
-        uint256 _lastIncreasedTime,
-        uint256 _accruedBorrowFee,
         int256 _fundingIndex
     ) public view override returns (bool, uint256) {
         require(_averagePrice > 0, "avgPrice > 0");
@@ -485,10 +487,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
             }
         }
 
-        pnl =
-            pnl -
-            getFundingFee(_indexToken, _isLong, _size, _fundingIndex) -
-            int256(getBorrowFee(_indexToken, _size, _lastIncreasedTime) + _accruedBorrowFee);
+        pnl += getFundingFee(_indexToken, _isLong, _size, _fundingIndex);
 
         if (pnl > 0) {
             return (true, uint256(pnl));
@@ -547,11 +546,12 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
                 : (int256(_size) * (_fundingIndex - fundingIndex[_indexToken])) / int256(FUNDING_RATE_PRECISION);
     }
 
-    function getBorrowFee(address _indexToken, uint256 _sizeDelta, uint256 _lastIncreasedTime) public view override returns (uint256) {
+    function getBorrowFee(address _indexToken, uint256 _borrowedAmount, uint256 _lastIncreasedTime) public view override returns (uint256) {
+        if (_lastIncreasedTime == 0 || _borrowedAmount == 0) return 0;
         uint256 OI_Limit_asset = maxOpenInterestPerAssetPerSide[_indexToken][true] + maxOpenInterestPerAssetPerSide[_indexToken][false];
         uint256 OI_asset = openInterestPerAssetPerSide[_indexToken][true] + openInterestPerAssetPerSide[_indexToken][false];
         uint256 borrowingRate = borrowFeeFactor * (BASIS_POINTS_DIVISOR * totalOpenInterest / positionVault.getVaultUSDBalance() + BASIS_POINTS_DIVISOR * OI_asset / OI_Limit_asset) / 2; 
-        return ((block.timestamp - _lastIncreasedTime) * _sizeDelta * borrowingRate) / BASIS_POINTS_DIVISOR / borrowInterval / BASIS_POINTS_DIVISOR;
+        return ((block.timestamp - _lastIncreasedTime) * _borrowedAmount * borrowingRate) / BASIS_POINTS_DIVISOR / borrowInterval / BASIS_POINTS_DIVISOR;
     }
 
     function getPositionFee(

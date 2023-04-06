@@ -56,7 +56,9 @@ interface ISettingsManager {
         address _account,
         address _indexToken,
         bool _isLong,
-        uint256 _sizeDelta
+        uint256 _collateralDelta,
+        uint256 _sizeDelta,
+        uint256 _lastIncreasedTime
     ) external view returns (uint256);
 
     function getPnl(
@@ -65,14 +67,12 @@ interface ISettingsManager {
         uint256 _size,
         uint256 _averagePrice,
         uint256 _lastPrice,
-        uint256 _lastIncreasedTime,
-        uint256 _accruedBorrowFee,
         int256 _fundingIndex
     ) external view returns (bool, uint256);
 
     function updateFunding(address _indexToken) external;
 
-    function getBorrowFee(address _indexToken, uint256 _sizeDelta, uint256 _lastIncreasedTime) external view returns (uint256);
+    function getBorrowFee(address _indexToken, uint256 _borrowedAmount, uint256 _lastIncreasedTime) external view returns (uint256);
 
     function getPositionFee(address _indexToken, bool _isLong, uint256 _sizeDelta) external view returns (uint256);
 

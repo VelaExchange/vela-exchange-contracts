@@ -113,8 +113,6 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
             position.size,
             position.averagePrice,
             price,
-            position.lastIncreasedTime,
-            position.accruedBorrowFee,
             position.fundingIndex
         );
         require(

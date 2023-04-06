@@ -54,7 +54,6 @@ struct Position {
     uint256 lastIncreasedTime;
     uint256 lastPrice;
     uint256 size;
-    uint256 accruedBorrowFee;
 }
 
 struct TriggerInfo {
