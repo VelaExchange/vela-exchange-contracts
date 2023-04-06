@@ -21,6 +21,9 @@ describe("TokenFarm", function () {
     let tokenFarm;
     let operator;
     let vestingDuration
+    let LiquidateVault
+    let OrderVault
+    let PositionVault
     let complexRewardPerSec1; //vela pool
     let complexRewardPerSec2; //vlp pool
     let rewardPerSec1
@@ -53,9 +56,13 @@ describe("TokenFarm", function () {
             vlp.address,
             vusd.address
         ]);
-        let PositionVault = await deployContract("PositionVault", []);
+        let priceManager = await deployContract('PriceManager', [operator.address])
+        LiquidateVault = await deployContract('LiquidateVault', [])
+        OrderVault = await deployContract('OrderVault', [])
+        PositionVault = await deployContract("PositionVault", [vault.address, priceManager.address]);
         let settingsManager = await deployContract("SettingsManager",
           [
+            LiquidateVault.address,
             PositionVault.address,
             operator.address,
             vusd.address,

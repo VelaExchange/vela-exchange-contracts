@@ -25,7 +25,6 @@ describe("VLP", function () {
         let vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0]);
         operator = await deployContract('ExchangeOperators', [])
         let vestingDuration = 6 * 30 * 24 * 60 * 60
-        let PositionVault = await deployContract("PositionVault", []);
         let vela = await deployContract('MintableBaseToken', ["Vela Exchange", "VELA", 0])
         let eVela = await deployContract('eVELA', [])
         let tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
@@ -37,12 +36,16 @@ describe("VLP", function () {
         let priceManager = await deployContract("PriceManager", [
             operator.address
         ]);
+        let LiquidateVault = await deployContract("LiquidateVault", []);
+        let OrderVault = await deployContract("OrderVault", []);
+        let PositionVault = await deployContract("PositionVault", [Vault.address, priceManager.address]);
         let usdcPriceFeed = await deployContract("FastPriceFeed", [])
         await usdcPriceFeed.setLatestAnswer(usdc.address, toChainlinkPrice(1))
         await priceManager.setTokenConfig(usdc.address, 6, 100 * 10000, usdcPriceFeed.address, 8);
 
         let settingsManager = await deployContract("SettingsManager",
           [
+            LiquidateVault.address,
             PositionVault.address,
             operator.address,
             vusd.address,
@@ -56,6 +59,8 @@ describe("VLP", function () {
             priceManager.address,
             settingsManager.address,
             PositionVault.address,
+            OrderVault.address,
+            LiquidateVault.address
         );
         await vusd.transferOwnership(Vault.address);
         await vlp.transferOwnership(Vault.address);

@@ -46,6 +46,11 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         _;
     }
 
+    modifier onlyPositionVault() {
+        require(msg.sender == address(positionVault), "Only position vault");
+        _;
+    }
+
     constructor() {}
 
     function addTrailingStop(address _account, uint256 _posId, uint256[] memory _params) external override onlyVault {
@@ -102,7 +107,7 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         isInitialized = true;
     }
 
-    function updateOrder(uint256 _posId, uint256 _positionType, uint256 _collateral, uint256 _size, OrderStatus _status) public override {
+    function updateOrder(uint256 _posId, uint256 _positionType, uint256 _collateral, uint256 _size, OrderStatus _status) public override onlyPositionVault {
         Order storage order = orders[_posId];
         order.positionType = _positionType;
         order.collateral = _collateral;
@@ -111,7 +116,7 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
 
-    function createNewOrder(uint256 _posId, uint256 _positionType, uint256[] memory _params, OrderStatus _status) external override {
+    function createNewOrder(uint256 _posId, uint256 _positionType, uint256[] memory _params, OrderStatus _status) external override onlyPositionVault {
         Order storage order = orders[_posId];
         order.status = _status;
         order.positionType = _positionType;
@@ -122,7 +127,7 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         emit NewOrder(_posId, order.positionType, order.status, _params);
     }
 
-    function cancelMarketOrder(uint256 _posId) public override {
+    function cancelMarketOrder(uint256 _posId) public override onlyPositionVault {
         Order storage order = orders[_posId];
         order.status = OrderStatus.CANCELED;
         emit UpdateOrder(_posId, order.positionType, order.status);
@@ -151,7 +156,7 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         return order;
     }
 
-    function removeOrder(uint256 _posId) external override {
+    function removeOrder(uint256 _posId) external override onlyPositionVault {
         delete orders[_posId];
     }
 }
