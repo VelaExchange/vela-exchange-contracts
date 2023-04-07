@@ -12,7 +12,7 @@ const { toChainlinkPrice } = require('../../scripts/shared/chainlink.js')
 
 use(solidity)
 
-describe('TriggerOrderManager', function () {
+describe('OrderVault', function () {
   const provider = waffle.provider
   const [wallet, user0, user1, user2, user3] = provider.getWallets()
   let Vault
@@ -27,7 +27,6 @@ describe('TriggerOrderManager', function () {
   let positionManagerAddress
   let priceManager
   let settingsManager
-  let triggerOrderManager
   let tokenFarm
   let operator
   let vestingDuration
@@ -96,20 +95,6 @@ describe('TriggerOrderManager', function () {
       vusd.address,
       tokenFarm.address,
     ])
-    await expect(
-      deployContract('TriggerOrderManager', [zeroAddress, priceManager.address, settingsManager.address])
-    ).to.be.revertedWith('positionVault invalid')
-    await expect(
-      deployContract('TriggerOrderManager', [PositionVault.address, zeroAddress, settingsManager.address])
-    ).to.be.revertedWith('priceManager invalid')
-    await expect(
-      deployContract('TriggerOrderManager', [PositionVault.address, priceManager.address, zeroAddress])
-    ).to.be.revertedWith('settingsManager invalid')
-    triggerOrderManager = await deployContract('TriggerOrderManager', [
-      PositionVault.address,
-      priceManager.address,
-      settingsManager.address,
-    ])
     VaultUtils = await deployContract('VaultUtils', [
       LiquidateVault.address,
       OrderVault.address,
@@ -123,7 +108,6 @@ describe('TriggerOrderManager', function () {
       OrderVault.address,
       LiquidateVault.address,
       settingsManager.address,
-      triggerOrderManager.address,
       VaultUtils.address
     )
     await OrderVault.initialize(
@@ -407,12 +391,12 @@ describe('TriggerOrderManager', function () {
     await expect(settingsManager.setTriggerGasFee(expandDecimals('1', 18))).to.be.revertedWith('Above max')
     await settingsManager.setTriggerGasFee(newTriggerGasFee)
     await expect(
-      triggerOrderManager.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
+      OrderVault.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
         from: wallet.address,
         value: 0,
       })
     ).to.be.revertedWith('invalid triggerGasFee')
-    await triggerOrderManager.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
+    await OrderVault.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
       from: wallet.address,
       value: newTriggerGasFee,
     })
@@ -424,7 +408,7 @@ describe('TriggerOrderManager', function () {
     const indexToken = btc.address
     const isLong = true
     const posId = 0
-    const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(posId)
+    const triggerOrderInfo = await OrderVault.getTriggerOrderInfo(posId)
     console.log('triggerOrderInfo: ', triggerOrderInfo.status.toString())
     const triggers = triggerOrderInfo.triggers
     for (let i = 0; i < triggers.length; i++) {
@@ -460,7 +444,7 @@ describe('TriggerOrderManager', function () {
     const indexToken = btc.address
     const isLong = true
     const posId = 0
-    const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(posId)
+    const triggerOrderInfo = await OrderVault.getTriggerOrderInfo(posId)
   })
 
   it('setLatestAnswer for BTC', async () => {
@@ -499,7 +483,7 @@ describe('TriggerOrderManager', function () {
     const isTPs = [true, false]
     const prices = [expandDecimals('57500', 30), expandDecimals('54000', 30)]
     const amountPercents = [50000, 100000]
-    await triggerOrderManager.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
+    await OrderVault.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
       from: wallet.address,
       value: 0,
     })
@@ -510,7 +494,7 @@ describe('TriggerOrderManager', function () {
     const indexToken = btc.address
     const isLong = true
     const posId = 1
-    const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(posId)
+    const triggerOrderInfo = await OrderVault.getTriggerOrderInfo(posId)
   })
 
   it('setLatestAnswer for BTC', async () => {
@@ -530,7 +514,7 @@ describe('TriggerOrderManager', function () {
     const indexToken = btc.address
     const isLong = true
     const posId = 1
-    const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(posId)
+    const triggerOrderInfo = await OrderVault.getTriggerOrderInfo(posId)
   })
 
   it('setLatestAnswer for BTC', async () => {
@@ -572,7 +556,7 @@ describe('TriggerOrderManager', function () {
     const isTPs = [true, false]
     const prices = [expandDecimals('57500', 30), expandDecimals('54000', 30)]
     const amountPercents = [50000, 100000]
-    await triggerOrderManager.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
+    await OrderVault.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
       from: wallet.address,
       value: 0,
     })
@@ -583,14 +567,14 @@ describe('TriggerOrderManager', function () {
     const isLong = true
     const posId = 2
     const orderId = 1
-    await triggerOrderManager.cancelTriggerOrder(posId, orderId)
+    await OrderVault.cancelTriggerOrder(posId, orderId)
   })
 
   it('cancelPositionTrigger', async () => {
     const indexToken = btc.address
     const isLong = true
     const posId = 2
-    const triggerOrderInfo = await triggerOrderManager.cancelPositionTrigger(posId)
+    const triggerOrderInfo = await OrderVault.cancelPositionTrigger(posId)
   })
 
   it('getTriggerOrderInfo', async () => {
@@ -598,7 +582,7 @@ describe('TriggerOrderManager', function () {
     const indexToken = btc.address
     const isLong = true
     const posId = 2
-    const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(posId)
+    const triggerOrderInfo = await OrderVault.getTriggerOrderInfo(posId)
   })
 
   it('setLatestAnswer for BTC', async () => {
@@ -618,7 +602,7 @@ describe('TriggerOrderManager', function () {
     const token = btc.address
     const isLong = true
     const posId = 2
-    expect(await triggerOrderManager.validateTPSLTriggers(token, isLong, posId)).eq(false)
+    expect(await OrderVault.validateTPSLTriggers(token, isLong, posId)).eq(false)
   })
 
   it('validateTPSLTriggers for Short', async () => {
@@ -626,7 +610,7 @@ describe('TriggerOrderManager', function () {
     const token = btc.address
     const isLong = false
     const posId = 4
-    expect(await triggerOrderManager.validateTPSLTriggers(token, isLong, posId)).eq(false)
+    expect(await OrderVault.validateTPSLTriggers(token, isLong, posId)).eq(false)
   })
 
   it('setLatestAnswer for BTC', async () => {
@@ -647,7 +631,7 @@ describe('TriggerOrderManager', function () {
     ]
     const amountPercents = [20000, 10000, 10000, 30000]
     await expect(
-      triggerOrderManager.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
+      OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
         from: wallet.address,
         value: 0,
       })
@@ -668,7 +652,7 @@ describe('TriggerOrderManager', function () {
     ]
     const amountPercents = [20000, 10000, 10000, 30000]
     await expect(
-      triggerOrderManager.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
+      OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
         from: wallet.address,
         value: 0,
       })
@@ -688,11 +672,11 @@ describe('TriggerOrderManager', function () {
       expandDecimals('55000', 30),
     ]
     const amountPercents = [20000, 10000, 10000, 30000]
-    await triggerOrderManager.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
+    await OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
       from: wallet.address,
       value: 0,
     })
-    const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(pId)
+    const triggerOrderInfo = await OrderVault.getTriggerOrderInfo(pId)
   })
 
   it('triggerPosition Trigger Not Open for Long', async () => {
@@ -743,7 +727,7 @@ describe('TriggerOrderManager', function () {
     ]
     const amountPercents = [20000, 10000, 10000, 30000]
     await expect(
-      triggerOrderManager.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
+      OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
         from: wallet.address,
         value: 0,
       })
@@ -764,7 +748,7 @@ describe('TriggerOrderManager', function () {
     ]
     const amountPercents = [20000, 10000, 10000, 30000]
     await expect(
-      triggerOrderManager.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
+      OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
         from: wallet.address,
         value: 0,
       })
@@ -784,11 +768,11 @@ describe('TriggerOrderManager', function () {
       expandDecimals('58000', 30),
     ]
     const amountPercents = [20000, 10000, 10000, 30000]
-    await triggerOrderManager.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
+    await OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
       from: wallet.address,
       value: 0,
     })
-    const triggerOrderInfo = await triggerOrderManager.getTriggerOrderInfo(pId)
+    const triggerOrderInfo = await OrderVault.getTriggerOrderInfo(pId)
   })
 
   it('triggerPosition trigger not ready for Short', async () => {
@@ -807,7 +791,7 @@ describe('TriggerOrderManager', function () {
     const indexToken = btc.address
     const isLong = false
     const pId = 3
-    expect(await triggerOrderManager.validateTPSLTriggers(indexToken, isLong, pId)).eq(true)
+    expect(await OrderVault.validateTPSLTriggers(indexToken, isLong, pId)).eq(true)
   })
 
   it('executeTriggerOrders for Short', async () => {

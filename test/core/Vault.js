@@ -29,7 +29,6 @@ describe('Vault', function () {
   let eVela
   let priceManager
   let settingsManager
-  let triggerOrderManager
   let positionManagerAddress
   let feeManagerAddress
   let tokenFarm
@@ -125,11 +124,6 @@ describe('Vault', function () {
       vusd.address,
       tokenFarm.address,
     ])
-    triggerOrderManager = await deployContract('TriggerOrderManager', [
-      PositionVault.address,
-      priceManager.address,
-      settingsManager.address,
-    ])
     await expect(
       deployContract('VaultUtils', [LiquidateVault.address, OrderVault.address,zeroAddress, priceManager.address, settingsManager.address])
     ).to.be.revertedWith('vault invalid')
@@ -157,7 +151,6 @@ describe('Vault', function () {
         OrderVault.address,
         zeroAddress,
         settingsManager.address,
-        triggerOrderManager.address,
         VaultUtils.address
       )
     ).to.be.revertedWith('liquidateVault invalid')
@@ -166,7 +159,6 @@ describe('Vault', function () {
         OrderVault.address,
         LiquidateVault.address,
         zeroAddress,
-        triggerOrderManager.address,
         VaultUtils.address
       )
     ).to.be.revertedWith('settingsManager invalid')
@@ -175,16 +167,6 @@ describe('Vault', function () {
         OrderVault.address,
         LiquidateVault.address,
         settingsManager.address,
-        zeroAddress,
-        VaultUtils.address
-      )
-    ).to.be.revertedWith('triggerOrderManager address is invalid')
-    await expect(
-      PositionVault.initialize(
-        OrderVault.address,
-        LiquidateVault.address,
-        settingsManager.address,
-        triggerOrderManager.address,
         zeroAddress
       )
     ).to.be.revertedWith('vaultUtils address is invalid')
@@ -192,7 +174,6 @@ describe('Vault', function () {
       OrderVault.address,
       LiquidateVault.address,
       settingsManager.address,
-      triggerOrderManager.address,
       VaultUtils.address
     )
     await OrderVault.initialize(
@@ -600,7 +581,7 @@ describe('Vault', function () {
       expandDecimals('54000', 30),
     ]
     const amountPercents = [50000, 30000, 20000, 100000]
-    await triggerOrderManager.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
+    await OrderVault.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
       from: wallet.address,
       value: 0,
     })
@@ -661,7 +642,7 @@ describe('Vault', function () {
       expandDecimals('54000', 30),
     ]
     const amountPercents = [50000, 30000, 20000, 100000]
-    await triggerOrderManager.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
+    await OrderVault.addTriggerOrders(indexToken, isLong, posId, isTPs, prices, amountPercents, {
       from: wallet.address,
       value: 0,
     })
