@@ -26,7 +26,6 @@ describe('SettingsManager', function () {
   let PositionVault
   let priceManager
   let settingsManager
-  let triggerOrderManager
   let tokenFarm
   let vestingDuration
   let btc
@@ -108,11 +107,6 @@ describe('SettingsManager', function () {
       vusd.address,
       tokenFarm.address,
     ])
-    triggerOrderManager = await deployContract('TriggerOrderManager', [
-      PositionVault.address,
-      priceManager.address,
-      settingsManager.address,
-    ])
     VaultUtils = await deployContract('VaultUtils', [
       LiquidateVault.address,
       OrderVault.address,
@@ -124,7 +118,6 @@ describe('SettingsManager', function () {
       OrderVault.address,
       LiquidateVault.address,
       settingsManager.address,
-      triggerOrderManager.address,
       VaultUtils.address
     )
     await OrderVault.initialize(

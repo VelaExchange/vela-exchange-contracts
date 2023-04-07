@@ -14,7 +14,6 @@ import "./interfaces/IPriceManager.sol";
 import "./interfaces/ISettingsManager.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IVaultUtils.sol";
-import "./interfaces/ITriggerOrderManager.sol";
 import "./interfaces/IOrderVault.sol";
 
 import {Constants} from "../access/Constants.sol";
@@ -24,7 +23,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     uint256 public lastPosId;
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
-    ITriggerOrderManager private triggerOrderManager;
     IVault immutable private vault;
     ILiquidateVault private liquidateVault;
     IOrderVault private orderVault;
@@ -125,18 +123,15 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         IOrderVault _orderVault,
         ILiquidateVault _liquidateVault,
         ISettingsManager _settingsManager,
-        ITriggerOrderManager _triggerOrderManager,
         IVaultUtils _vaultUtils
     ) external {
         require(!isInitialized, "Not initialized");
         require(Address.isContract(address(_settingsManager)), "settingsManager invalid");
-        require(Address.isContract(address(_triggerOrderManager)), "triggerOrderManager address is invalid");
         require(Address.isContract(address(_liquidateVault)), "liquidateVault invalid");
         require(Address.isContract(address(_vaultUtils)), "vaultUtils address is invalid");
         liquidateVault = _liquidateVault;
         orderVault = _orderVault;
         settingsManager = _settingsManager;
-        triggerOrderManager = _triggerOrderManager;
         vaultUtils = _vaultUtils;
         isInitialized = true;
     } 
@@ -310,7 +305,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.owner == msg.sender || settingsManager.isManager(msg.sender),
             "You are not allowed to trigger"
         );
-        (bool hitTrigger, uint256 triggerAmountPercent, uint256 triggerPrice) = triggerOrderManager
+        (bool hitTrigger, uint256 triggerAmountPercent, uint256 triggerPrice) = orderVault
             .executeTriggerOrders(position.indexToken, position.isLong, _posId);
         require(hitTrigger, "trigger not ready");
         if (hitTrigger) {

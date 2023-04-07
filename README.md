@@ -50,7 +50,6 @@ All contracts deployed to Arbitrum Goerli are detailed at in our [Testnet Contra
 | VaultUtils           | 0x2CB6f026266F6b9451E559dD7c4BbF1bD0DD2045 | https://testnet.arbiscan.io/address/0x2CB6f026266F6b9451E559dD7c4BbF1bD0DD2045 |
 | PriceManager         | 0x2c4478Dd91341Cb50521F2Af7174FB3C73A7DbEC | https://testnet.arbiscan.io/address/0x2c4478Dd91341Cb50521F2Af7174FB3C73A7DbEC |
 | SettingsManager      | 0xce12b20F44E8fD27E4cd67eBc5c4F871400f84e7 | https://testnet.arbiscan.io/address/0xce12b20F44E8fD27E4cd67eBc5c4F871400f84e7 |
-| TriggerOrderManager  | 0x2E26d50c130aD55331DfF77e629433F93a962eDE | https://testnet.arbiscan.io/address/0x2E26d50c130aD55331DfF77e629433F93a962eDE |
 
 ## Contract Folders
 
@@ -585,7 +584,7 @@ Example Output
 
 ```
 
-## TriggerOrderManager
+## OrderVault
 
 This is a contract for updating user's TP or SL trigger orders
 
@@ -593,7 +592,7 @@ This is a contract for updating user's TP or SL trigger orders
 
 This is a function for adding or updating User's TP or SL orders.
 ```
-triggerOrderManager.updateTriggerOrders(
+OrderVault.updateTriggerOrders(
         address _indexToken,
         bool _isLong,
         uint256 _posId,
@@ -646,7 +645,7 @@ Example Output
 
 This is a function for cancelling User's TP or SL orders.
 ```
-triggerOrderManager.cancelTriggerOrders(
+OrderVault.cancelTriggerOrders(
         address _token,
         bool _isLong,
         uint256 _posId
@@ -667,7 +666,7 @@ Example Output
 
 This is a function for cancelling User's TP or SL orders.
 ```
-triggerOrderManager.getTriggerOrderInfo(
+OrderVault.getTriggerOrderInfo(
         address _account,
         address _indexToken,
         bool _isLong,
@@ -698,7 +697,7 @@ triggerOrderInfo:  [
 
 This is a function for checking user's TP or SL triggerable status to excute user's TP or SL.
 ```
-triggerOrderManager.validateTPSLTriggers(
+OrderVault.validateTPSLTriggers(
         address _account,
         address _token,
         bool _isLong,

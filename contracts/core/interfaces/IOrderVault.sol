@@ -12,4 +12,15 @@ interface IOrderVault {
     function createNewOrder(uint256 _posId, uint256 _positionType, uint256[] memory _params, OrderStatus _status) external;
     function removeOrder(uint256 _posId) external;
     function getOrder(uint256 _posId) external view returns (Order memory);
+    function executeTriggerOrders(
+        address _token,
+        bool _isLong,
+        uint256 _posId
+    ) external returns (bool, uint256, uint256);
+
+    function validateTPSLTriggers(
+        address _token,
+        bool _isLong,
+        uint256 _posId
+    ) external view returns (bool);
 }
