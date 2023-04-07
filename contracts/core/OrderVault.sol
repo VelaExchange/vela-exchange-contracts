@@ -24,13 +24,12 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
     IVault private vault;
     IVaultUtils private vaultUtils;
 
-    uint256 public openMarketQueueIndex;
-    uint256[] public openMarketQueuePosIds;
-
     bool private isInitialized;
     mapping(uint256 => Order) public orders;
     event AddTrailingStop(uint256 posId, uint256[] data);
+    event AddTriggerOrders(uint256 posId, bool isTP, uint256 price, uint256 amountPercent, TriggerStatus status);
     event ExecuteAddPosition(uint256 posId, uint256 collateral, uint256 size, uint256 feeUsd);
+    event ExecuteTriggerOrders(uint256 posId, uint256 amount, uint256 orderId, uint256 price, TriggerStatus status);
     event NewOrder(
         uint256 posId,
         uint256 positionType,
@@ -39,12 +38,10 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
     );
     event UpdateOrder(uint256 posId, uint256 positionType, OrderStatus orderStatus);
     event UpdateTrailingStop(uint256 posId, uint256 stpPrice);
-    mapping(uint256 => PositionTrigger) public triggerOrders;
-
-    event ExecuteTriggerOrders(uint256 posId, uint256 amount, uint256 orderId, uint256 price, TriggerStatus status);
-    event AddTriggerOrders(uint256 posId, bool isTP, uint256 price, uint256 amountPercent, TriggerStatus status);
     event UpdateTriggerOrderStatus(uint256 posId, uint256 orderId, TriggerStatus status);
     event UpdatePositionTriggerStatus(uint256 posId, TriggerStatus status);
+    mapping(uint256 => PositionTrigger) public triggerOrders;
+
     modifier onlyVault() {
         require(msg.sender == address(vault), "Only vault");
         _;
@@ -114,6 +111,12 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         }
     }
 
+    function cancelMarketOrder(uint256 _posId) public override onlyPositionVault {
+        Order storage order = orders[_posId];
+        order.status = OrderStatus.CANCELED;
+        emit UpdateOrder(_posId, order.positionType, order.status);
+    }
+
     function cancelPendingOrder(address _account, uint256 _posId) external override onlyVault {
         Order storage order = orders[_posId];
         Position memory position = positionVault.getPosition(_posId);
@@ -130,6 +133,34 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         order.lmtPrice = 0;
         order.stpPrice = 0;
         emit UpdateOrder(_posId, order.positionType, order.status);
+    }
+
+    function cancelPositionTrigger(
+        uint256 _posId) external {
+        PositionTrigger storage order = triggerOrders[_posId];
+        require(order.status == TriggerStatus.OPEN, "PositionTrigger was cancelled");
+        order.status = TriggerStatus.CANCELLED;
+        emit UpdatePositionTriggerStatus(_posId, order.status);
+    }   
+
+    function cancelTriggerOrder(
+        uint256 _posId,
+        uint256 _orderId) external {
+        PositionTrigger storage order = triggerOrders[_posId];
+        require(order.status == TriggerStatus.OPEN && order.triggers.length > _orderId, "TriggerOrder was cancelled");
+        order.triggers[_orderId].status = TriggerStatus.CANCELLED;
+        emit UpdateTriggerOrderStatus(_posId, _orderId, order.triggers[_orderId].status);
+    }
+
+    function createNewOrder(uint256 _posId, uint256 _positionType, uint256[] memory _params, OrderStatus _status) external override onlyPositionVault {
+        Order storage order = orders[_posId];
+        order.status = _status;
+        order.positionType = _positionType;
+        order.collateral = _params[2];
+        order.size = _params[3];
+        order.lmtPrice = _params[0];
+        order.stpPrice = _params[1];
+        emit NewOrder(_posId, order.positionType, order.status, _params);
     }
 
     function executeTriggerOrders(
@@ -184,6 +215,10 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         isInitialized = true;
     }
 
+    function removeOrder(uint256 _posId) external override onlyPositionVault {
+        delete orders[_posId];
+    }
+
     function updateOrder(uint256 _posId, uint256 _positionType, uint256 _collateral, uint256 _size, OrderStatus _status) public override onlyPositionVault {
         Order storage order = orders[_posId];
         order.positionType = _positionType;
@@ -193,39 +228,6 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
 
-    function createNewOrder(uint256 _posId, uint256 _positionType, uint256[] memory _params, OrderStatus _status) external override onlyPositionVault {
-        Order storage order = orders[_posId];
-        order.status = _status;
-        order.positionType = _positionType;
-        order.collateral = _params[2];
-        order.size = _params[3];
-        order.lmtPrice = _params[0];
-        order.stpPrice = _params[1];
-        emit NewOrder(_posId, order.positionType, order.status, _params);
-    }
-
-    function cancelMarketOrder(uint256 _posId) public override onlyPositionVault {
-        Order storage order = orders[_posId];
-        order.status = OrderStatus.CANCELED;
-        emit UpdateOrder(_posId, order.positionType, order.status);
-    }
-
-    function cancelTriggerOrder(
-        uint256 _posId,
-        uint256 _orderId) external {
-        PositionTrigger storage order = triggerOrders[_posId];
-        require(order.status == TriggerStatus.OPEN && order.triggers.length > _orderId, "TriggerOrder was cancelled");
-        order.triggers[_orderId].status = TriggerStatus.CANCELLED;
-        emit UpdateTriggerOrderStatus(_posId, _orderId, order.triggers[_orderId].status);
-    }
-
-    function cancelPositionTrigger(
-        uint256 _posId) external {
-        PositionTrigger storage order = triggerOrders[_posId];
-        require(order.status == TriggerStatus.OPEN, "PositionTrigger was cancelled");
-        order.status = TriggerStatus.CANCELLED;
-        emit UpdatePositionTriggerStatus(_posId, order.status);
-    }    
 
     function updateTrailingStop(uint256 _posId) external nonReentrant {
         Position memory position = positionVault.getPosition(_posId);
@@ -248,10 +250,6 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
     function getOrder(uint256 _posId) external view override returns (Order memory) {
         Order memory order = orders[_posId];
         return order;
-    }
-
-    function removeOrder(uint256 _posId) external override onlyPositionVault {
-        delete orders[_posId];
     }
 
     function getTriggerOrderInfo(uint256 _posId) external view returns (PositionTrigger memory) {
