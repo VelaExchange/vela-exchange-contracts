@@ -89,7 +89,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         }
     }
 
-    function now() external view returns(uint256){
+    function getCurrentTime() external view returns(uint256){
         return block.timestamp;
     }
 }
