@@ -409,6 +409,26 @@ describe('Vault', function () {
     await settingsManager.connect(wallet).undelegate([user1.address, user0.address])
   })
 
+  it('depositFor by globalDelegates', async () => {
+    await settingsManager.connect(wallet).setGlobalDelegates(user2.address, false)
+    expect(await settingsManager.checkDelegation(wallet.address, user2.address)).eq(false)
+    const amount = expandDecimals('1000', 18)
+    await usdc.connect(wallet).transfer(user2.address, amount)
+    const originalVLPBalance = await vusd.balanceOf(wallet.address)
+    const collateralDeltaUsd = await priceManager.tokenToUsd(usdc.address, amount)
+    await usdc.connect(user2).approve(Vault.address, amount) // approve USDC
+    await expect(Vault.connect(user2).deposit(wallet.address, usdc.address, amount)).to.be.revertedWith('Not allowed') // deposit USDC
+    await settingsManager.connect(wallet).setGlobalDelegates(user2.address, true)
+    expect(await settingsManager.checkDelegation(wallet.address, user2.address)).eq(true)
+    await Vault.connect(user2).deposit(wallet.address, usdc.address, amount) // deposit USDC
+    expect(await vusd.balanceOf(wallet.address)).eq(
+      collateralDeltaUsd
+        .mul(bigNumberify(BASIS_POINTS_DIVISOR).sub(bigNumberify(depositFee)))
+        .div(bigNumberify(BASIS_POINTS_DIVISOR))
+        .add(originalVLPBalance)
+    )
+  })
+
   it('stake with General Token', async () => {
     const amount = expandDecimals('1', 18)
     const collateralDeltaUsd = await priceManager.tokenToUsd(btc.address, amount)
@@ -442,6 +462,19 @@ describe('Vault', function () {
     await Vault.connect(user1).stake(wallet.address, usdc.address, amount) // stake USDC
   })
 
+  it('stakeFor by globalDelegates', async () => {
+    await settingsManager.connect(wallet).setGlobalDelegates(user2.address, false)
+    const amount = expandDecimals('1000', 18)
+    await usdc.connect(wallet).transfer(user2.address, amount)
+    const totalUSD = await Vault.totalUSD()
+    const totalVLP = await Vault.totalVLP()
+    await usdc.connect(user2).approve(Vault.address, amount) // approve USDC
+    await expect(Vault.connect(user2).stake(wallet.address, usdc.address, amount)).to.be.revertedWith('Not allowed') // stake USDC
+    await settingsManager.connect(wallet).setGlobalDelegates(user2.address, true)
+    expect(await settingsManager.checkDelegation(wallet.address, user2.address)).eq(true)
+    await Vault.connect(user2).stake(wallet.address, usdc.address, amount) // stake USDC
+  })
+
   /*it("withdraw with General Token", async () => {
       const amount = expandDecimals('10', 30)
       await expect(Vault.withdraw(btc.address, wallet.address, amount))
@@ -452,7 +485,7 @@ describe('Vault', function () {
     const vusdAmount = expandDecimals('100', 30)
     const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
     const collateralToken = await priceManager.usdToToken(usdc.address, vusdAmount)
-    await Vault.withdraw(usdc.address, wallet.address, vusdAmount)
+    await Vault.withdraw(usdc.address, vusdAmount)
     expect(await usdc.balanceOf(wallet.address)).eq(
       collateralToken
         .mul(bigNumberify(BASIS_POINTS_DIVISOR).sub(bigNumberify(withdrawFee)))
@@ -461,6 +494,7 @@ describe('Vault', function () {
     )
   })
 
+  /*
   it('withdrawFor', async () => {
     const vusdAmount = expandDecimals('100', 30)
     const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
@@ -476,7 +510,7 @@ describe('Vault', function () {
         .div(bigNumberify(BASIS_POINTS_DIVISOR))
         .add(orignalUSDCBalance)
     )
-  })
+  })*/ //no withdrawFor
 
   /*it("unstake with General Token", async () => {
     const amount = expandDecimals('10', 18)
@@ -488,7 +522,7 @@ describe('Vault', function () {
     const vlpAmount = expandDecimals('10', 18)
     const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
     // const collateralToken = await priceManager.usdToToken(usdc.address, vusdAmount);
-    await expect(Vault.unstake(usdc.address, expandDecimals('10000', 18), wallet.address)).to.be.revertedWith(
+    await expect(Vault.unstake(usdc.address, expandDecimals('10000', 18))).to.be.revertedWith(
       'vlpAmount error'
     )
     // await expect(Vault.unstake(usdc.address, vlpAmount, wallet.address)).to.be.revertedWith(
