@@ -119,6 +119,13 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         _decreasePosition(_posId, price, _sizeDelta);
     }
 
+    function executeOpenMarketOrders(
+        uint256 numOfOrders
+    ) external {
+        require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
+        _executeOpenMarketOrders(numOfOrders);
+    }
+    
     function initialize(
         IOrderVault _orderVault,
         ILiquidateVault _liquidateVault,
@@ -172,72 +179,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         }
 
         lastPosId += 1;
-    }
-
-    function executeOpenMarketOrder(uint256 _posId) public nonReentrant {
-        require(settingsManager.isManager(msg.sender) || msg.sender == address(this), "You are not allowed to trigger");
-
-        Position memory position = positions[_posId];
-        Order memory order = orderVault.getOrder(_posId);
-        require(order.size > 0, "order size is 0");
-        require(order.positionType == POSITION_MARKET, "not market order");
-        require(order.status == OrderStatus.PENDING, "not pending order");
-
-        settingsManager.updateFunding(position.indexToken);
-
-        uint256 fee = settingsManager.collectMarginFees(
-            position.owner,
-            position.indexToken,
-            position.isLong,
-            order.size
-        );
-        uint256 price = priceManager.getLastPrice(position.indexToken);
-        checkSlippage(position.isLong, order.lmtPrice, price);
-
-        _increasePosition(
-            _posId,
-            position.owner,
-            position.indexToken,
-            position.isLong,
-            price,
-            order.collateral + fee,
-            order.size
-        );
-        orderVault.updateOrder(_posId, order.positionType, 0, 0, OrderStatus.FILLED);
-        _addUserAlivePosition(position.owner, _posId);
-    }
-
-    function _executeOpenMarketOrders(uint256 numOfOrders) internal {
-        uint256 index = openMarketQueueIndex;
-        uint256 endIndex = index + numOfOrders;
-        uint256 length = openMarketQueuePosIds.length;
-
-        if (index >= length) return;
-        if (endIndex > length) endIndex = length;
-
-        while (index < endIndex) {
-            uint256 posId = openMarketQueuePosIds[index];
-
-            try this.executeOpenMarketOrder(posId) {} catch Error(string memory err) {
-                orderVault.cancelMarketOrder(posId);
-                emit MarketOrderExecutionError(posId, positions[posId].owner, err);
-            } catch (bytes memory err) {
-                orderVault.cancelMarketOrder(posId);
-                emit MarketOrderExecutionError(posId, positions[posId].owner, string(err));
-            }
-
-            delete openMarketQueuePosIds[index];
-            ++index;
-        }
-
-        openMarketQueueIndex = index;
-    }
-
-    function executeOpenMarketOrders(
-        uint256 numOfOrders
-    ) external {
-        require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
-        _executeOpenMarketOrders(numOfOrders);
     }
 
     function triggerForOpenOrders(address _account, uint256 _posId) external nonReentrant {
@@ -317,8 +258,37 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         }
     }
 
-    function getNumOfUnexecutedMarketOrders() external view returns (uint256) {
-        return openMarketQueuePosIds.length - openMarketQueueIndex;
+    function executeOpenMarketOrder(uint256 _posId) public nonReentrant {
+        require(settingsManager.isManager(msg.sender) || msg.sender == address(this), "You are not allowed to trigger");
+
+        Position memory position = positions[_posId];
+        Order memory order = orderVault.getOrder(_posId);
+        require(order.size > 0, "order size is 0");
+        require(order.positionType == POSITION_MARKET, "not market order");
+        require(order.status == OrderStatus.PENDING, "not pending order");
+
+        settingsManager.updateFunding(position.indexToken);
+
+        uint256 fee = settingsManager.collectMarginFees(
+            position.owner,
+            position.indexToken,
+            position.isLong,
+            order.size
+        );
+        uint256 price = priceManager.getLastPrice(position.indexToken);
+        checkSlippage(position.isLong, order.lmtPrice, price);
+
+        _increasePosition(
+            _posId,
+            position.owner,
+            position.indexToken,
+            position.isLong,
+            price,
+            order.collateral + fee,
+            order.size
+        );
+        orderVault.updateOrder(_posId, order.positionType, 0, 0, OrderStatus.FILLED);
+        _addUserAlivePosition(position.owner, _posId);
     }
 
     function _decreasePosition(
@@ -350,6 +320,32 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             _removeUserAlivePosition(position.owner, _posId);
             orderVault.removeOrder(_posId);
         }
+    }
+
+    function _executeOpenMarketOrders(uint256 numOfOrders) internal {
+        uint256 index = openMarketQueueIndex;
+        uint256 endIndex = index + numOfOrders;
+        uint256 length = openMarketQueuePosIds.length;
+
+        if (index >= length) return;
+        if (endIndex > length) endIndex = length;
+
+        while (index < endIndex) {
+            uint256 posId = openMarketQueuePosIds[index];
+
+            try this.executeOpenMarketOrder(posId) {} catch Error(string memory err) {
+                orderVault.cancelMarketOrder(posId);
+                emit MarketOrderExecutionError(posId, positions[posId].owner, err);
+            } catch (bytes memory err) {
+                orderVault.cancelMarketOrder(posId);
+                emit MarketOrderExecutionError(posId, positions[posId].owner, string(err));
+            }
+
+            delete openMarketQueuePosIds[index];
+            ++index;
+        }
+
+        openMarketQueueIndex = index;
     }
 
     function _increasePosition(
@@ -473,6 +469,10 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         uint256 usdOut = _updatePnlAndUsdOut(_posId, _hasProfit, adjustedDelta, _sizeDelta, fee);
         vaultUtils.validateDecreasePosition(_posId, _price, true);
         return (usdOut, fee);
+    }
+
+    function getNumOfUnexecutedMarketOrders() external view returns (uint256) {
+        return openMarketQueuePosIds.length - openMarketQueueIndex;
     }
 
     function getPosition(uint256 _posId) external view override returns (Position memory) {
