@@ -30,12 +30,7 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
     event AddTriggerOrders(uint256 posId, bool isTP, uint256 price, uint256 amountPercent, TriggerStatus status);
     event ExecuteAddPosition(uint256 posId, uint256 collateral, uint256 size, uint256 feeUsd);
     event ExecuteTriggerOrders(uint256 posId, uint256 amount, uint256 orderId, uint256 price, TriggerStatus status);
-    event NewOrder(
-        uint256 posId,
-        uint256 positionType,
-        OrderStatus orderStatus,
-        uint256[] triggerData
-    );
+    event NewOrder(uint256 posId, uint256 positionType, OrderStatus orderStatus, uint256[] triggerData);
     event UpdateOrder(uint256 posId, uint256 positionType, OrderStatus orderStatus);
     event UpdateTrailingStop(uint256 posId, uint256 stpPrice);
     event UpdateTriggerOrderStatus(uint256 posId, uint256 orderId, TriggerStatus status);
@@ -80,15 +75,9 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         Position memory position = positionVault.getPosition(_posId);
         require(position.size > 0, "position size should be greater than zero");
         require(msg.value == settingsManager.triggerGasFee(), "invalid triggerGasFee");
-        (bool success, ) = payable(settingsManager.feeManager()).call{ value: msg.value }("");
+        (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
-        bool validateTriggerData = validateTriggerOrdersData(
-            _indexToken,
-            _isLong,
-            _isTPs,
-            _prices,
-            _amountPercents
-        );
+        bool validateTriggerData = validateTriggerOrdersData(_indexToken, _isLong, _isTPs, _prices, _amountPercents);
         require(validateTriggerData, "triggerOrder data are incorrect");
         PositionTrigger storage triggerOrder = triggerOrders[_posId];
         if (triggerOrder.triggerCount == 0) {
@@ -135,24 +124,26 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
 
-    function cancelPositionTrigger(
-        uint256 _posId) external {
+    function cancelPositionTrigger(uint256 _posId) external {
         PositionTrigger storage order = triggerOrders[_posId];
         require(order.status == TriggerStatus.OPEN, "PositionTrigger was cancelled");
         order.status = TriggerStatus.CANCELLED;
         emit UpdatePositionTriggerStatus(_posId, order.status);
-    }   
+    }
 
-    function cancelTriggerOrder(
-        uint256 _posId,
-        uint256 _orderId) external {
+    function cancelTriggerOrder(uint256 _posId, uint256 _orderId) external {
         PositionTrigger storage order = triggerOrders[_posId];
         require(order.status == TriggerStatus.OPEN && order.triggers.length > _orderId, "TriggerOrder was cancelled");
         order.triggers[_orderId].status = TriggerStatus.CANCELLED;
         emit UpdateTriggerOrderStatus(_posId, _orderId, order.triggers[_orderId].status);
     }
 
-    function createNewOrder(uint256 _posId, uint256 _positionType, uint256[] memory _params, OrderStatus _status) external override onlyPositionVault {
+    function createNewOrder(
+        uint256 _posId,
+        uint256 _positionType,
+        uint256[] memory _params,
+        OrderStatus _status
+    ) external override onlyPositionVault {
         Order storage order = orders[_posId];
         order.status = _status;
         order.positionType = _positionType;
@@ -160,6 +151,7 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         order.size = _params[3];
         order.lmtPrice = _params[0];
         order.stpPrice = _params[1];
+        order.timestamp = block.timestamp;
         emit NewOrder(_posId, order.positionType, order.status, _params);
     }
 
@@ -219,7 +211,13 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         delete orders[_posId];
     }
 
-    function updateOrder(uint256 _posId, uint256 _positionType, uint256 _collateral, uint256 _size, OrderStatus _status) public override onlyPositionVault {
+    function updateOrder(
+        uint256 _posId,
+        uint256 _positionType,
+        uint256 _collateral,
+        uint256 _size,
+        OrderStatus _status
+    ) public override onlyPositionVault {
         Order storage order = orders[_posId];
         order.positionType = _positionType;
         order.collateral = _collateral;
@@ -227,7 +225,6 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         order.status = _status;
         emit UpdateOrder(_posId, order.positionType, order.status);
     }
-
 
     function updateTrailingStop(uint256 _posId) external nonReentrant {
         Position memory position = positionVault.getPosition(_posId);

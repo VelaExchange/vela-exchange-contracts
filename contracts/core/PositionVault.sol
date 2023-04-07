@@ -23,7 +23,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     uint256 public lastPosId;
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
-    IVault immutable private vault;
+    IVault private immutable vault;
     ILiquidateVault private liquidateVault;
     IOrderVault private orderVault;
     IVaultUtils private vaultUtils;
@@ -119,13 +119,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         _decreasePosition(_posId, price, _sizeDelta);
     }
 
-    function executeOpenMarketOrders(
-        uint256 numOfOrders
-    ) external {
+    function executeOpenMarketOrders(uint256 numOfOrders) external {
         require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
         _executeOpenMarketOrders(numOfOrders);
     }
-    
+
     function initialize(
         IOrderVault _orderVault,
         ILiquidateVault _liquidateVault,
@@ -141,7 +139,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         settingsManager = _settingsManager;
         vaultUtils = _vaultUtils;
         isInitialized = true;
-    } 
+    }
 
     function newPositionOrder(
         address _account,
@@ -238,7 +236,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             }
         }
     }
-    
+
     function triggerForTPSL(uint256 _posId) external nonReentrant {
         Position memory position = positions[_posId];
         settingsManager.updateFunding(position.indexToken);
@@ -246,15 +244,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.owner == msg.sender || settingsManager.isManager(msg.sender),
             "You are not allowed to trigger"
         );
-        (bool hitTrigger, uint256 triggerAmountPercent, uint256 triggerPrice) = orderVault
-            .executeTriggerOrders(position.indexToken, position.isLong, _posId);
+        (bool hitTrigger, uint256 triggerAmountPercent, uint256 triggerPrice) = orderVault.executeTriggerOrders(
+            position.indexToken,
+            position.isLong,
+            _posId
+        );
         require(hitTrigger, "trigger not ready");
         if (hitTrigger) {
-            _decreasePosition(
-                _posId,
-                (position.size * (triggerAmountPercent)) / BASIS_POINTS_DIVISOR,
-                triggerPrice
-            );
+            _decreasePosition(_posId, (position.size * (triggerAmountPercent)) / BASIS_POINTS_DIVISOR, triggerPrice);
         }
     }
 
@@ -266,6 +263,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         require(order.size > 0, "order size is 0");
         require(order.positionType == POSITION_MARKET, "not market order");
         require(order.status == OrderStatus.PENDING, "not pending order");
+        require(block.timestamp <= order.timestamp + settingsManager.expiryDuration(), "order has expired");
 
         settingsManager.updateFunding(position.indexToken);
 
@@ -291,20 +289,12 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         _addUserAlivePosition(position.owner, _posId);
     }
 
-    function _decreasePosition(
-        uint256 _posId,
-        uint256 _price,
-        uint256 _sizeDelta
-    ) internal {
+    function _decreasePosition(uint256 _posId, uint256 _price, uint256 _sizeDelta) internal {
         Position storage position = positions[_posId];
         settingsManager.updateFunding(position.indexToken);
         require(position.size > 0, "position size is zero");
         settingsManager.decreaseOpenInterest(position.indexToken, position.owner, position.isLong, _sizeDelta);
-        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(
-            _posId,
-            _price,
-            _sizeDelta
-        );
+        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(_posId, _price, _sizeDelta);
         if (usdOutFee <= usdOut) {
             vault.takeVUSDOut(position.owner, position.refer, usdOutFee, usdOut);
         } else if (usdOutFee != 0) {
@@ -314,7 +304,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.size -= _sizeDelta;
             vaultUtils.validateMinLeverage(position.size, position.collateral);
             vaultUtils.validateMaxLeverage(position.indexToken, position.size, position.collateral);
-            vaultUtils.emitDecreasePositionEvent(position.owner, position.indexToken, position.isLong, _posId, _sizeDelta, usdOutFee);
+            vaultUtils.emitDecreasePositionEvent(
+                position.owner,
+                position.indexToken,
+                position.isLong,
+                _posId,
+                _sizeDelta,
+                usdOutFee
+            );
         } else {
             vaultUtils.emitClosePositionEvent(position.owner, position.indexToken, position.isLong, _posId);
             _removeUserAlivePosition(position.owner, _posId);
@@ -488,9 +485,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         userAliveIndexOf[_posId] = userPositionIds[_user].length;
         userPositionIds[_user].push(_posId);
     }
+
     function removeUserAlivePosition(address _user, uint256 _posId) external override {
         _removeUserAlivePosition(_user, _posId);
     }
+
     function _removeUserAlivePosition(address _user, uint256 _posId) internal {
         uint256 index = userAliveIndexOf[_posId];
         uint256 lastIndex = userPositionIds[_user].length - 1;
@@ -503,7 +502,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         userPositionIds[_user].pop();
     }
 
-    function getUserPositionIds(address _account) external override view returns (uint256[] memory) {
+    function getUserPositionIds(address _account) external view override returns (uint256[] memory) {
         return userPositionIds[_account];
     }
 

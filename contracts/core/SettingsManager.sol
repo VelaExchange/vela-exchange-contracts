@@ -38,6 +38,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     uint256 public override closeDeltaTime = 1 hours;
     uint256 public override cooldownDuration = 3 hours;
+    uint256 public override expiryDuration = 20; // 20 seconds
     uint256 public override feeRewardBasisPoints = 50000; // 50%
     uint256 public override liquidationFeeUsd; // 0 usd
     uint256 public override borrowFeeFactor = 10; // 0.01% per hour
@@ -94,6 +95,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetUnstakingFee(address indexed token, uint256 indexed fee);
     event SetTriggerGasFee(uint256 indexed fee);
     event SetGlobalGasFee(uint256 indexed fee);
+    event SetExpiryDuration(uint256 expiryDuration);
     event SetVaultSettings(uint256 indexed cooldownDuration, uint256 feeRewardBasisPoints);
     event UpdateFunding(address indexed token, int256 fundingIndex);
     event UpdateLiquidationPendingTime(uint256 liquidationPendingTime);
@@ -107,7 +109,13 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         _;
     }
 
-    constructor(address _liquidateVault, address _positionVault, address _operators, address _vusd, address _tokenFarm) {
+    constructor(
+        address _liquidateVault,
+        address _positionVault,
+        address _operators,
+        address _vusd,
+        address _tokenFarm
+    ) {
         require(Address.isContract(_positionVault), "vault invalid");
         require(Address.isContract(_operators), "operators invalid");
         require(Address.isContract(_vusd), "VUSD invalid");
@@ -229,6 +237,13 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         require(_deltaTime <= MAX_DELTA_TIME, "Above max");
         closeDeltaTime = _deltaTime;
         emit UpdateCloseDeltaTime(_deltaTime);
+    }
+
+    function setExpiryDuration(uint256 _expiryDuration) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        require(_expiryDuration <= MAX_EXPIRY_DURATION, "Above max");
+        expiryDuration = _expiryDuration;
+        emit SetExpiryDuration(_expiryDuration);
     }
 
     function setDepositFee(address token, uint256 _fee) external {

@@ -40,6 +40,7 @@ struct Order {
     uint256 stepAmount;
     uint256 stepType;
     uint256 stpPrice;
+    uint256 timestamp;
 }
 
 struct Position {

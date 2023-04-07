@@ -19,6 +19,8 @@ interface ISettingsManager {
 
     function closeDeltaTime() external view returns (uint256);
 
+    function expiryDuration() external view returns (uint256);
+
     function cooldownDuration() external view returns (uint256);
 
     function liquidationPendingTime() external view returns (uint256);
