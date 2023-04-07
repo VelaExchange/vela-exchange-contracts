@@ -130,13 +130,14 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function decreasePosition(
         uint256 _sizeDelta,
+        uint256 _acceptedPrice,
         uint256 _posId
     ) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
         (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
 
-        positionVault.decreasePosition(_posId, msg.sender, _sizeDelta);
+        positionVault.createDecreasePositionOrder(_posId, msg.sender, _sizeDelta, _acceptedPrice);
     }
 
     function _closePosition(uint256 _posId) internal {

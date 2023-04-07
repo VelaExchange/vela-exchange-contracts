@@ -43,6 +43,19 @@ struct Order {
     uint256 timestamp;
 }
 
+struct AddPositionOrder {
+    uint256 collateral;
+    uint256 size;
+    uint256 acceptedPrice;
+    uint256 timestamp;
+}
+
+struct DecreasePositionOrder {
+    uint256 size;
+    uint256 acceptedPrice;
+    uint256 timestamp;
+}
+
 struct Position {
     address owner;
     address refer;

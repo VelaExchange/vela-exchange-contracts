@@ -14,7 +14,7 @@ import "./interfaces/IVault.sol";
 import "./interfaces/IVaultUtils.sol";
 
 import {Constants} from "../access/Constants.sol";
-import {OrderStatus, TriggerInfo, TriggerStatus, PositionTrigger} from "./structs.sol";
+import {OrderStatus, TriggerInfo, TriggerStatus, PositionTrigger, AddPositionOrder, DecreasePositionOrder} from "./structs.sol";
 
 contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
     uint256 public lastPosId;
@@ -25,7 +25,11 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
     IVaultUtils private vaultUtils;
 
     bool private isInitialized;
+
     mapping(uint256 => Order) public orders;
+    mapping(uint256 => AddPositionOrder) public addPositionOrders;
+    mapping(uint256 => DecreasePositionOrder) public decreasePositionOrders;
+
     event AddTrailingStop(uint256 posId, uint256[] data);
     event AddTriggerOrders(uint256 posId, bool isTP, uint256 price, uint256 amountPercent, TriggerStatus status);
     event ExecuteAddPosition(uint256 posId, uint256 collateral, uint256 size, uint256 feeUsd);
@@ -155,6 +159,44 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
         emit NewOrder(_posId, order.positionType, order.status, _params);
     }
 
+    function createAddPositionOrder(
+        uint256 _posId,
+        uint256 _collateralDelta,
+        uint256 _sizeDelta,
+        uint256 _acceptedPrice
+    ) external override onlyPositionVault {
+        require(addPositionOrders[_posId].size == 0, "addPositionOrder already exists");
+
+        addPositionOrders[_posId] = AddPositionOrder({
+            collateral: _collateralDelta,
+            size: _sizeDelta,
+            acceptedPrice: _acceptedPrice,
+            timestamp: block.timestamp
+        });
+    }
+
+    function createDecreasePositionOrder(
+        uint256 _posId,
+        uint256 _sizeDelta,
+        uint256 _acceptedPrice
+    ) external override onlyPositionVault {
+        require(decreasePositionOrders[_posId].size == 0, "decreasePositionOrder already exists");
+
+        decreasePositionOrders[_posId] = DecreasePositionOrder({
+            size: _sizeDelta,
+            acceptedPrice: _acceptedPrice,
+            timestamp: block.timestamp
+        });
+    }
+
+    function deleteAddPositionOrder(uint256 _posId) external override onlyPositionVault {
+        delete addPositionOrders[_posId];
+    }
+
+    function deleteDecreasePositionOrder(uint256 _posId) external override onlyPositionVault {
+        delete decreasePositionOrders[_posId];
+    }
+
     function executeTriggerOrders(
         address _token,
         bool _isLong,
@@ -209,6 +251,8 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
 
     function removeOrder(uint256 _posId) external override onlyPositionVault {
         delete orders[_posId];
+        delete addPositionOrders[_posId];
+        delete decreasePositionOrders[_posId];
     }
 
     function updateOrder(
@@ -245,8 +289,15 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
     }
 
     function getOrder(uint256 _posId) external view override returns (Order memory) {
-        Order memory order = orders[_posId];
-        return order;
+        return orders[_posId];
+    }
+
+    function getAddPositionOrder(uint256 _posId) external view override returns (AddPositionOrder memory) {
+        return addPositionOrders[_posId];
+    }
+
+    function getDecreasePositionOrder(uint256 _posId) external view override returns (DecreasePositionOrder memory) {
+        return decreasePositionOrders[_posId];
     }
 
     function getTriggerOrderInfo(uint256 _posId) external view returns (PositionTrigger memory) {
