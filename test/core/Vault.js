@@ -452,7 +452,7 @@ describe('Vault', function () {
     const vusdAmount = expandDecimals('100', 30)
     const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
     const collateralToken = await priceManager.usdToToken(usdc.address, vusdAmount)
-    await Vault.withdraw(usdc.address, wallet.address, vusdAmount)
+    await Vault.withdraw(usdc.address, vusdAmount)
     expect(await usdc.balanceOf(wallet.address)).eq(
       collateralToken
         .mul(bigNumberify(BASIS_POINTS_DIVISOR).sub(bigNumberify(withdrawFee)))
@@ -461,6 +461,7 @@ describe('Vault', function () {
     )
   })
 
+  /*
   it('withdrawFor', async () => {
     const vusdAmount = expandDecimals('100', 30)
     const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
@@ -476,7 +477,7 @@ describe('Vault', function () {
         .div(bigNumberify(BASIS_POINTS_DIVISOR))
         .add(orignalUSDCBalance)
     )
-  })
+  })*/ //no withdrawFor
 
   /*it("unstake with General Token", async () => {
     const amount = expandDecimals('10', 18)
@@ -488,7 +489,7 @@ describe('Vault', function () {
     const vlpAmount = expandDecimals('10', 18)
     const orignalUSDCBalance = await usdc.balanceOf(wallet.address)
     // const collateralToken = await priceManager.usdToToken(usdc.address, vusdAmount);
-    await expect(Vault.unstake(usdc.address, expandDecimals('10000', 18), wallet.address)).to.be.revertedWith(
+    await expect(Vault.unstake(usdc.address, expandDecimals('10000', 18))).to.be.revertedWith(
       'vlpAmount error'
     )
     // await expect(Vault.unstake(usdc.address, vlpAmount, wallet.address)).to.be.revertedWith(
