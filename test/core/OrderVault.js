@@ -43,7 +43,7 @@ describe('OrderVault', function () {
 
   async function expectMarketOrderSuccess(token, price) {
     expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
-    const now = await priceManager.now()
+    const now = await priceManager.getCurrentTime()
     await priceManager.setPrice(token.address, now, toChainlinkPrice(price))
     const tx = await PositionVault.connect(user1).executeOpenMarketOrders(
       1,

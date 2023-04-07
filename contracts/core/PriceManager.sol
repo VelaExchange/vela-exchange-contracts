@@ -82,13 +82,14 @@ contract PriceManager is IPriceManager, Ownable, Constants {
 
     function setLatestPrices(address[] calldata _tokens, uint256[] calldata _tses, uint256[] calldata _answers) external override {
         require(_tokens.length == _answers.length, "VaultPriceFeed: length mismatch");
+        require(_tokens.length == _tses.length, "VaultPriceFeed: length mismatch");
 
         for (uint256 i = 0; i < _tokens.length; ++i) {
             setPrice(_tokens[i], _tses[i], _answers[i]);
         }
     }
 
-    function now() external view returns(uint256){
+    function getCurrentTime() external view returns(uint256){
         return block.timestamp;
     }
 }
