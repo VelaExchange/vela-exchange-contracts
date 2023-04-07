@@ -68,6 +68,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => uint256) public override openInterestPerUser;
     mapping(address => uint256) public maxOpenInterestPerWallet;
     mapping(address => EnumerableSet.AddressSet) private _delegatesByMaster;
+    mapping(address => bool) public globalDelegates; // treat these addrs already be delegated
     event ChangedReferEnabled(bool referEnabled);
     event ChangedReferFee(uint256 referFee);
     event DecreaseOpenInterest(address indexed token, bool isLong, uint256 amount);
@@ -101,6 +102,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event UpdateFeeManager(address indexed feeManager);
     event UpdateMaxProfitPercent(uint256 maxProfitPercent);
     event UpdateThreshold(uint256 oldThreshold, uint256 newThredhold);
+    event GlobalDelegatesChange(address indexed delegate, bool allowed);
 
     modifier onlyVault() {
         require(msg.sender == address(positionVault) || msg.sender == address(liquidateVault), "Only vault");
@@ -126,17 +128,23 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function addDelegatesToBanList(address[] memory _delegates) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
         for (uint256 i = 0; i < _delegates.length; ++i) {
             EnumerableSet.add(banWalletList, _delegates[i]);
         }
     }
 
     function removeDelegatesFromBanList(address[] memory _delegates) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
         for (uint256 i = 0; i < _delegates.length; ++i) {
             EnumerableSet.remove(banWalletList, _delegates[i]);
         }
+    }
+
+    function setGlobalDelegates(address _delegate, bool _allowed) external{
+        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+        globalDelegates[_delegate] = _allowed;
+        emit GlobalDelegatesChange(_delegate, _allowed);
     }
 
     function decreaseOpenInterest(
@@ -448,7 +456,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     function checkDelegation(address _master, address _delegate) public view override returns (bool) {
         require(!checkBanList(_master), "account banned");
-        return _master == _delegate || EnumerableSet.contains(_delegatesByMaster[_master], _delegate);
+        return _master == _delegate || globalDelegates[_delegate] || EnumerableSet.contains(_delegatesByMaster[_master], _delegate);
     }
 
     function getPnl(
