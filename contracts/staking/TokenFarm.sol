@@ -75,6 +75,11 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     event VestingWithdraw(address account, uint256 claimedAmount, uint256 balance);
     event FarmWithdraw(address indexed user, IBoringERC20 indexed token, uint256 amount);
 
+    modifier onlyOperator(uint256 level) {
+        require(operators.getOperatorLevel(msg.sender) >= level, "invalid operator");
+        _;
+    }
+
     constructor(
         uint256 _vestingDuration,
         IBoringERC20 _esVELA,
@@ -90,15 +95,14 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         VLP = _vlp;
         vestingDuration = _vestingDuration;
     }
-    function addDelegatesToCooldownWhiteList(address[] memory _delegates) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+
+    function addDelegatesToCooldownWhiteList(address[] memory _delegates) external onlyOperator(1) {
         for (uint256 i = 0; i < _delegates.length; ++i) {
             EnumerableSet.add(cooldownWhiteList, _delegates[i]);
         }
     }
 
-    function removeDelegatesFromCooldownWhiteList(address[] memory _delegates) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function removeDelegatesFromCooldownWhiteList(address[] memory _delegates) external onlyOperator(1) {
         for (uint256 i = 0; i < _delegates.length; ++i) {
             EnumerableSet.remove(cooldownWhiteList, _delegates[i]);
         }
@@ -107,12 +111,10 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
     function checkCooldownWhiteList(address _delegate) public view returns (bool) {
         return EnumerableSet.contains(cooldownWhiteList, _delegate);
     }
-    
 
     // ----- START: Operator Logic -----
     // Update rewarders and enableCooldown for pools
-    function setVelaPool(IComplexRewarder[] calldata _rewarders, bool _enableCooldown) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setVelaPool(IComplexRewarder[] calldata _rewarders, bool _enableCooldown) external onlyOperator(1) {
         require(_rewarders.length <= 10, "set: too many rewarders");
 
         for (uint256 rewarderId = 0; rewarderId < _rewarders.length; ++rewarderId) {
@@ -125,8 +127,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit Set(VELA, _rewarders);
     }
 
-    function setVlpPool(IComplexRewarder[] calldata _rewarders, bool _enableCooldown) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setVlpPool(IComplexRewarder[] calldata _rewarders, bool _enableCooldown) external onlyOperator(1) {
         require(_rewarders.length <= 10, "set: too many rewarders");
 
         for (uint256 rewarderId = 0; rewarderId < _rewarders.length; ++rewarderId) {
@@ -139,15 +140,13 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit Set(VLP, _rewarders);
     }
 
-    function updateCooldownDuration(uint256 _newCooldownDuration) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function updateCooldownDuration(uint256 _newCooldownDuration) external onlyOperator(1) {
         require(_newCooldownDuration <= MAX_TOKENFARM_COOLDOWN_DURATION, "cooldown duration exceeds max");
         cooldownDuration = _newCooldownDuration;
         emit UpdateCooldownDuration(_newCooldownDuration);
     }
 
-    function updateRewardTierInfo(uint256[] memory _levels, uint256[] memory _percents) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function updateRewardTierInfo(uint256[] memory _levels, uint256[] memory _percents) external onlyOperator(1) {
         uint256 totalLength = tierLevels.length;
         require(_levels.length == _percents.length, "the length should the same");
         require(_validateLevels(_levels), "levels not sorted");
@@ -163,8 +162,7 @@ contract TokenFarm is ITokenFarm, Constants, Ownable, ReentrancyGuard {
         emit UpdateRewardTierInfo(_levels, _percents);
     }
 
-    function updateVestingDuration(uint256 _vestingDuration) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function updateVestingDuration(uint256 _vestingDuration) external onlyOperator(1) {
         require(_vestingDuration <= MAX_VESTING_DURATION, "vesting duration exceeds max");
         vestingDuration = _vestingDuration;
         emit UpdateVestingPeriod(_vestingDuration);

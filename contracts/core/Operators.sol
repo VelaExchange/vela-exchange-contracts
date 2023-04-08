@@ -2,43 +2,51 @@
 
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
 
-contract ExchangeOperators is Ownable {
+contract Operators is Context {
+    // level 1: normal operator
+    // level 2: admin
+    // level 3: owner
+    mapping(address => uint256) operatorLevel;
 
-  enum OperatorLevel { NONE, ONE, TWO, THREE }
+    address public oldOwner;
+    address public pendingOwner;
 
-  mapping(address => uint8) isOperator;
+    modifier onlyOperator(uint256 level) {
+        require(operatorLevel[_msgSender()] >= level, "invalid operator");
+        _;
+    }
 
-  modifier onlyOperator(uint8 level) {
-      require(isOperator[_msgSender()] > uint8(OperatorLevel.NONE), "Not an operator");
-      require(isOperator[_msgSender()] > level, "Invalid operator");
-      _;
-  }
+    constructor() {
+        operatorLevel[_msgSender()] = 3;
+    }
 
-  constructor() {
-    isOperator[_msgSender()] = uint8(OperatorLevel.THREE);
-  }
+    function setOperator(address op, uint256 level) external {
+        require(operatorLevel[_msgSender()] > operatorLevel[op], "insufficient level");
+        require(operatorLevel[_msgSender()] > level, "invalid level");
 
-  function setOperator(address op, uint8 level) onlyOperator(level) external {
-      require(isOperator[_msgSender()] > isOperator[op], "Cannot set operator");
-      require(level <= uint8(OperatorLevel.TWO), "Invalid operator level");
-      isOperator[op] = level;
-  }
+        operatorLevel[op] = level;
+    }
 
-  function getOperatorLevel(address op) public view returns (uint8) {
-      return uint8(isOperator[op]);
-  }
+    function getOperatorLevel(address op) public view returns (uint256) {
+        return operatorLevel[op];
+    }
 
-  function transferOwnership(address newOwner) public virtual override onlyOwner {
-    require(newOwner != address(0), "Ownable: new owner is the zero address");
-    isOperator[_msgSender()] = uint8(OperatorLevel.NONE);
-    isOperator[newOwner] = uint8(OperatorLevel.THREE);
-    _transferOwnership(newOwner);
-  }
+    function transferOwnership(address newOwner) external onlyOperator(3) {
+        require(newOwner != address(0), "zero address");
 
-  function renounceOwnership() public view override onlyOwner {
-      revert("Cannot renounce ownership");
-  }
+        oldOwner = _msgSender();
+        pendingOwner = newOwner;
+    }
 
+    function acceptOwnership() external {
+        require(_msgSender() == pendingOwner, "not pendingOwner");
+
+        operatorLevel[_msgSender()] = 3;
+        operatorLevel[oldOwner] = 0;
+
+        pendingOwner = address(0);
+        oldOwner = address(0);
+    }
 }
