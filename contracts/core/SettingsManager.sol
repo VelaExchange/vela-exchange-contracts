@@ -84,6 +84,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetEnableWithdraw(address indexed token, bool isEnabled);
     event SetEnableStaking(address indexed token, bool isEnabled);
     event SetEnableUnstaking(address indexed token, bool isEnabled);
+    event SetIsIncreasingPositionDisabled(address indexToken, bool isDisabled);
     event SetDefaultBorrowFeeFactor(uint256 borrowFeeFactor);
     event SetBorrowFeeFactor(address indexToken, uint256 borrowFeeFactor);
     event SetMaxFundingRate(uint256 maxFundingRate);
@@ -271,7 +272,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     function setIsIncreasingPositionDisabled(address _token, bool _isDisabled) external onlyOperator(1) {
         isIncreasingPositionDisabled[_token] = _isDisabled;
-        emit SetEnableUnstaking(_token, _isDisabled);
+        emit SetIsIncreasingPositionDisabled(_token, _isDisabled);
     }
 
     function setDeductFeePercentForUser(address _account, uint256 _deductFee) external onlyOperator(1) {
@@ -293,18 +294,19 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     }
 
     function setMaxFundingRate(uint256 _maxFundingRate) external onlyOperator(1) {
-        require(_maxFundingRate <= MAX_BORROW_FEE_FACTOR, "Above max");
+        require(_maxFundingRate <= MAX_FUNDING_RATE, "Above max");
         maxFundingRate = _maxFundingRate;
         emit SetMaxFundingRate(_maxFundingRate);
     }
 
     function setBasisFundingRateFactor(uint256 _basisFundingRateFactor) external onlyOperator(1) {
-        require(_basisFundingRateFactor <= MAX_BORROW_FEE_FACTOR, "Above max");
+        require(_basisFundingRateFactor <= MAX_BASIS_FUNDING_RATE_FACTOR, "Above max");
         basisFundingRateFactor = _basisFundingRateFactor;
         emit SetBasisFundingRateFactor(_basisFundingRateFactor);
     }
 
     function setFundingRateFactor(address _token, uint256 _fundingRateFactor) external onlyOperator(1) {
+        require(_fundingRateFactor <= MAX_FUNDING_RATE_FACTOR, "Above max");
         fundingRateFactor[_token] = _fundingRateFactor;
         emit SetFundingRateFactor(_token, _fundingRateFactor);
     }
