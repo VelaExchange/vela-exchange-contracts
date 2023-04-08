@@ -44,7 +44,7 @@ describe('PriceManager', function () {
     vlpPriceFeed = await deployContract('FastPriceFeed', [])
     vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0])
     vlp = await deployContract('VLP', [])
-    operator = await deployContract('ExchangeOperators', [])
+    operator = await deployContract('Operators', [])
     vestingDuration = 6 * 30 * 24 * 60 * 60
     unbondingPeriod = 14 * 24 * 60 * 60
     cooldownDuration = 86400
@@ -75,7 +75,9 @@ describe('PriceManager', function () {
 
     const cryptoMaxLeverage = 100 * 10000
     const forexMaxLeverage = 100 * 10000
-    await expect(priceManager.setTokenConfig(zeroAddress, 18, cryptoMaxLeverage, priceFeed.address, 8)).to.be.revertedWith('Address is wrong')
+    await expect(
+      priceManager.setTokenConfig(zeroAddress, 18, cryptoMaxLeverage, priceFeed.address, 8)
+    ).to.be.revertedWith('Address is wrong')
     await expect(priceManager.setTokenConfig(btc.address, 18, 1, priceFeed.address, 8)).to.be.revertedWith(
       'Max Leverage should be greater than Min Leverage'
     )
@@ -129,5 +131,4 @@ describe('PriceManager', function () {
     await priceManager.setMaxLeverage(eth.address, 50 * 10000)
     expect(parseInt(await priceManager.maxLeverage(eth.address))).to.be.equal(50 * 10000)
   })
-
 })

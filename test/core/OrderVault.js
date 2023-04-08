@@ -45,9 +45,7 @@ describe('OrderVault', function () {
     expect(await PositionVault.getNumOfUnexecutedMarketOrders()).eq(1)
     const now = await priceManager.getCurrentTime()
     await priceManager.setPrice(token.address, now, toChainlinkPrice(price))
-    const tx = await PositionVault.connect(user1).executeOpenMarketOrders(
-      1,
-    )
+    const tx = await PositionVault.connect(user1).executeOpenMarketOrders(1)
     const receipt = await tx.wait()
     const errorEvent = receipt.events.find((event) => event.event === 'MarketOrderExecutionError')
     expect(errorEvent).to.be.undefined
@@ -66,7 +64,7 @@ describe('OrderVault', function () {
     usdc = await deployContract('BaseToken', ['USD Coin', 'USDC', expandDecimals('10000000', 18)])
     vusd = await deployContract('VUSD', ['Vested USD', 'VUSD', 0])
     vlp = await deployContract('VLP', [])
-    operator = await deployContract('ExchangeOperators', [])
+    operator = await deployContract('Operators', [])
     vestingDuration = 6 * 30 * 24 * 60 * 60
     unbondingPeriod = 14 * 24 * 60 * 60
     cooldownDuration = 86400
@@ -80,7 +78,13 @@ describe('OrderVault', function () {
     unstakingFee = 3000
     vela = await deployContract('MintableBaseToken', ['Vela Exchange', 'VELA', 0])
     eVela = await deployContract('eVELA', [])
-    tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
+    tokenFarm = await deployContract('TokenFarm', [
+      vestingDuration,
+      eVela.address,
+      vela.address,
+      vlp.address,
+      operator.address,
+    ])
     priceManager = await deployContract('PriceManager', [operator.address])
     Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
     LiquidateVault = await deployContract('LiquidateVault', [])
@@ -103,7 +107,13 @@ describe('OrderVault', function () {
       settingsManager.address,
     ])
     //====================== Vault Initialize ==============
-    await Vault.setVaultSettings(priceManager.address, settingsManager.address, PositionVault.address, OrderVault.address, LiquidateVault.address)
+    await Vault.setVaultSettings(
+      priceManager.address,
+      settingsManager.address,
+      PositionVault.address,
+      OrderVault.address,
+      LiquidateVault.address
+    )
     await PositionVault.initialize(
       OrderVault.address,
       LiquidateVault.address,
@@ -117,12 +127,7 @@ describe('OrderVault', function () {
       Vault.address,
       VaultUtils.address
     )
-    await LiquidateVault.initialize(
-      PositionVault.address,
-      settingsManager.address,
-      Vault.address,
-      VaultUtils.address
-    )
+    await LiquidateVault.initialize(PositionVault.address, settingsManager.address, Vault.address, VaultUtils.address)
     //================= PriceFeed Prices Initialization ==================
     await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(60000))
     await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(56300))
@@ -220,7 +225,13 @@ describe('OrderVault', function () {
       },
     ]
     for (const token of tokens) {
-      await priceManager.setTokenConfig(token.address, token.decimals, token.maxLeverage, token.priceFeed, token.priceDecimals)
+      await priceManager.setTokenConfig(
+        token.address,
+        token.decimals,
+        token.maxLeverage,
+        token.priceFeed,
+        token.priceDecimals
+      )
     }
     await vlp.transferOwnership(Vault.address) // transferOwnership
     await settingsManager.setPositionManager(positionManagerAddress, true)
@@ -236,7 +247,6 @@ describe('OrderVault', function () {
   it('add Vault as admin', async () => {
     await vusd.transferOwnership(Vault.address) // addAdmin vault
   })
-
 
   it('set LiquidateThreshod for VaultUtils', async () => {
     const BTCLiquidateThreshold = 990000

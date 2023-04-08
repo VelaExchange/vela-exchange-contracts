@@ -74,7 +74,7 @@ describe('SettingsManager', function () {
 
     usdt = await deployContract('BaseToken', ['Tether USD', 'USDT', expandDecimals('10000000', 18)])
     usdtPriceFeed = await deployContract('FastPriceFeed', [])
-    operator = await deployContract('ExchangeOperators', [])
+    operator = await deployContract('Operators', [])
     usdc = await deployContract('BaseToken', ['USD Coin', 'USDC', expandDecimals('10000000', 18)])
     usdcPriceFeed = await deployContract('FastPriceFeed', [])
     vlpPriceFeed = await deployContract('FastPriceFeed', [])
@@ -94,7 +94,13 @@ describe('SettingsManager', function () {
     unstakingFee = 3000
     vela = await deployContract('MintableBaseToken', ['Vela Exchange', 'VELA', 0])
     eVela = await deployContract('eVELA', [])
-    tokenFarm = await deployContract('TokenFarm', [vestingDuration, eVela.address, vela.address, vlp.address, operator.address])
+    tokenFarm = await deployContract('TokenFarm', [
+      vestingDuration,
+      eVela.address,
+      vela.address,
+      vlp.address,
+      operator.address,
+    ])
     Vault = await deployContract('Vault', [operator.address, vlp.address, vusd.address])
     priceManager = await deployContract('PriceManager', [operator.address])
     LiquidateVault = await deployContract('LiquidateVault', [])
@@ -127,12 +133,7 @@ describe('SettingsManager', function () {
       Vault.address,
       VaultUtils.address
     )
-    await LiquidateVault.initialize(
-      PositionVault.address,
-      settingsManager.address,
-      Vault.address,
-      VaultUtils.address
-    )
+    await LiquidateVault.initialize(PositionVault.address, settingsManager.address, Vault.address, VaultUtils.address)
   })
 
   it('setVaultSettings', async () => {
@@ -286,13 +287,13 @@ describe('SettingsManager', function () {
   })
 
   it('setFeeManager', async () => {
-    await expect(settingsManager.connect(user2).setFeeManager(user0.address)).to.be.revertedWith('Invalid operator')
+    await expect(settingsManager.connect(user2).setFeeManager(user0.address)).to.be.revertedWith('invalid operator')
     await settingsManager.setFeeManager(user0.address)
   })
 
   it('setBountyPercent', async () => {
     await expect(settingsManager.connect(user2).setBountyPercent(25000, 25000, 25000)).to.be.revertedWith(
-      'Invalid operator'
+      'invalid operator'
     )
     await expect(settingsManager.setBountyPercent(50000, 50000, 1000)).to.be.revertedWith('invalid bountyPercent')
     await settingsManager.setBountyPercent(25000, 25000, 25000)
@@ -300,7 +301,7 @@ describe('SettingsManager', function () {
 
   /*it ("enableMarketOrder", async () => {
       await expect(settingsManager.connect(user2).enableMarketOrder(true))
-        .to.be.revertedWith("Invalid operator")
+        .to.be.revertedWith("invalid operator")
       await settingsManager.enableMarketOrder(true)
     })*/ //todo: discuss enableMarketOrder removal
 

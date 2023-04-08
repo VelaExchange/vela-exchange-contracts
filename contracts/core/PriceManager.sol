@@ -18,13 +18,23 @@ contract PriceManager is IPriceManager, Ownable, Constants {
     mapping(address => address) public priceFeeds;
     mapping(address => uint256) public priceDecimals;
 
+    modifier onlyOperator(uint256 level) {
+        require(operators.getOperatorLevel(msg.sender) >= level, "invalid operator");
+        _;
+    }
+
     constructor(address _operators) {
         require(Address.isContract(_operators), "operators invalid");
         operators = IOperators(_operators);
     }
 
-    function setTokenConfig(address _token, uint256 _tokenDecimals, uint256 _maxLeverage, address _priceFeed, uint256 _priceDecimals) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function setTokenConfig(
+        address _token,
+        uint256 _tokenDecimals,
+        uint256 _maxLeverage,
+        address _priceFeed,
+        uint256 _priceDecimals
+    ) external onlyOperator(2) {
         require(Address.isContract(_token), "Address is wrong");
         tokenDecimals[_token] = _tokenDecimals;
         require(_maxLeverage > MIN_LEVERAGE, "Max Leverage should be greater than Min Leverage");
@@ -34,8 +44,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         getLastPrice(_token);
     }
 
-    function setMaxLeverage(address _token, uint256 _maxLeverage) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setMaxLeverage(address _token, uint256 _maxLeverage) external onlyOperator(1) {
         require(_maxLeverage > MIN_LEVERAGE, "Max Leverage should be greater than Min Leverage");
         maxLeverage[_token] = _maxLeverage;
     }
@@ -70,8 +79,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         return (price * PRICE_PRECISION) / (10 ** _priceDecimals);
     }
 
-    function setPrice(address _token, uint256 _ts, uint256 _answer) public {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setPrice(address _token, uint256 _ts, uint256 _answer) public onlyOperator(1) {
         address priceFeedAddress = priceFeeds[_token];
         require(priceFeedAddress != address(0), "VaultPriceFeed: invalid price feed");
 
@@ -80,7 +88,11 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         IPriceFeed(priceFeedAddress).setAnswer(_token, _ts, _answer);
     }
 
-    function setLatestPrices(address[] calldata _tokens, uint256[] calldata _tses, uint256[] calldata _answers) external override {
+    function setLatestPrices(
+        address[] calldata _tokens,
+        uint256[] calldata _tses,
+        uint256[] calldata _answers
+    ) external override {
         require(_tokens.length == _answers.length, "VaultPriceFeed: length mismatch");
         require(_tokens.length == _tses.length, "VaultPriceFeed: length mismatch");
 
@@ -89,7 +101,7 @@ contract PriceManager is IPriceManager, Ownable, Constants {
         }
     }
 
-    function getCurrentTime() external view returns(uint256){
+    function getCurrentTime() external view returns (uint256) {
         return block.timestamp;
     }
 }
