@@ -35,6 +35,8 @@ interface ISettingsManager {
 
     function borrowFeeFactor() external view returns (uint256);
 
+    function totalOpenInterest() external view returns (uint256);
+
     function maxFundingRate() external view returns (uint256);
 
     function basisFundingRateFactor() external view returns (uint256);

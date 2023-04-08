@@ -45,7 +45,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public override referFee = 5000; // 5%
     uint256 public override triggerGasFee = 0; //100 gwei;
     uint256 public override globalGasFee = 0;
-    uint256 public totalOpenInterest;
+    uint256 public override totalOpenInterest;
     uint256 public override maxFundingRate = 10000;
     uint256 public override basisFundingRateFactor = 10000;
 
@@ -83,6 +83,8 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetEnableStaking(address indexed token, bool isEnabled);
     event SetEnableUnstaking(address indexed token, bool isEnabled);
     event SetBorrowFeeFactor(uint256 borrowFeeFactor);
+    event SetMaxFundingRate(uint256 maxFundingRate);
+    event SetBasisFundingRateFactor(uint256 basisFundingRateFactor);
     event SetFundingRateFactor(address indexed token, uint256 fundingRateFactor);
     event SetLiquidationFeeUsd(uint256 indexed _liquidationFeeUsd);
     event SetMarginFeeBasisPoints(address indexed token, bool isLong, uint256 marginFeeBasisPoints);
@@ -290,6 +292,20 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         require(_borrowFeeFactor <= MAX_BORROW_FEE_FACTOR, "Above max");
         borrowFeeFactor = _borrowFeeFactor;
         emit SetBorrowFeeFactor(_borrowFeeFactor);
+    }
+
+    function setMaxFundingRate(uint256 _maxFundingRate) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        require(_maxFundingRate <= MAX_BORROW_FEE_FACTOR, "Above max");
+        maxFundingRate = _maxFundingRate;
+        emit SetMaxFundingRate(_maxFundingRate);
+    }
+
+    function setBasisFundingRateFactor(uint256 _basisFundingRateFactor) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        require(_basisFundingRateFactor <= MAX_BORROW_FEE_FACTOR, "Above max");
+        basisFundingRateFactor = _basisFundingRateFactor;
+        emit SetBasisFundingRateFactor(_basisFundingRateFactor);
     }
 
     function setFundingRateFactor(address _token, uint256 _fundingRateFactor) external {
