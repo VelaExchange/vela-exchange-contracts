@@ -40,6 +40,20 @@ struct Order {
     uint256 stepAmount;
     uint256 stepType;
     uint256 stpPrice;
+    uint256 timestamp;
+}
+
+struct AddPositionOrder {
+    uint256 collateral;
+    uint256 size;
+    uint256 acceptedPrice;
+    uint256 timestamp;
+}
+
+struct DecreasePositionOrder {
+    uint256 size;
+    uint256 acceptedPrice;
+    uint256 timestamp;
 }
 
 struct Position {
