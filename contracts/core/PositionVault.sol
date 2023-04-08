@@ -484,7 +484,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     int256(_sizeDelta) *
                     settingsManager.fundingIndex(_indexToken)) /
                 int256(position.size + _sizeDelta);
-            position.accruedBorrowFee += settingsManager.getBorrowFee(position.size, position.lastIncreasedTime);
+            position.accruedBorrowFee += settingsManager.getBorrowFee(
+                position.size,
+                position.lastIncreasedTime,
+                _indexToken
+            );
         }
         uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
         uint256 _amountInAfterFee = _amountIn - fee;

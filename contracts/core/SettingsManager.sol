@@ -42,7 +42,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     uint256 public override expiryDuration = 20; // 20 seconds
     uint256 public override feeRewardBasisPoints = 50000; // 50%
     uint256 public override liquidationFeeUsd; // 0 usd
-    uint256 public override borrowFeeFactor = 10; // 0.01% per hour
+    uint256 public override defaultBorrowFeeFactor = 10; // 0.01% per hour
     uint256 public override referFee = 5000; // 5%
     uint256 public override triggerGasFee = 0; //100 gwei;
     uint256 public override globalGasFee = 0;
@@ -59,6 +59,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => uint256) public override withdrawFee;
     mapping(address => uint256) public override stakingFee;
     mapping(address => uint256) public override unstakingFee;
+    mapping(address => uint256) public override borrowFeeFactor;
     mapping(address => int256) public override fundingIndex;
     mapping(address => uint256) public override fundingRateFactor;
     mapping(address => mapping(bool => uint256)) public override marginFeeBasisPoints; // = 100; // 0.1%
@@ -83,7 +84,8 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetEnableWithdraw(address indexed token, bool isEnabled);
     event SetEnableStaking(address indexed token, bool isEnabled);
     event SetEnableUnstaking(address indexed token, bool isEnabled);
-    event SetBorrowFeeFactor(uint256 borrowFeeFactor);
+    event SetDefaultBorrowFeeFactor(uint256 borrowFeeFactor);
+    event SetBorrowFeeFactor(address indexToken, uint256 borrowFeeFactor);
     event SetMaxFundingRate(uint256 maxFundingRate);
     event SetBasisFundingRateFactor(uint256 basisFundingRateFactor);
     event SetFundingRateFactor(address indexed token, uint256 fundingRateFactor);
@@ -278,10 +280,16 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetDeductFeePercent(_account, _deductFee);
     }
 
-    function setBorrowFeeFactor(uint256 _borrowFeeFactor) external onlyOperator(1) {
+    function setDefaultBorrowFeeFactor(uint256 _defaultBorrowFeeFactor) external onlyOperator(1) {
+        require(_defaultBorrowFeeFactor <= MAX_BORROW_FEE_FACTOR, "Above max");
+        defaultBorrowFeeFactor = _defaultBorrowFeeFactor;
+        emit SetDefaultBorrowFeeFactor(_defaultBorrowFeeFactor);
+    }
+
+    function setBorrowFeeFactor(address _indexToken, uint256 _borrowFeeFactor) external onlyOperator(1) {
         require(_borrowFeeFactor <= MAX_BORROW_FEE_FACTOR, "Above max");
-        borrowFeeFactor = _borrowFeeFactor;
-        emit SetBorrowFeeFactor(_borrowFeeFactor);
+        borrowFeeFactor[_indexToken] = _borrowFeeFactor;
+        emit SetBorrowFeeFactor(_indexToken, _borrowFeeFactor);
     }
 
     function setMaxFundingRate(uint256 _maxFundingRate) external onlyOperator(1) {
@@ -492,7 +500,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         pnl =
             pnl -
             getFundingFee(_indexToken, _isLong, _size, _fundingIndex) -
-            int256(getBorrowFee(_size, _lastIncreasedTime) + _accruedBorrowFee);
+            int256(getBorrowFee(_size, _lastIncreasedTime, _indexToken) + _accruedBorrowFee);
 
         if (pnl > 0) {
             return (true, uint256(pnl));
@@ -551,9 +559,18 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
                 : (int256(_size) * (_fundingIndex - fundingIndex[_indexToken])) / int256(FUNDING_RATE_PRECISION);
     }
 
-    function getBorrowFee(uint256 _borrowedSize, uint256 _lastIncreasedTime) public view override returns (uint256) {
+    function getBorrowFee(
+        uint256 _borrowedSize,
+        uint256 _lastIncreasedTime,
+        address _indexToken
+    ) public view override returns (uint256) {
+        uint256 _borrowFeeFactor = borrowFeeFactor[_indexToken];
+        if (_borrowFeeFactor == 0) _borrowFeeFactor = defaultBorrowFeeFactor;
+
         return
-            ((block.timestamp - _lastIncreasedTime) * _borrowedSize * borrowFeeFactor) / BASIS_POINTS_DIVISOR / 1 hours;
+            ((block.timestamp - _lastIncreasedTime) * _borrowedSize * _borrowFeeFactor) /
+            BASIS_POINTS_DIVISOR /
+            1 hours;
     }
 
     function getPositionFee(
