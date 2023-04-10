@@ -18,10 +18,13 @@ describe('FastPriceFeed', function () {
   let btc
   let btcPriceFeed
   let latestAt
+  let mockPyth
+  let priceId = "0xf9c0172ba10dfa4d19088d94f5bf61d3b54d5bd7483a322a982e1373ee8ea31b"; //btc testnet
 
   before(async function () {
     btc = await deployContract('BaseToken', ['Bitcoin', 'BTC', 0])
     btcPriceFeed = await deployContract('FastPriceFeed', [])
+    mockPyth = await deployContract('MockPyth', [])
   })
 
   it('setAdmin', async () => {
@@ -57,5 +60,45 @@ describe('FastPriceFeed', function () {
 
   it('latestRound', async () => {
     expect(await btcPriceFeed.latestRound(btc.address)).eq(1)
+  })
+
+  it('set Pyth', async()=>{
+    expect(btcPriceFeed.connect(user0).setPyth(mockPyth.address)).to.be.revertedWith("PriceFeed: forbidden");
+    await btcPriceFeed.setPyth(mockPyth.address);
+  })
+
+  it('setToken', async()=>{
+    let now = await mockPyth.getCurrentTime();
+    await mockPyth.setPrice(priceId, 2869078000000, -8, now);
+    await btcPriceFeed.setToken(btc.address, priceId, 1000, 60); //allow 1% devivation
+    expect(await btcPriceFeed.getPythLastPrice(btc.address, false)).equal(2869078000000)
+  })
+
+  it('can setAnswer within deviation', async()=>{
+    let now = await mockPyth.getCurrentTime();
+    await btcPriceFeed.setAnswer(btc.address, now, 2869079000000)
+  })
+
+  it('cannot setAnswer out of deviation', async()=>{
+    let now = await mockPyth.getCurrentTime();
+    expect(btcPriceFeed.setAnswer(btc.address, now, 1869079000000)).to.be.revertedWith("need update pyth price")
+  })
+
+  it('can read latestAnswer within expire time', async()=>{
+    await ethers.provider.send('evm_increaseTime', [10])
+    await ethers.provider.send('evm_mine')
+    expect(await btcPriceFeed.latestAnswer(btc.address)).equal(2869079000000)
+  })
+
+  it('cannot read latestAnswer after expire time', async()=>{
+    await ethers.provider.send('evm_increaseTime', [60])
+    await ethers.provider.send('evm_mine')
+    expect(btcPriceFeed.latestAnswer(btc.address)).to.be.revertedWith("price stale")
+  })
+
+  it('can read on-chain pyth price as fallback', async()=>{
+    let now = await mockPyth.getCurrentTime();
+    await mockPyth.setPrice(priceId, 2869080000000, -8, now);
+    expect(await btcPriceFeed.latestAnswer(btc.address)).equal(2869080000000)
   })
 })
