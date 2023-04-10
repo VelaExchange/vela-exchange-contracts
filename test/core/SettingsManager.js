@@ -143,7 +143,6 @@ describe('SettingsManager', function () {
     await expect(settingsManager.setVaultSettings(max_cooldown_duration, feeRewardBasisPoints)).to.be.revertedWith(
       'invalid cooldownDuration'
     )
-    await expect(settingsManager.setVaultSettings(cooldownDuration, minFeeBasisPoints)).to.be.revertedWith('Below min')
     await expect(settingsManager.setVaultSettings(cooldownDuration, maxFeeBasisPoints)).to.be.revertedWith('Above max')
     await settingsManager.setVaultSettings(cooldownDuration, feeRewardBasisPoints)
   })
@@ -263,7 +262,7 @@ describe('SettingsManager', function () {
 
   it('setStakingFee', async () => {
     const fee = 100
-    await expect(settingsManager.setStakingFee(btc.address, 15000)).to.be.revertedWith('Above max')
+    await expect(settingsManager.setStakingFee(btc.address, 150000)).to.be.revertedWith('Above max')
     await settingsManager.setStakingFee(btc.address, fee)
   })
 

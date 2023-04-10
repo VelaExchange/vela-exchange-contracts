@@ -71,13 +71,20 @@ describe('VLP', function () {
     expect(await vlp.id()).eq('VLP')
   })
 
-  it('cannot transfer before cooldown', async () => {
-    await expect(vlp.transfer(user1.address, amount)).to.be.revertedWith('cooldown duration not yet passed')
-  })
+    it ("cannot transfer before cooldown", async () => {
+        await expect(vlp.transfer(user1.address, amount))
+          .to.be.revertedWith("cooldown duration not yet passed");
+        await expect(vlp.transferFrom(wallet.address, user1.address, amount))
+        .to.be.revertedWith("cooldown duration not yet passed");
+    })
 
-  it('can transfer after cooldown', async () => {
-    const passTime = 60 * 60 * 24 * 365
-    await ethers.provider.send('evm_increaseTime', [passTime])
-    vlp.transfer(user1.address, amount)
-  })
-})
+    it ("can transfer after cooldown", async () => {
+        const passTime = 60 * 60 * 24 * 365
+        await ethers.provider.send('evm_increaseTime', [passTime]);
+        const halfAmount = expandDecimals('500', 6)
+        vlp.transfer(user1.address, amount);
+        await vlp.connect(user1).approve(wallet.address,  amount);
+        await vlp.transferFrom(user1.address, wallet.address, halfAmount);
+    })
+
+});

@@ -231,7 +231,6 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     function setVaultSettings(uint256 _cooldownDuration, uint256 _feeRewardsBasisPoints) external onlyOperator(2) {
         require(_cooldownDuration <= MAX_COOLDOWN_DURATION, "invalid cooldownDuration");
-        require(_feeRewardsBasisPoints >= MIN_FEE_REWARD_BASIS_POINTS, "Below min");
         require(_feeRewardsBasisPoints < MAX_FEE_REWARD_BASIS_POINTS, "Above max");
         cooldownDuration = _cooldownDuration;
         feeRewardBasisPoints = _feeRewardsBasisPoints;
@@ -387,14 +386,16 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit ChangedReferFee(_fee);
     }
 
-    function setStakingFee(address token, uint256 _fee) external onlyOperator(1) {
-        require(_fee <= MAX_STAKING_UNSTAKING_FEE, "Above max");
+    function setStakingFee(address token, uint256 _fee) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        require(_fee <= BASIS_POINTS_DIVISOR, "Above max");
         stakingFee[token] = _fee;
         emit SetStakingFee(token, _fee);
     }
 
-    function setUnstakingFee(address token, uint256 _fee) external onlyOperator(1) {
-        require(_fee <= MAX_STAKING_UNSTAKING_FEE, "Above max");
+    function setUnstakingFee(address token, uint256 _fee) external {
+        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+        require(_fee <= BASIS_POINTS_DIVISOR, "Above max");
         unstakingFee[token] = _fee;
         emit SetUnstakingFee(token, _fee);
     }
