@@ -22,7 +22,6 @@ contract ExchangeOperators is Ownable {
 
   function setOperator(address op, uint8 level) onlyOperator(level) external {
       require(isOperator[_msgSender()] > isOperator[op], "Cannot set operator");
-      require(level <= uint8(OperatorLevel.TWO), "Invalid operator level");
       isOperator[op] = level;
   }
 

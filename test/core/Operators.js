@@ -23,7 +23,7 @@ describe("Operators", function () {
     it ("operatorLevel", async () => {
         const operatorLevel = await operator.getOperatorLevel(user0.address)
         console.log("user0 operator Level: ", operatorLevel)
-
+        await expect(operator.transferOwnership(zeroAddress)).to.be.revertedWith("Ownable: new owner is the zero address")
         await operator.transferOwnership(user0.address)
         const operatorLevel2 = await operator.getOperatorLevel(user0.address)
         console.log("user0 operator Level: ", operatorLevel2)
@@ -33,6 +33,12 @@ describe("Operators", function () {
     it("setOperatorLevel", async () => {
         await expect(operator.setOperator(user1.address, 2)).to.be.revertedWith("Not an operator")
         await operator.connect(user0).setOperator(user1.address, 2)
+        await operator.connect(user0).setOperator(user1.address, 2)
+        await expect(operator.connect(user1).setOperator(user0.address, 1)).to.be.revertedWith("Cannot set operator")
         await expect(operator.connect(user1).setOperator(user2.address, 3)).to.be.revertedWith("Invalid operator")
+    })
+
+    it("renounceOwnership", async () => {
+        await expect(operator.connect(user0).renounceOwnership()).to.be.revertedWith("Cannot renounce ownership")
     })
 });

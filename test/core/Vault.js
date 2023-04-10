@@ -1430,6 +1430,7 @@ describe('Vault', function () {
       'not manager or not allowed before pendingTime'
     )
     await LiquidateVault.connect(user2).registerLiquidatePosition(posId)
+    await expect(LiquidateVault.connect(user2).registerLiquidatePosition(posId)).to.be.revertedWith("not the firstCaller")
     await ethers.provider.send('evm_increaseTime', [5])
     // and user2 cannot liquidatePosition within the liquidationPendingTime 10s
     await expect(LiquidateVault.connect(user2).liquidatePosition(posId)).to.be.revertedWith(
