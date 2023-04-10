@@ -22,14 +22,11 @@ contract Operators is Context {
         operatorLevel[_msgSender()] = 3;
     }
 
-    function setOperator(address op, uint256 level) external {
-        require(operatorLevel[_msgSender()] > operatorLevel[op], "insufficient level");
-        require(operatorLevel[_msgSender()] > level, "invalid level");
 
-  function setOperator(address op, uint8 level) onlyOperator(level) external {
-      require(isOperator[_msgSender()] > isOperator[op], "Cannot set operator");
-      isOperator[op] = level;
-  }
+    function setOperator(address op, uint8 level) onlyOperator(level) external {
+        require(operatorLevel[_msgSender()] > operatorLevel[op], "Cannot set operator");
+        operatorLevel[op] = level;
+    }
 
     function getOperatorLevel(address op) public view returns (uint256) {
         return operatorLevel[op];
