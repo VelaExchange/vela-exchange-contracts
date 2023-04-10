@@ -2,13 +2,13 @@
  * The test runner for Dexpools Perpetual contract
  */
 
-const { expect, use } = require("chai");
-const { solidity } = require("ethereum-waffle")
-const { ethers, upgrades } = require("hardhat");
+const { expect, use } = require('chai')
+const { solidity } = require('ethereum-waffle')
+const { ethers, upgrades } = require('hardhat')
 
-const { deployContract } = require("../../scripts/shared/helpers.js")
-const { toUsd, expandDecimals, getBlockTime, zeroAddress} = require("../../scripts/shared/utilities.js")
-const { toChainlinkPrice } = require("../../scripts/shared/chainlink.js")
+const { deployContract } = require('../../scripts/shared/helpers.js')
+const { toUsd, expandDecimals, getBlockTime, zeroAddress } = require('../../scripts/shared/utilities.js')
+const { toChainlinkPrice } = require('../../scripts/shared/chainlink.js')
 
 use(solidity)
 

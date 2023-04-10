@@ -54,6 +54,11 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         _;
     }
 
+    modifier onlyOperator(uint256 level) {
+        require(operators.getOperatorLevel(msg.sender) >= level, "invalid operator");
+        _;
+    }
+
     constructor(address _operators, address _vlp, address _vusd) {
         require(Address.isContract(_operators), "operators invalid");
         operators = IOperators(_operators);
@@ -105,8 +110,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         orderVault.cancelPendingOrder(msg.sender, _posId);
     }
 
-    function forceClosePosition(uint256 _posId) external payable nonReentrant {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function forceClosePosition(uint256 _posId) external payable nonReentrant onlyOperator(1) {
         // put a require here to call something like positionVault.getPositionProfit(_posId)
         // compare to maxProfitPercent and totalUSD, if the position profit > max profit % of totalUSD, close
         Position memory position = positionVault.getPosition(_posId);
@@ -130,13 +134,14 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
 
     function decreasePosition(
         uint256 _sizeDelta,
+        uint256 _acceptedPrice,
         uint256 _posId
     ) external payable nonReentrant preventBanners(msg.sender) {
         require(msg.value == settingsManager.globalGasFee(), "invalid globalGasFee");
         (bool success, ) = payable(settingsManager.feeManager()).call{value: msg.value}("");
         require(success, "failed to send fee");
 
-        positionVault.decreasePosition(_posId, msg.sender, _sizeDelta);
+        positionVault.createDecreasePositionOrder(_posId, msg.sender, _sizeDelta, _acceptedPrice);
     }
 
     function _closePosition(uint256 _posId) internal {

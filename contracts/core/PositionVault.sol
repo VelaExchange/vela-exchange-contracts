@@ -23,13 +23,17 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
     uint256 public lastPosId;
     IPriceManager private priceManager;
     ISettingsManager private settingsManager;
-    IVault immutable private vault;
+    IVault private immutable vault;
     ILiquidateVault private liquidateVault;
     IOrderVault private orderVault;
     IVaultUtils private vaultUtils;
 
     uint256 public openMarketQueueIndex;
     uint256[] public openMarketQueuePosIds;
+    uint256 public addPositionQueueIndex;
+    uint256[] public addPositionQueuePosIds;
+    uint256 public decreasePositionQueueIndex;
+    uint256[] public decreasePositionQueuePosIds;
 
     bool private isInitialized;
     mapping(uint256 => Position) public positions;
@@ -38,8 +42,12 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
     event AddOrRemoveCollateral(uint256 posId, bool isPlus, uint256 amount, uint256 collateral, uint256 size);
     event AddPosition(uint256 posId, uint256 collateral, uint256 size, uint256 acceptedPrice);
+    event CreateDecreasePositionOrder(uint256 posId, uint256 size, uint256 acceptedPrice);
     event ExecuteAddPosition(uint256 posId, uint256 collateral, uint256 size, uint256 feeUsd);
+    event ExecuteDecreasePositionOrder(uint256 posId, uint256 size);
     event MarketOrderExecutionError(uint256 indexed posId, address indexed account, string err);
+    event AddPositionExecutionError(uint256 indexed posId, address indexed account, string err);
+    event DecreasePositionExecutionError(uint256 indexed posId, address indexed account, string err);
 
     modifier onlyVault() {
         require(msg.sender == address(vault) || msg.sender == address(liquidateVault), "Only vault");
@@ -92,24 +100,79 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         require(_sizeDelta > MIN_COLLATERAL, "size is too small");
         require(_account == position.owner, "you are not allowed to add position");
 
+        orderVault.createAddPositionOrder(_posId, _collateralDelta, _sizeDelta, _acceptedPrice);
+
+        addPositionQueuePosIds.push(lastPosId);
+
+        emit AddPosition(_posId, _collateralDelta, _sizeDelta, _acceptedPrice);
+    }
+
+    function executeAddPosition(uint256 _posId) external nonReentrant {
+        require(settingsManager.isManager(msg.sender) || msg.sender == address(this), "You are not allowed to trigger");
+
+        Position memory position = positions[_posId];
+        AddPositionOrder memory addPositionOrder = orderVault.getAddPositionOrder(_posId);
+        require(addPositionOrder.size > 0, "order size is 0");
+        require(block.timestamp <= addPositionOrder.timestamp + settingsManager.expiryDuration(), "order has expired");
+
         uint256 price = priceManager.getLastPrice(position.indexToken);
         uint256 fee = settingsManager.collectMarginFees(
             position.owner,
             position.indexToken,
             position.isLong,
-            _sizeDelta
+            addPositionOrder.size
         );
-        checkSlippage(position.isLong, _acceptedPrice, price);
+        checkSlippage(position.isLong, addPositionOrder.acceptedPrice, price);
         _increasePosition(
             _posId,
             position.owner,
             position.indexToken,
             position.isLong,
             price,
-            _collateralDelta + fee,
-            _sizeDelta
+            addPositionOrder.collateral + fee,
+            addPositionOrder.size
         );
-        emit AddPosition(_posId, _collateralDelta, _sizeDelta, _acceptedPrice);
+        orderVault.deleteAddPositionOrder(_posId);
+
+        emit ExecuteAddPosition(_posId, addPositionOrder.collateral, addPositionOrder.size, fee);
+    }
+
+    function createDecreasePositionOrder(
+        uint256 _posId,
+        address _account,
+        uint256 _sizeDelta,
+        uint256 _acceptedPrice
+    ) external override onlyVault {
+        Position memory position = positions[_posId];
+
+        require(_sizeDelta > 0, "invalid size");
+        require(position.size > 0, "Position not Open");
+        require(_account == position.owner, "not allowed");
+
+        orderVault.createDecreasePositionOrder(_posId, _sizeDelta, _acceptedPrice);
+
+        decreasePositionQueuePosIds.push(lastPosId);
+
+        emit CreateDecreasePositionOrder(_posId, _sizeDelta, _acceptedPrice);
+    }
+
+    function executeDecreasePositionOrder(uint256 _posId) external nonReentrant {
+        require(settingsManager.isManager(msg.sender) || msg.sender == address(this), "You are not allowed to trigger");
+
+        Position memory position = positions[_posId];
+        DecreasePositionOrder memory decreasePositionOrder = orderVault.getDecreasePositionOrder(_posId);
+        require(decreasePositionOrder.size > 0, "order size is 0");
+        require(
+            block.timestamp <= decreasePositionOrder.timestamp + settingsManager.expiryDuration(),
+            "order has expired"
+        );
+
+        uint256 price = priceManager.getLastPrice(position.indexToken);
+        checkSlippage(position.isLong, decreasePositionOrder.acceptedPrice, price);
+        _decreasePosition(_posId, price, decreasePositionOrder.size);
+        orderVault.deleteDecreasePositionOrder(_posId);
+
+        emit ExecuteDecreasePositionOrder(_posId, decreasePositionOrder.size);
     }
 
     function decreasePosition(uint256 _posId, address _account, uint256 _sizeDelta) external override onlyVault {
@@ -119,13 +182,6 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         _decreasePosition(_posId, price, _sizeDelta);
     }
 
-    function executeOpenMarketOrders(
-        uint256 numOfOrders
-    ) external {
-        require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
-        _executeOpenMarketOrders(numOfOrders);
-    }
-    
     function initialize(
         IOrderVault _orderVault,
         ILiquidateVault _liquidateVault,
@@ -141,7 +197,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         settingsManager = _settingsManager;
         vaultUtils = _vaultUtils;
         isInitialized = true;
-    } 
+    }
 
     function newPositionOrder(
         address _account,
@@ -238,7 +294,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             }
         }
     }
-    
+
     function triggerForTPSL(uint256 _posId) external nonReentrant {
         Position memory position = positions[_posId];
         settingsManager.updateFunding(position.indexToken);
@@ -246,15 +302,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.owner == msg.sender || settingsManager.isManager(msg.sender),
             "You are not allowed to trigger"
         );
-        (bool hitTrigger, uint256 triggerAmountPercent, uint256 triggerPrice) = orderVault
-            .executeTriggerOrders(position.indexToken, position.isLong, _posId);
+        (bool hitTrigger, uint256 triggerAmountPercent, uint256 triggerPrice) = orderVault.executeTriggerOrders(
+            position.indexToken,
+            position.isLong,
+            _posId
+        );
         require(hitTrigger, "trigger not ready");
         if (hitTrigger) {
-            _decreasePosition(
-                _posId,
-                (position.size * (triggerAmountPercent)) / BASIS_POINTS_DIVISOR,
-                triggerPrice
-            );
+            _decreasePosition(_posId, (position.size * (triggerAmountPercent)) / BASIS_POINTS_DIVISOR, triggerPrice);
         }
     }
 
@@ -266,8 +321,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         require(order.size > 0, "order size is 0");
         require(order.positionType == POSITION_MARKET, "not market order");
         require(order.status == OrderStatus.PENDING, "not pending order");
-
-        settingsManager.updateFunding(position.indexToken);
+        require(block.timestamp <= order.timestamp + settingsManager.expiryDuration(), "order has expired");
 
         uint256 fee = settingsManager.collectMarginFees(
             position.owner,
@@ -291,20 +345,12 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         _addUserAlivePosition(position.owner, _posId);
     }
 
-    function _decreasePosition(
-        uint256 _posId,
-        uint256 _price,
-        uint256 _sizeDelta
-    ) internal {
+    function _decreasePosition(uint256 _posId, uint256 _price, uint256 _sizeDelta) internal {
         Position storage position = positions[_posId];
         settingsManager.updateFunding(position.indexToken);
         require(position.size > 0, "position size is zero");
         settingsManager.decreaseOpenInterest(position.indexToken, position.owner, position.isLong, _sizeDelta);
-        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(
-            _posId,
-            _price,
-            _sizeDelta
-        );
+        (uint256 usdOut, uint256 usdOutFee) = _reduceCollateral(_posId, _price, _sizeDelta);
         if (usdOutFee <= usdOut) {
             vault.takeVUSDOut(position.owner, position.refer, usdOutFee, usdOut);
         } else if (usdOutFee != 0) {
@@ -314,7 +360,14 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
             position.size -= _sizeDelta;
             vaultUtils.validateMinLeverage(position.size, position.collateral);
             vaultUtils.validateMaxLeverage(position.indexToken, position.size, position.collateral);
-            vaultUtils.emitDecreasePositionEvent(position.owner, position.indexToken, position.isLong, _posId, _sizeDelta, usdOutFee);
+            vaultUtils.emitDecreasePositionEvent(
+                position.owner,
+                position.indexToken,
+                position.isLong,
+                _posId,
+                _sizeDelta,
+                usdOutFee
+            );
         } else {
             vaultUtils.emitClosePositionEvent(position.owner, position.indexToken, position.isLong, _posId);
             _removeUserAlivePosition(position.owner, _posId);
@@ -322,7 +375,9 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         }
     }
 
-    function _executeOpenMarketOrders(uint256 numOfOrders) internal {
+    function executeOpenMarketOrders(uint256 numOfOrders) external {
+        require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
+
         uint256 index = openMarketQueueIndex;
         uint256 endIndex = index + numOfOrders;
         uint256 length = openMarketQueuePosIds.length;
@@ -346,6 +401,62 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         }
 
         openMarketQueueIndex = index;
+    }
+
+    function executeAddPositions(uint256 numOfOrders) external {
+        require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
+
+        uint256 index = addPositionQueueIndex;
+        uint256 endIndex = index + numOfOrders;
+        uint256 length = addPositionQueuePosIds.length;
+
+        if (index >= length) return;
+        if (endIndex > length) endIndex = length;
+
+        while (index < endIndex) {
+            uint256 posId = addPositionQueuePosIds[index];
+
+            try this.executeAddPosition(posId) {} catch Error(string memory err) {
+                orderVault.deleteAddPositionOrder(posId);
+                emit AddPositionExecutionError(posId, positions[posId].owner, err);
+            } catch (bytes memory err) {
+                orderVault.deleteAddPositionOrder(posId);
+                emit AddPositionExecutionError(posId, positions[posId].owner, string(err));
+            }
+
+            delete addPositionQueuePosIds[index];
+            ++index;
+        }
+
+        addPositionQueueIndex = index;
+    }
+
+    function executeDecreasePositions(uint256 numOfOrders) external {
+        require(settingsManager.isManager(msg.sender), "You are not allowed to trigger");
+
+        uint256 index = decreasePositionQueueIndex;
+        uint256 endIndex = index + numOfOrders;
+        uint256 length = decreasePositionQueuePosIds.length;
+
+        if (index >= length) return;
+        if (endIndex > length) endIndex = length;
+
+        while (index < endIndex) {
+            uint256 posId = decreasePositionQueuePosIds[index];
+
+            try this.executeDecreasePositionOrder(posId) {} catch Error(string memory err) {
+                orderVault.deleteDecreasePositionOrder(posId);
+                emit DecreasePositionExecutionError(posId, positions[posId].owner, err);
+            } catch (bytes memory err) {
+                orderVault.deleteDecreasePositionOrder(posId);
+                emit DecreasePositionExecutionError(posId, positions[posId].owner, string(err));
+            }
+
+            delete decreasePositionQueuePosIds[index];
+            ++index;
+        }
+
+        decreasePositionQueueIndex = index;
     }
 
     function _increasePosition(
@@ -373,7 +484,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
                     int256(_sizeDelta) *
                     settingsManager.fundingIndex(_indexToken)) /
                 int256(position.size + _sizeDelta);
-            position.accruedBorrowFee += settingsManager.getBorrowFee(position.size, position.lastIncreasedTime);
+            position.accruedBorrowFee += settingsManager.getBorrowFee(
+                position.size,
+                position.lastIncreasedTime,
+                _indexToken
+            );
         }
         uint256 fee = settingsManager.collectMarginFees(_account, _indexToken, _isLong, _sizeDelta);
         uint256 _amountInAfterFee = _amountIn - fee;
@@ -488,9 +603,11 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         userAliveIndexOf[_posId] = userPositionIds[_user].length;
         userPositionIds[_user].push(_posId);
     }
+
     function removeUserAlivePosition(address _user, uint256 _posId) external override {
         _removeUserAlivePosition(_user, _posId);
     }
+
     function _removeUserAlivePosition(address _user, uint256 _posId) internal {
         uint256 index = userAliveIndexOf[_posId];
         uint256 lastIndex = userPositionIds[_user].length - 1;
@@ -503,7 +620,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
         userPositionIds[_user].pop();
     }
 
-    function getUserPositionIds(address _account) external override view returns (uint256[] memory) {
+    function getUserPositionIds(address _account) external view override returns (uint256[] memory) {
         return userPositionIds[_account];
     }
 

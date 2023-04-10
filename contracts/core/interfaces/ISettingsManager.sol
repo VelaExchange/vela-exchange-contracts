@@ -19,6 +19,8 @@ interface ISettingsManager {
 
     function closeDeltaTime() external view returns (uint256);
 
+    function expiryDuration() external view returns (uint256);
+
     function cooldownDuration() external view returns (uint256);
 
     function liquidationPendingTime() external view returns (uint256);
@@ -31,7 +33,11 @@ interface ISettingsManager {
 
     function feeRewardBasisPoints() external view returns (uint256);
 
-    function borrowFeeFactor() external view returns (uint256);
+    function defaultBorrowFeeFactor() external view returns (uint256);
+
+    function borrowFeeFactor(address token) external view returns (uint256);
+
+    function totalOpenInterest() external view returns (uint256);
 
     function maxFundingRate() external view returns (uint256);
 
@@ -72,7 +78,11 @@ interface ISettingsManager {
 
     function updateFunding(address _indexToken) external;
 
-    function getBorrowFee(uint256 _borrowedSize, uint256 _lastIncreasedTime) external view returns (uint256);
+    function getBorrowFee(
+        uint256 _borrowedSize,
+        uint256 _lastIncreasedTime,
+        address _indexToken
+    ) external view returns (uint256);
 
     function getPositionFee(address _indexToken, bool _isLong, uint256 _sizeDelta) external view returns (uint256);
 

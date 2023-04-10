@@ -54,6 +54,11 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
         _;
     }
 
+    modifier onlyOperator(uint256 level) {
+        require(operators.getOperatorLevel(msg.sender) >= level, "invalid operator");
+        _;
+    }
+
     constructor(IBoringERC20 _rewardToken, IFarmDistributor _distributor, address _operators) {
         require(Address.isContract(address(_rewardToken)), "constructor: reward token must be a valid contract");
         require(Address.isContract(address(_distributor)), "constructor: FarmDistributor must be a valid contract");
@@ -70,8 +75,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
 
     /// @notice Add a new pool. Can only be called by the owner.
     /// @param _pid pool id on DistributorV2
-    function add(uint256 _pid, uint256 _startTimestamp) public {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function add(uint256 _pid, uint256 _startTimestamp) public onlyOperator(1) {
         require(poolInfo[_pid].lastRewardTimestamp == 0, "pool already exists");
 
         poolInfo[_pid] = PoolInfo({
@@ -86,8 +90,11 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     }
 
     /// @notice if the new reward info is added, the reward & its end timestamp will be extended by the newly pushed reward info.
-    function addRewardInfo(uint256 _pid, uint256 _endTimestamp, uint256 _rewardPerSec) external payable {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function addRewardInfo(
+        uint256 _pid,
+        uint256 _endTimestamp,
+        uint256 _rewardPerSec
+    ) external payable onlyOperator(1) {
         RewardInfo[] storage rewardInfo = poolRewardInfo[_pid];
         PoolInfo storage pool = poolInfo[_pid];
         require(rewardInfo.length < rewardInfoLimit, "add reward info: reward info length exceeds the limit");
@@ -122,8 +129,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
         uint256 _pid,
         uint256 _amount,
         address _beneficiary
-    ) external nonReentrant {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    ) external nonReentrant onlyOperator(2) {
         PoolInfo storage pool = poolInfo[_pid];
         uint256 lpSupply = distributor.poolTotalLp(_pid);
 
@@ -139,8 +145,7 @@ contract ComplexRewarderPerSec is IComplexRewarder, Ownable, ReentrancyGuard {
     }
 
     /// @notice Withdraw reward. EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _amount, address _beneficiary) external nonReentrant {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function emergencyWithdraw(uint256 _amount, address _beneficiary) external nonReentrant onlyOperator(2) {
         rewardToken.safeTransfer(_beneficiary, _amount);
     }
 

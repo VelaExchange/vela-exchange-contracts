@@ -15,6 +15,7 @@ import "../tokens/interfaces/IVUSD.sol";
 
 contract SettingsManager is ISettingsManager, Ownable, Constants {
     using EnumerableSet for EnumerableSet.AddressSet;
+
     address public immutable vusd;
     IPositionVault public immutable positionVault;
     ILiquidateVault public liquidateVault;
@@ -38,13 +39,14 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     uint256 public override closeDeltaTime = 1 hours;
     uint256 public override cooldownDuration = 3 hours;
+    uint256 public override expiryDuration = 20; // 20 seconds
     uint256 public override feeRewardBasisPoints = 50000; // 50%
     uint256 public override liquidationFeeUsd; // 0 usd
-    uint256 public override borrowFeeFactor = 10; // 0.01% per hour
+    uint256 public override defaultBorrowFeeFactor = 10; // 0.01% per hour
     uint256 public override referFee = 5000; // 5%
     uint256 public override triggerGasFee = 0; //100 gwei;
     uint256 public override globalGasFee = 0;
-    uint256 public totalOpenInterest;
+    uint256 public override totalOpenInterest;
     uint256 public override maxFundingRate = 10000;
     uint256 public override basisFundingRateFactor = 10000;
 
@@ -57,11 +59,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => uint256) public override withdrawFee;
     mapping(address => uint256) public override stakingFee;
     mapping(address => uint256) public override unstakingFee;
+    mapping(address => uint256) public override borrowFeeFactor;
     mapping(address => int256) public override fundingIndex;
     mapping(address => uint256) public override fundingRateFactor;
     mapping(address => mapping(bool => uint256)) public override marginFeeBasisPoints; // = 100; // 0.1%
     mapping(address => uint256) public override lastFundingTimes;
-
     mapping(address => uint256) public liquidateThreshold;
     mapping(address => mapping(bool => uint256)) public maxOpenInterestPerAssetPerSide;
     mapping(address => mapping(bool => uint256)) public override openInterestPerAssetPerSide;
@@ -69,6 +71,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => uint256) public maxOpenInterestPerWallet;
     mapping(address => EnumerableSet.AddressSet) private _delegatesByMaster;
     mapping(address => bool) public globalDelegates; // treat these addrs already be delegated
+
     event ChangedReferEnabled(bool referEnabled);
     event ChangedReferFee(uint256 referFee);
     event DecreaseOpenInterest(address indexed token, bool isLong, uint256 amount);
@@ -82,7 +85,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetEnableWithdraw(address indexed token, bool isEnabled);
     event SetEnableStaking(address indexed token, bool isEnabled);
     event SetEnableUnstaking(address indexed token, bool isEnabled);
-    event SetBorrowFeeFactor(uint256 borrowFeeFactor);
+    event SetIsIncreasingPositionDisabled(address indexToken, bool isDisabled);
+    event SetDefaultBorrowFeeFactor(uint256 borrowFeeFactor);
+    event SetBorrowFeeFactor(address indexToken, uint256 borrowFeeFactor);
+    event SetMaxFundingRate(uint256 maxFundingRate);
+    event SetBasisFundingRateFactor(uint256 basisFundingRateFactor);
     event SetFundingRateFactor(address indexed token, uint256 fundingRateFactor);
     event SetLiquidationFeeUsd(uint256 indexed _liquidationFeeUsd);
     event SetMarginFeeBasisPoints(address indexed token, bool isLong, uint256 marginFeeBasisPoints);
@@ -95,6 +102,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetUnstakingFee(address indexed token, uint256 indexed fee);
     event SetTriggerGasFee(uint256 indexed fee);
     event SetGlobalGasFee(uint256 indexed fee);
+    event SetExpiryDuration(uint256 expiryDuration);
     event SetVaultSettings(uint256 indexed cooldownDuration, uint256 feeRewardBasisPoints);
     event UpdateFunding(address indexed token, int256 fundingIndex);
     event UpdateLiquidationPendingTime(uint256 liquidationPendingTime);
@@ -109,7 +117,18 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         _;
     }
 
-    constructor(address _liquidateVault, address _positionVault, address _operators, address _vusd, address _tokenFarm) {
+    modifier onlyOperator(uint256 level) {
+        require(operators.getOperatorLevel(msg.sender) >= level, "invalid operator");
+        _;
+    }
+
+    constructor(
+        address _liquidateVault,
+        address _positionVault,
+        address _operators,
+        address _vusd,
+        address _tokenFarm
+    ) {
         require(Address.isContract(_positionVault), "vault invalid");
         require(Address.isContract(_operators), "operators invalid");
         require(Address.isContract(_vusd), "VUSD invalid");
@@ -127,15 +146,13 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         }
     }
 
-    function addDelegatesToBanList(address[] memory _delegates) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function addDelegatesToBanList(address[] memory _delegates) external onlyOperator(1) {
         for (uint256 i = 0; i < _delegates.length; ++i) {
             EnumerableSet.add(banWalletList, _delegates[i]);
         }
     }
 
-    function removeDelegatesFromBanList(address[] memory _delegates) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function removeDelegatesFromBanList(address[] memory _delegates) external onlyOperator(1) {
         for (uint256 i = 0; i < _delegates.length; ++i) {
             EnumerableSet.remove(banWalletList, _delegates[i]);
         }
@@ -187,8 +204,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         uint32 _bountyPercentTeam,
         uint32 _bountyPercentFirstCaller,
         uint32 _bountyPercentResolver
-    ) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    ) external onlyOperator(2) {
         require(
             _bountyPercentTeam + _bountyPercentFirstCaller + _bountyPercentResolver <= BASIS_POINTS_DIVISOR,
             "invalid bountyPercent"
@@ -203,20 +219,17 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         return (bountyPercent_.team, bountyPercent_.firstCaller, bountyPercent_.resolver);
     }
 
-    function setFeeManager(address _feeManager) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function setFeeManager(address _feeManager) external onlyOperator(2) {
         feeManager = _feeManager;
         emit UpdateFeeManager(_feeManager);
     }
 
-    function setMaxProfitPercent(uint256 _maxProfitPercent) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setMaxProfitPercent(uint256 _maxProfitPercent) external onlyOperator(1) {
         maxProfitPercent = _maxProfitPercent;
         emit UpdateMaxProfitPercent(_maxProfitPercent);
     }
 
-    function setVaultSettings(uint256 _cooldownDuration, uint256 _feeRewardsBasisPoints) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function setVaultSettings(uint256 _cooldownDuration, uint256 _feeRewardsBasisPoints) external onlyOperator(2) {
         require(_cooldownDuration <= MAX_COOLDOWN_DURATION, "invalid cooldownDuration");
         require(_feeRewardsBasisPoints < MAX_FEE_REWARD_BASIS_POINTS, "Above max");
         cooldownDuration = _cooldownDuration;
@@ -224,138 +237,150 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetVaultSettings(cooldownDuration, feeRewardBasisPoints);
     }
 
-    function setLiquidationPendingTime(uint256 _liquidationPendingTime) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function setLiquidationPendingTime(uint256 _liquidationPendingTime) external onlyOperator(2) {
         require(_liquidationPendingTime <= 60, "Above max");
         liquidationPendingTime = _liquidationPendingTime;
         emit UpdateLiquidationPendingTime(_liquidationPendingTime);
     }
 
-    function setCloseDeltaTime(uint256 _deltaTime) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setCloseDeltaTime(uint256 _deltaTime) external onlyOperator(1) {
         require(_deltaTime <= MAX_DELTA_TIME, "Above max");
         closeDeltaTime = _deltaTime;
         emit UpdateCloseDeltaTime(_deltaTime);
     }
 
-    function setDepositFee(address token, uint256 _fee) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setExpiryDuration(uint256 _expiryDuration) external onlyOperator(1) {
+        require(_expiryDuration <= MAX_EXPIRY_DURATION, "Above max");
+        expiryDuration = _expiryDuration;
+        emit SetExpiryDuration(_expiryDuration);
+    }
+
+    function setDepositFee(address token, uint256 _fee) external onlyOperator(1) {
         require(_fee <= MAX_DEPOSIT_WITHDRAW_FEE, "Above max");
         depositFee[token] = _fee;
         emit SetDepositFee(token, _fee);
     }
 
-    function setWithdrawFee(address token, uint256 _fee) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setWithdrawFee(address token, uint256 _fee) external onlyOperator(1) {
         require(_fee <= MAX_DEPOSIT_WITHDRAW_FEE, "Above max");
         withdrawFee[token] = _fee;
         emit SetWithdrawFee(token, _fee);
     }
 
-    function setEnableDeposit(address _token, bool _isEnabled) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setEnableDeposit(address _token, bool _isEnabled) external onlyOperator(1) {
         isDeposit[_token] = _isEnabled;
         emit SetEnableDeposit(_token, _isEnabled);
     }
 
-    function setEnableStaking(address _token, bool _isEnabled) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setEnableStaking(address _token, bool _isEnabled) external onlyOperator(1) {
         isStakingEnabled[_token] = _isEnabled;
         emit SetEnableStaking(_token, _isEnabled);
     }
 
-    function setIsIncreasingPositionDisabled(address _token, bool _isDisabled) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setIsIncreasingPositionDisabled(address _token, bool _isDisabled) external onlyOperator(1) {
         isIncreasingPositionDisabled[_token] = _isDisabled;
-        emit SetEnableUnstaking(_token, _isDisabled);
+        emit SetIsIncreasingPositionDisabled(_token, _isDisabled);
     }
 
-    function setDeductFeePercentForUser(address _account, uint256 _deductFee) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setDeductFeePercentForUser(address _account, uint256 _deductFee) external onlyOperator(1) {
         require(_deductFee <= BASIS_POINTS_DIVISOR, "Above max");
         deductFeePercent[_account] = _deductFee;
         emit SetDeductFeePercent(_account, _deductFee);
     }
 
-    function setBorrowFeeFactor(uint256 _borrowFeeFactor) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        require(_borrowFeeFactor <= MAX_BORROW_FEE_FACTOR, "Above max");
-        borrowFeeFactor = _borrowFeeFactor;
-        emit SetBorrowFeeFactor(_borrowFeeFactor);
+    function setDefaultBorrowFeeFactor(uint256 _defaultBorrowFeeFactor) external onlyOperator(1) {
+        require(_defaultBorrowFeeFactor <= MAX_BORROW_FEE_FACTOR, "Above max");
+        defaultBorrowFeeFactor = _defaultBorrowFeeFactor;
+        emit SetDefaultBorrowFeeFactor(_defaultBorrowFeeFactor);
     }
 
-    function setFundingRateFactor(address _token, uint256 _fundingRateFactor) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setBorrowFeeFactor(address _indexToken, uint256 _borrowFeeFactor) external onlyOperator(1) {
+        require(_borrowFeeFactor <= MAX_BORROW_FEE_FACTOR, "Above max");
+        borrowFeeFactor[_indexToken] = _borrowFeeFactor;
+        emit SetBorrowFeeFactor(_indexToken, _borrowFeeFactor);
+    }
+
+    function setMaxFundingRate(uint256 _maxFundingRate) external onlyOperator(1) {
+        require(_maxFundingRate <= MAX_FUNDING_RATE, "Above max");
+        maxFundingRate = _maxFundingRate;
+        emit SetMaxFundingRate(_maxFundingRate);
+    }
+
+    function setBasisFundingRateFactor(uint256 _basisFundingRateFactor) external onlyOperator(1) {
+        require(_basisFundingRateFactor <= MAX_BASIS_FUNDING_RATE_FACTOR, "Above max");
+        basisFundingRateFactor = _basisFundingRateFactor;
+        emit SetBasisFundingRateFactor(_basisFundingRateFactor);
+    }
+
+    function setFundingRateFactor(address _token, uint256 _fundingRateFactor) external onlyOperator(1) {
+        require(_fundingRateFactor <= MAX_FUNDING_RATE_FACTOR, "Above max");
         fundingRateFactor[_token] = _fundingRateFactor;
         emit SetFundingRateFactor(_token, _fundingRateFactor);
     }
 
-    function setLiquidateThreshold(uint256 _newThreshold, address _token) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function setLiquidateThreshold(uint256 _newThreshold, address _token) external onlyOperator(2) {
         emit UpdateThreshold(liquidateThreshold[_token], _newThreshold);
         require(_newThreshold < LIQUIDATE_THRESHOLD_DIVISOR, "Above max");
         liquidateThreshold[_token] = _newThreshold;
     }
 
-    function setLiquidationFeeUsd(uint256 _liquidationFeeUsd) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function setLiquidationFeeUsd(uint256 _liquidationFeeUsd) external onlyOperator(2) {
         require(_liquidationFeeUsd <= MAX_LIQUIDATION_FEE_USD, "Above max");
         liquidationFeeUsd = _liquidationFeeUsd;
         emit SetLiquidationFeeUsd(_liquidationFeeUsd);
     }
 
-    function setMarginFeeBasisPoints(address _token, bool _isLong, uint256 _marginFeeBasisPoints) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function setMarginFeeBasisPoints(
+        address _token,
+        bool _isLong,
+        uint256 _marginFeeBasisPoints
+    ) external onlyOperator(2) {
         require(_marginFeeBasisPoints <= MAX_FEE_BASIS_POINTS, "Above max");
         marginFeeBasisPoints[_token][_isLong] = _marginFeeBasisPoints;
         emit SetMarginFeeBasisPoints(_token, _isLong, _marginFeeBasisPoints);
     }
 
-    function setMaxOpenInterestPerAssetPerSide(address _token, bool _isLong, uint256 _maxAmount) public {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setMaxOpenInterestPerAssetPerSide(
+        address _token,
+        bool _isLong,
+        uint256 _maxAmount
+    ) public onlyOperator(1) {
         maxOpenInterestPerAssetPerSide[_token][_isLong] = _maxAmount;
         emit SetMaxOpenInterestPerAssetPerSide(_token, _isLong, _maxAmount);
     }
 
-    function setMaxOpenInterestPerAsset(address _token, uint256 _maxAmount) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setMaxOpenInterestPerAsset(address _token, uint256 _maxAmount) external onlyOperator(1) {
         setMaxOpenInterestPerAssetPerSide(_token, true, _maxAmount);
         setMaxOpenInterestPerAssetPerSide(_token, false, _maxAmount);
     }
 
-    function setMaxOpenInterestPerUser(uint256 _maxAmount) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setMaxOpenInterestPerUser(uint256 _maxAmount) external onlyOperator(1) {
         maxOpenInterestPerUser = _maxAmount;
         emit SetMaxOpenInterestPerUser(_maxAmount);
     }
 
-    function setMaxOpenInterestPerWallet(address _account, uint256 _maxAmount) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setMaxOpenInterestPerWallet(address _account, uint256 _maxAmount) external onlyOperator(1) {
         maxOpenInterestPerWallet[_account] = _maxAmount;
         emit SetMaxOpenInterestPerWallet(_account, _maxAmount);
     }
 
-    function setPositionManager(address _manager, bool _isManager) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function setPositionManager(address _manager, bool _isManager) external onlyOperator(2) {
         isManager[_manager] = _isManager;
         emit SetPositionManager(_manager, _isManager);
     }
 
-    function setPriceMovementPercent(uint256 _priceMovementPercent) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setPriceMovementPercent(uint256 _priceMovementPercent) external onlyOperator(1) {
         require(_priceMovementPercent <= MAX_PRICE_MOVEMENT_PERCENT, "Above max");
         priceMovementPercent = _priceMovementPercent;
         emit SetPriceMovementPercent(_priceMovementPercent);
     }
 
-    function setReferEnabled(bool _referEnabled) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setReferEnabled(bool _referEnabled) external onlyOperator(1) {
         referEnabled = _referEnabled;
         emit ChangedReferEnabled(referEnabled);
     }
 
-    function setReferFee(uint256 _fee) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
+    function setReferFee(uint256 _fee) external onlyOperator(2) {
         require(_fee <= BASIS_POINTS_DIVISOR, "Above max");
         referFee = _fee;
         emit ChangedReferFee(_fee);
@@ -375,15 +400,13 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit SetUnstakingFee(token, _fee);
     }
 
-    function setTriggerGasFee(uint256 _fee) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setTriggerGasFee(uint256 _fee) external onlyOperator(1) {
         require(_fee <= MAX_TRIGGER_GAS_FEE, "Above max");
         triggerGasFee = _fee;
         emit SetTriggerGasFee(_fee);
     }
 
-    function setGlobalGasFee(uint256 _fee) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
+    function setGlobalGasFee(uint256 _fee) external onlyOperator(1) {
         require(_fee <= MAX_GLOBAL_GAS_FEE, "Above max");
         globalGasFee = _fee;
         emit SetGlobalGasFee(_fee);
@@ -488,7 +511,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         pnl =
             pnl -
             getFundingFee(_indexToken, _isLong, _size, _fundingIndex) -
-            int256(getBorrowFee(_size, _lastIncreasedTime) + _accruedBorrowFee);
+            int256(getBorrowFee(_size, _lastIncreasedTime, _indexToken) + _accruedBorrowFee);
 
         if (pnl > 0) {
             return (true, uint256(pnl));
@@ -547,9 +570,18 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
                 : (int256(_size) * (_fundingIndex - fundingIndex[_indexToken])) / int256(FUNDING_RATE_PRECISION);
     }
 
-    function getBorrowFee(uint256 _borrowedSize, uint256 _lastIncreasedTime) public view override returns (uint256) {
+    function getBorrowFee(
+        uint256 _borrowedSize,
+        uint256 _lastIncreasedTime,
+        address _indexToken
+    ) public view override returns (uint256) {
+        uint256 _borrowFeeFactor = borrowFeeFactor[_indexToken];
+        if (_borrowFeeFactor == 0) _borrowFeeFactor = defaultBorrowFeeFactor;
+
         return
-            ((block.timestamp - _lastIncreasedTime) * _borrowedSize * borrowFeeFactor) / BASIS_POINTS_DIVISOR / 1 hours;
+            ((block.timestamp - _lastIncreasedTime) * _borrowedSize * _borrowFeeFactor) /
+            BASIS_POINTS_DIVISOR /
+            1 hours;
     }
 
     function getPositionFee(
