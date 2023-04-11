@@ -12,33 +12,82 @@ const { toChainlinkPrice } = require('../../scripts/shared/chainlink.js')
 
 use(solidity)
 
-describe("Operators", function () {
-    const provider = waffle.provider
-    const [wallet, user0, user1, user2, user3] = provider.getWallets()
-    let operator
-    before(async function () {
-        operator = await deployContract("ExchangeOperators", [])
-    });
+describe('Operators', function () {
+  const provider = waffle.provider
+  const [owner, user, op0, op1, op2] = provider.getWallets()
+  let operator
 
-    it ("operatorLevel", async () => {
-        const operatorLevel = await operator.getOperatorLevel(user0.address)
-        console.log("user0 operator Level: ", operatorLevel)
-        await expect(operator.transferOwnership(zeroAddress)).to.be.revertedWith("Ownable: new owner is the zero address")
-        await operator.transferOwnership(user0.address)
-        const operatorLevel2 = await operator.getOperatorLevel(user0.address)
-        console.log("user0 operator Level: ", operatorLevel2)
+  beforeEach(async function () {
+    operator = await deployContract('Operators', [])
 
-    })
+    await operator.setOperator(op1.address, 1)
+    await operator.setOperator(op2.address, 2)
 
-    it("setOperatorLevel", async () => {
-        await expect(operator.setOperator(user1.address, 2)).to.be.revertedWith("Not an operator")
-        await operator.connect(user0).setOperator(user1.address, 2)
-        await operator.connect(user0).setOperator(user1.address, 2)
-        await expect(operator.connect(user1).setOperator(user0.address, 1)).to.be.revertedWith("Cannot set operator")
-        await expect(operator.connect(user1).setOperator(user2.address, 3)).to.be.revertedWith("Invalid operator")
-    })
+    expect(await operator.getOperatorLevel(op0.address)).eq(0)
+    expect(await operator.getOperatorLevel(op1.address)).eq(1)
+    expect(await operator.getOperatorLevel(op2.address)).eq(2)
+  })
 
-    it("renounceOwnership", async () => {
-        await expect(operator.connect(user0).renounceOwnership()).to.be.revertedWith("Cannot renounce ownership")
-    })
-});
+  it('non op', async () => {
+    // non op cannot set operator level
+    expect(operator.connect(op0).setOperator(user.address, 1)).to.be.revertedWith('insufficient level')
+  })
+
+  it('level1 op', async () => {
+    // level1 op cannot change others operator level
+    await expect(operator.connect(op1).setOperator(user.address, 1)).to.be.revertedWith('invalid level')
+    await expect(operator.connect(op1).setOperator(user.address, 3)).to.be.revertedWith('invalid level')
+    await expect(operator.connect(op1).setOperator(op2.address, 0)).to.be.revertedWith('insufficient level')
+  })
+
+  it('level2 op', async () => {
+    // level2 op can only change lvl 1 => 0, lvl 0 => 1
+    await operator.connect(op2).setOperator(user.address, 1)
+    expect(await operator.getOperatorLevel(user.address)).eq(1)
+    await operator.connect(op2).setOperator(user.address, 0)
+    expect(await operator.getOperatorLevel(user.address)).eq(0)
+
+    await expect(operator.connect(op2).setOperator(user.address, 2)).to.be.revertedWith('invalid level')
+    await operator.setOperator(user.address, 1)
+    await expect(operator.connect(op2).setOperator(user.address, 2)).to.be.revertedWith('invalid level')
+    await expect(operator.connect(op2).setOperator(user.address, 3)).to.be.revertedWith('invalid level')
+    await operator.setOperator(user.address, 2)
+    await expect(operator.connect(op2).setOperator(user.address, 0)).to.be.revertedWith('insufficient level')
+    await expect(operator.connect(op2).setOperator(user.address, 1)).to.be.revertedWith('insufficient level')
+    await expect(operator.connect(op2).setOperator(user.address, 2)).to.be.revertedWith('insufficient level')
+    await expect(operator.connect(op2).setOperator(user.address, 3)).to.be.revertedWith('insufficient level')
+  })
+
+  it('level3 op', async () => {
+    expect(await operator.getOperatorLevel(user.address)).eq(0)
+
+    await operator.setOperator(user.address, 1)
+    expect(await operator.getOperatorLevel(user.address)).eq(1)
+
+    await operator.setOperator(user.address, 2)
+    expect(await operator.getOperatorLevel(user.address)).eq(2)
+
+    await operator.setOperator(user.address, 1)
+    expect(await operator.getOperatorLevel(user.address)).eq(1)
+
+    await operator.setOperator(user.address, 0)
+    expect(await operator.getOperatorLevel(user.address)).eq(0)
+
+    await operator.setOperator(user.address, 2)
+    expect(await operator.getOperatorLevel(user.address)).eq(2)
+
+    await expect(operator.setOperator(user.address, 3)).to.be.revertedWith('invalid level')
+  })
+
+  it('transfer ownership', async () => {
+    expect(await operator.getOperatorLevel(owner.address)).eq(3)
+    expect(await operator.getOperatorLevel(user.address)).eq(0)
+    await operator.transferOwnership(user.address)
+    expect(await operator.oldOwner()).eq(owner.address)
+    expect(await operator.pendingOwner()).eq(user.address)
+
+    await operator.connect(user).acceptOwnership()
+    expect(await operator.getOperatorLevel(user.address)).eq(3)
+    expect(await operator.getOperatorLevel(owner.address)).eq(0)
+  })
+})

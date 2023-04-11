@@ -158,7 +158,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         }
     }
 
-    function setGlobalDelegates(address _delegate, bool _allowed) external{
+    function setGlobalDelegates(address _delegate, bool _allowed) external {
         require(operators.getOperatorLevel(msg.sender) >= uint8(2), "Invalid operator");
         globalDelegates[_delegate] = _allowed;
         emit GlobalDelegatesChange(_delegate, _allowed);
@@ -386,16 +386,14 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
         emit ChangedReferFee(_fee);
     }
 
-    function setStakingFee(address token, uint256 _fee) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        require(_fee <= BASIS_POINTS_DIVISOR, "Above max");
+    function setStakingFee(address token, uint256 _fee) external onlyOperator(1) {
+        require(_fee <= MAX_STAKING_UNSTAKING_FEE, "Above max");
         stakingFee[token] = _fee;
         emit SetStakingFee(token, _fee);
     }
 
-    function setUnstakingFee(address token, uint256 _fee) external {
-        require(operators.getOperatorLevel(msg.sender) >= uint8(1), "Invalid operator");
-        require(_fee <= BASIS_POINTS_DIVISOR, "Above max");
+    function setUnstakingFee(address token, uint256 _fee) external onlyOperator(1) {
+        require(_fee <= MAX_STAKING_UNSTAKING_FEE, "Above max");
         unstakingFee[token] = _fee;
         emit SetUnstakingFee(token, _fee);
     }
@@ -478,7 +476,10 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
 
     function checkDelegation(address _master, address _delegate) public view override returns (bool) {
         require(!checkBanList(_master), "account banned");
-        return _master == _delegate || globalDelegates[_delegate] || EnumerableSet.contains(_delegatesByMaster[_master], _delegate);
+        return
+            _master == _delegate ||
+            globalDelegates[_delegate] ||
+            EnumerableSet.contains(_delegatesByMaster[_master], _delegate);
     }
 
     function getPnl(
