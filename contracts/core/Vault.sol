@@ -22,7 +22,6 @@ import {Position, OrderStatus, OrderType} from "./structs.sol";
 contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     using SafeERC20 for IERC20;
 
-    uint256 public totalVLP;
     uint256 public totalUSD;
     IPositionVault private positionVault;
     IOrderVault private orderVault;
@@ -243,6 +242,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         uint256 usdAmountFee = (usdAmount * settingsManager.stakingFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
         uint256 mintAmount;
+        uint256 totalVLP = IERC20(vlp).totalSupply();
         if (totalVLP == 0) {
             mintAmount =
                 (usdAmountAfterFee * DEFAULT_VLP_PRICE * (10 ** VLP_DECIMALS)) /
@@ -254,7 +254,6 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         _distributeFee(_account, ZERO_ADDRESS, usdAmountFee);
         IMintable(vlp).mint(_account, mintAmount);
         lastStakedAt[_account] = block.timestamp;
-        totalVLP += mintAmount;
         totalUSD += usdAmountAfterFee;
         emit Stake(_account, _token, _amount, mintAmount);
     }
@@ -276,16 +275,16 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         address _tokenOut,
         uint256 _vlpAmount
     ) external nonReentrant preventBanners(msg.sender) {
+        uint256 totalVLP = IERC20(vlp).totalSupply();
         require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "vlpAmount error");
         require(
             lastStakedAt[msg.sender] + settingsManager.cooldownDuration() <= block.timestamp,
             "cooldown duration not yet passed"
         );
-        IMintable(vlp).burn(msg.sender, _vlpAmount);
         uint256 usdAmount = (_vlpAmount * totalUSD) / totalVLP;
-        totalVLP -= _vlpAmount;
         uint256 usdAmountFee = (usdAmount * settingsManager.unstakingFee(_tokenOut)) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
+        IMintable(vlp).burn(msg.sender, _vlpAmount);
         totalUSD -= usdAmount;
         uint256 amountOut = priceManager.usdToToken(_tokenOut, usdAmountAfterFee);
         _accountDeltaAndFeeIntoTotalUSD(true, 0, usdAmountFee);
@@ -371,6 +370,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
     }
 
     function getVLPPrice() external view returns (uint256) {
+        uint256 totalVLP = IERC20(vlp).totalSupply();
         if (totalVLP == 0) {
             return DEFAULT_VLP_PRICE;
         } else {
