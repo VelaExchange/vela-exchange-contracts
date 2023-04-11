@@ -1391,7 +1391,8 @@ describe('Vault', function () {
     )
   })
 
-  it('decreasePosition with full amount for Long', async () => {
+  it('decreasePosition with full amount for Long1', async () => {
+
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice(57000))
     const account = wallet.address
     const indexToken = btc.address
@@ -1400,6 +1401,7 @@ describe('Vault', function () {
     const isLong = true
     const referAddress = ethers.constants.AddressZero
     const orderType = 0 // M
+
     const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
     const slippage = 1000 // 1%
     const collateral = amountIn
@@ -1511,7 +1513,7 @@ describe('Vault', function () {
     const isLong = true
     const posIds = (await Reader.getUserAlivePositions(wallet.address))[0]
     const posId = posIds[0]
-    console.log('posId:', posId)
+    //console.log('posId:', posId)
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice(51800))
     const validateLiquidation = await VaultUtils.validateLiquidation(posId, false)
     expect(validateLiquidation[0].toNumber()).eq(2) // Liquidate Max Threshold
@@ -1545,7 +1547,7 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    expectMarketOrderSuccess(btc, '57000')
+    await expectMarketOrderSuccess(btc, '57000')
   })
 
   it('liquidatePosition for Long for checking fees exceed collateral', async () => {
@@ -1587,7 +1589,7 @@ describe('Vault', function () {
       triggerPrices, //triggerPrices
       referAddress
     )
-    expectMarketOrderSuccess(btc, '57000')
+    await expectMarketOrderSuccess(btc, '57000')
   })
 
   it('liquidatePosition for Long liquidation fees exceed collateral ', async () => {
@@ -1618,7 +1620,7 @@ describe('Vault', function () {
     expect(validateLiquidation[0]).eq(0)
   })
 
-  it('decreasePosition with full amount for Long', async () => {
+  it('decreasePosition with full amount for Long2', async () => {
     await settingsManager.setLiquidationFeeUsd(0)
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice(57000))
     const account = wallet.address
@@ -1645,7 +1647,7 @@ describe('Vault', function () {
     const posId = lastPosId.toNumber() - 1
     const sizeDelta = expandDecimals('100', 30)
     snapshot = await ethers.provider.send('evm_snapshot', [])
-    await Vault.decreasePosition(sizeDelta, posId)
+    await Vault.decreasePosition(sizeDelta, expectedMarketPrice, posId)
   })
 
   it('closePosition should work like decreasePosition with full amount', async () => {
@@ -1709,7 +1711,7 @@ describe('Vault', function () {
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     const sizeDelta = expandDecimals('100', 30)
-    await Vault.decreasePosition(sizeDelta, posId)
+    await Vault.decreasePosition(sizeDelta, expectedMarketPrice, posId)
   })
 
   it('short market order for checking decreasePosition at quick price movement', async () => {
