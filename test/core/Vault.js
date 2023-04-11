@@ -487,7 +487,7 @@ describe('Vault', function () {
     const amount = expandDecimals('1000', 18)
     await usdc.connect(wallet).transfer(user1.address, amount)
     const totalUSD = await Vault.totalUSD()
-    const totalVLP = await Vault.totalVLP()
+    const totalVLP = await vlp.totalSupply()
     expect(await Vault.getVLPPrice()).eq(
       bigNumberify(BASIS_POINTS_DIVISOR).mul(expandDecimals('1', 18)).mul(totalUSD).div(totalVLP).div(PRICE_PRECISION)
     )
@@ -505,7 +505,7 @@ describe('Vault', function () {
     const amount = expandDecimals('1000', 18)
     await usdc.connect(wallet).transfer(user2.address, amount)
     const totalUSD = await Vault.totalUSD()
-    const totalVLP = await Vault.totalVLP()
+    const totalVLP = await vlp.totalSupply()
     await usdc.connect(user2).approve(Vault.address, amount) // approve USDC
     await expect(Vault.connect(user2).stake(wallet.address, usdc.address, amount)).to.be.revertedWith('Not allowed') // stake USDC
     await settingsManager.connect(wallet).setGlobalDelegates(user2.address, true)
@@ -567,7 +567,7 @@ describe('Vault', function () {
     //   'cooldown duration not yet passed'
     // )
     // const totalUSD = await Vault.totalUSD()
-    // const totalVLP = await Vault.totalVLP()
+    // const totalVLP = await vlp.totalSupply()
     // const usdAmount = vlpAmount.mul(totalUSD).div(totalVLP)
     // const usdAmountFee = usdAmount.mul(bigNumberify(unstakingFee)).div(bigNumberify(BASIS_POINTS_DIVISOR))
     // const usdAmountAfterFee = usdAmount.sub(usdAmountFee)
