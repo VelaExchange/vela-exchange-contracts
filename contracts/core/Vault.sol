@@ -271,16 +271,16 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit TakeVUSDOut(_account, _refer, _usdOut, _fee);
     }
 
-    function unstake(
-        address _tokenOut,
-        uint256 _vlpAmount
-    ) external nonReentrant preventBanners(msg.sender) {
+    function unstake(address _tokenOut, uint256 _vlpAmount) external nonReentrant preventBanners(msg.sender) {
         uint256 totalVLP = IERC20(vlp).totalSupply();
         require(_vlpAmount > 0 && _vlpAmount <= totalVLP, "vlpAmount error");
-        require(
-            lastStakedAt[msg.sender] + settingsManager.cooldownDuration() <= block.timestamp,
-            "cooldown duration not yet passed"
-        );
+        if (settingsManager.isWhitelistedFromCooldown(msg.sender) == false) {
+            require(
+                lastStakedAt[msg.sender] + settingsManager.cooldownDuration() <= block.timestamp,
+                "cooldown duration not yet passed"
+            );
+        }
+
         uint256 usdAmount = (_vlpAmount * totalUSD) / totalVLP;
         uint256 usdAmountFee = (usdAmount * settingsManager.unstakingFee(_tokenOut)) / BASIS_POINTS_DIVISOR;
         uint256 usdAmountAfterFee = usdAmount - usdAmountFee;
@@ -293,10 +293,7 @@ contract Vault is Constants, ReentrancyGuard, Ownable, IVault {
         emit Unstake(msg.sender, _tokenOut, _vlpAmount, amountOut);
     }
 
-    function withdraw(
-        address _token,
-        uint256 _amount
-    ) external nonReentrant preventBanners(msg.sender) {
+    function withdraw(address _token, uint256 _amount) external nonReentrant preventBanners(msg.sender) {
         uint256 fee = (_amount * settingsManager.withdrawFee(_token)) / BASIS_POINTS_DIVISOR;
         uint256 afterFeeAmount = _amount - fee;
         uint256 collateralDelta = priceManager.usdToToken(_token, afterFeeAmount);

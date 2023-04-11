@@ -96,6 +96,8 @@ interface ISettingsManager {
 
     function isIncreasingPositionDisabled(address _token) external view returns (bool);
 
+    function isWhitelistedFromCooldown(address _addr) external view returns (bool);
+
     function lastFundingTimes(address _token) external view returns (uint256);
 
     function liquidationFeeUsd() external view returns (uint256);

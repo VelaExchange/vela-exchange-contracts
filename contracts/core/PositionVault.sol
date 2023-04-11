@@ -102,7 +102,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
         orderVault.createAddPositionOrder(_posId, _collateralDelta, _sizeDelta, _acceptedPrice);
 
-        addPositionQueuePosIds.push(lastPosId);
+        addPositionQueuePosIds.push(_posId);
 
         emit AddPosition(_posId, _collateralDelta, _sizeDelta, _acceptedPrice);
     }
@@ -151,7 +151,7 @@ contract PositionVault is Constants, ReentrancyGuard, IPositionVault {
 
         orderVault.createDecreasePositionOrder(_posId, _sizeDelta, _acceptedPrice);
 
-        decreasePositionQueuePosIds.push(lastPosId);
+        decreasePositionQueuePosIds.push(_posId);
 
         emit CreateDecreasePositionOrder(_posId, _sizeDelta, _acceptedPrice);
     }

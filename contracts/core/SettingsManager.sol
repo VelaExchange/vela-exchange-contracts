@@ -54,6 +54,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     mapping(address => bool) public override isManager;
     mapping(address => bool) public override isStakingEnabled;
     mapping(address => bool) public override isIncreasingPositionDisabled;
+    mapping(address => bool) public override isWhitelistedFromCooldown;
     mapping(address => uint256) public override deductFeePercent;
     mapping(address => uint256) public override depositFee;
     mapping(address => uint256) public override withdrawFee;
@@ -86,6 +87,7 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     event SetEnableStaking(address indexed token, bool isEnabled);
     event SetEnableUnstaking(address indexed token, bool isEnabled);
     event SetIsIncreasingPositionDisabled(address indexToken, bool isDisabled);
+    event SetIsWhitelistedFromCooldown(address addr, bool isWhitelisted);
     event SetDefaultBorrowFeeFactor(uint256 borrowFeeFactor);
     event SetBorrowFeeFactor(address indexToken, uint256 borrowFeeFactor);
     event SetMaxFundingRate(uint256 maxFundingRate);
@@ -280,6 +282,11 @@ contract SettingsManager is ISettingsManager, Ownable, Constants {
     function setIsIncreasingPositionDisabled(address _token, bool _isDisabled) external onlyOperator(1) {
         isIncreasingPositionDisabled[_token] = _isDisabled;
         emit SetIsIncreasingPositionDisabled(_token, _isDisabled);
+    }
+
+    function setIsWhitelistedFromCooldown(address _addr, bool _isWhitelisted) external onlyOperator(1) {
+        isWhitelistedFromCooldown[_addr] = _isWhitelisted;
+        emit SetIsWhitelistedFromCooldown(_addr, _isWhitelisted);
     }
 
     function setDeductFeePercentForUser(address _account, uint256 _deductFee) external onlyOperator(1) {
