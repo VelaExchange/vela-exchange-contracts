@@ -120,6 +120,41 @@ describe('OrderVault', function () {
       settingsManager.address,
       VaultUtils.address
     )
+    await expect(OrderVault.initialize(
+      zeroAddress,
+      PositionVault.address,
+      settingsManager.address,
+      Vault.address,
+      VaultUtils.address
+    )).to.be.revertedWith("priceManager invalid")
+    await expect(OrderVault.initialize(
+      priceManager.address,
+      zeroAddress,
+      settingsManager.address,
+      Vault.address,
+      VaultUtils.address
+    )).to.be.revertedWith("positionVault invalid")
+    await expect(OrderVault.initialize(
+      priceManager.address,
+      PositionVault.address,
+      zeroAddress,
+      Vault.address,
+      VaultUtils.address
+    )).to.be.revertedWith("settingsManager invalid")
+    await expect(OrderVault.initialize(
+      priceManager.address,
+      PositionVault.address,
+      settingsManager.address,
+      zeroAddress,
+      VaultUtils.address
+    )).to.be.revertedWith("vault invalid")
+    await expect(OrderVault.initialize(
+      priceManager.address,
+      PositionVault.address,
+      settingsManager.address,
+      Vault.address,
+      zeroAddress
+    )).to.be.revertedWith("vaultUtils address is invalid")
     await OrderVault.initialize(
       priceManager.address,
       PositionVault.address,
@@ -127,6 +162,13 @@ describe('OrderVault', function () {
       Vault.address,
       VaultUtils.address
     )
+    await expect(OrderVault.initialize(
+      priceManager.address,
+      PositionVault.address,
+      settingsManager.address,
+      Vault.address,
+      VaultUtils.address
+    )).to.be.revertedWith("Not initialized")
     await LiquidateVault.initialize(PositionVault.address, settingsManager.address, Vault.address, VaultUtils.address)
     //================= PriceFeed Prices Initialization ==================
     await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice(60000))
@@ -499,6 +541,17 @@ describe('OrderVault', function () {
     })
   })
 
+  it('setLatestAnswer for BTC', async () => {
+    const token = btc.address
+    const isLong = true
+    const posId = 1
+    expect(await OrderVault.validateTPSLTriggers(token, isLong, posId)).eq(false)
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('53500'))
+    await PositionVault.triggerForTPSL(posId)
+    await priceFeed.setLatestAnswer(btc.address, toChainlinkPrice('57000'))
+
+  })
+
   it('getTriggerOrderInfo', async () => {
     const account = wallet.address
     const indexToken = btc.address
@@ -640,12 +693,11 @@ describe('OrderVault', function () {
       expandDecimals('55000', 30),
     ]
     const amountPercents = [20000, 10000, 10000, 30000]
-    await expect(
-      OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
+    await expect(OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
         from: wallet.address,
         value: 0,
-      })
-    ).to.be.revertedWith('triggerOrder data are incorrect')
+    })).to.be.revertedWith("triggerOrder data are incorrect")
+    expect(await OrderVault.validateTPSLTriggers(indexToken, isLong, pId)).eq(false)
   })
 
   it('addTriggerOrdersData with position size = 0 for Long', async () => {
@@ -656,17 +708,15 @@ describe('OrderVault', function () {
     const isTPs = [true, true, true, false]
     const prices = [
       expandDecimals('57500', 30),
-      expandDecimals('54000', 30),
+      expandDecimals('58000', 30),
       expandDecimals('58500', 30),
       expandDecimals('55000', 30),
     ]
-    const amountPercents = [20000, 10000, 10000, 30000]
-    await expect(
-      OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
-        from: wallet.address,
-        value: 0,
-      })
-    ).to.be.revertedWith('position size should be greater than zero')
+    const amountPercents = [20000, 100000, 10000, 30000]
+    await expect(OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
+      from: wallet.address,
+      value: 0,
+    })).to.be.revertedWith("position size should be greater than zero")
   })
 
   it('addTriggerOrdersData for Long', async () => {
@@ -681,7 +731,7 @@ describe('OrderVault', function () {
       expandDecimals('58500', 30),
       expandDecimals('55000', 30),
     ]
-    const amountPercents = [20000, 10000, 10000, 30000]
+    const amountPercents = [20000, 100000, 10000, 30000]
     await OrderVault.addTriggerOrders(indexToken, isLong, pId, isTPs, prices, amountPercents, {
       from: wallet.address,
       value: 0,
@@ -722,6 +772,63 @@ describe('OrderVault', function () {
     )
     await expectMarketOrderSuccess(btc, '57000')
   })
+
+  it('addPosition', async () => {
+    const account = wallet.address
+    const indexToken = btc.address
+    const isLong = true
+    const posId = (await PositionVault.lastPosId()) - 1
+    const amountIn = expandDecimals('10', 30)
+    const toUsdAmount = expandDecimals('100', 30)
+    const expectedMarketPrice = await priceManager.getLastPrice(indexToken)
+    await Vault.addPosition(posId, amountIn, toUsdAmount, expectedMarketPrice)
+    await expect(Vault.addPosition(posId, amountIn, toUsdAmount, expectedMarketPrice)).to.be.revertedWith("addPositionOrder already exists")
+  })
+
+  it('executeAddPosition', async () => {
+    const posId = (await PositionVault.lastPosId()) - 1
+    await PositionVault.executeAddPosition(posId)
+  })
+
+  it ('getOrder', async () => {
+    const posId = (await PositionVault.lastPosId()) - 1
+    const order = await OrderVault.getOrder(posId)
+    console.log("order: ", order)
+  })
+
+  it('getAddPositionOrder', async () => {
+    const posId = (await PositionVault.lastPosId()) - 1
+    const addPositionOrder = await OrderVault.getAddPositionOrder(posId)
+    console.log("addPositionOrder : ", addPositionOrder)
+  })
+
+  it ('createDecreasePositionOrder', async  () => {
+    const indexToken = btc.address
+    const sizeDelta = expandDecimals('500', 30)
+    const acceptedPrice = await priceManager.getLastPrice(indexToken)
+    const posId = (await PositionVault.lastPosId()) - 1
+    await Vault.decreasePosition(
+      sizeDelta,
+      acceptedPrice,
+      posId
+    )
+    await expect(Vault.decreasePosition(
+      sizeDelta,
+      acceptedPrice,
+      posId
+    )).to.be.revertedWith("decreasePositionOrder already exists")
+  })
+
+  it ('executeDecreasePositionOrder', async () => {
+    const posId = (await PositionVault.lastPosId()) - 1
+    await PositionVault.executeDecreasePositionOrder(posId)
+  })  
+  
+  it('getDecreasePositionOrder', async () => {
+    const posId = (await PositionVault.lastPosId()) - 1
+    const decreasePositionOrder = await OrderVault.getDecreasePositionOrder(posId)
+    console.log("decreasePositionOrder : ", decreasePositionOrder)
+  })  
 
   it('addTriggerOrdersData with wrong orders or invalid for Short', async () => {
     const account = wallet.address
@@ -805,9 +912,6 @@ describe('OrderVault', function () {
   })
 
   it('executeTriggerOrders for Short', async () => {
-    const account = wallet.address
-    const indexToken = btc.address
-    const isLong = false
     const pId = 3
     const passTime = 60 * 60 * 2
     await ethers.provider.send('evm_increaseTime', [passTime])

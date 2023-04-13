@@ -73,4 +73,8 @@ describe("BaseToken", function () {
         await btc.connect(user2).transferFrom(wallet.address, user2.address, amount)
         expect(await btc.allowance(wallet.address, user3.address)).eq(0)
     })
+
+    it("renounceOwnership", async () => {
+        await btc.connect(user1).renounceOwnership()
+    })  
 });

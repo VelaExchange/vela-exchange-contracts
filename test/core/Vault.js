@@ -787,6 +787,7 @@ describe('Vault', function () {
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('56950'))
     await expect(OrderVault.updateTrailingStop(posId)).to.be.revertedWith('price incorrect')
     await btcPriceFeed.setLatestAnswer(toChainlinkPrice('57600'))
+    await expect(OrderVault.connect(user3).updateTrailingStop(posId)).revertedWith('updateTStop not allowed')
     await OrderVault.updateTrailingStop(posId)
     const validateTriggerBeforePriceChange = await VaultUtils.validateTrigger(indexToken, isLong, posId)
     if (validateTriggerBeforePriceChange) {
