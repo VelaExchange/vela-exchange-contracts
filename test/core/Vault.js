@@ -1322,6 +1322,7 @@ describe('Vault', function () {
     const lastPosId = await PositionVault.lastPosId()
     const posId = lastPosId.toNumber() - 1
     await expect(Vault.cancelPendingOrder(0)).to.be.revertedWith('Not in Pending')
+    await expect(Vault.connect(user1).cancelPendingOrder(posId)).to.be.revertedWith("You are not allowed to cancel")
     snapshot = await ethers.provider.send('evm_snapshot', [])
     await Vault.cancelPendingOrder(posId)
   })

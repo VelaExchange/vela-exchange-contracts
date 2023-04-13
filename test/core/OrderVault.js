@@ -631,13 +631,15 @@ describe('OrderVault', function () {
     const posId = 2
     const orderId = 1
     await OrderVault.cancelTriggerOrder(posId, orderId)
+    await expect(OrderVault.cancelTriggerOrder(posId, orderId)).to.be.revertedWith("TriggerOrder was cancelled")
   })
 
   it('cancelPositionTrigger', async () => {
     const indexToken = btc.address
     const isLong = true
     const posId = 2
-    const triggerOrderInfo = await OrderVault.cancelPositionTrigger(posId)
+    await OrderVault.cancelPositionTrigger(posId)
+    await expect(OrderVault.cancelPositionTrigger(posId)).to.be.revertedWith("PositionTrigger was cancelled")
   })
 
   it('getTriggerOrderInfo', async () => {

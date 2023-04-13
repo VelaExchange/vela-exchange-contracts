@@ -137,7 +137,7 @@ contract OrderVault is Constants, ReentrancyGuard, IOrderVault {
 
     function cancelTriggerOrder(uint256 _posId, uint256 _orderId) external {
         PositionTrigger storage order = triggerOrders[_posId];
-        require(order.status == TriggerStatus.OPEN && order.triggers.length > _orderId, "TriggerOrder was cancelled");
+        require(order.status == TriggerStatus.OPEN && order.triggers.length > _orderId && order.triggers[_orderId].status == TriggerStatus.OPEN, "TriggerOrder was cancelled");
         order.triggers[_orderId].status = TriggerStatus.CANCELLED;
         emit UpdateTriggerOrderStatus(_posId, _orderId, order.triggers[_orderId].status);
     }
